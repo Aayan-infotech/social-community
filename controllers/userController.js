@@ -1,14 +1,14 @@
 import jwt from "jsonwebtoken";
 import bcrypt from 'bcryptjs';
 import UserModel from '../models/userModel.js';
-import { hashPassword,generateUniqueUserId,genrateReferral,handleReferral} from '../utils/passwordUtils.js';
+import { hashPassword, generateUniqueUserId, genrateReferral, handleReferral } from '../utils/passwordUtils.js';
 import { generateOTP, sendOTP } from '../utils/otpUtils.js';
 import { logger } from "../utils/logger.js";
 
 const registerUser = async (req, res) => {
     try {
         logger.info("User registration request received", { body: req.body });
-        const { name, email, mobile, state, city, gender, password ,referralBy} = req.body;
+        const { name, email, mobile, state, city, gender, password, referralBy } = req.body;
 
         const existingUser = await UserModel.findOne({ $or: [{ email }, { mobile }] });
 
@@ -57,7 +57,7 @@ const registerUser = async (req, res) => {
             state,
             city,
             gender,
-            referralCode:newReferralCode,
+            referralCode: newReferralCode,
             password: hashedPassword,
             referrals: [],
             otp,
@@ -133,13 +133,13 @@ const verifyOtp = async (req, res) => {
         if (type === 'register') {
 
             const accessToken = jwt.sign(
-                { userId: user._id},
+                { userId: user._id },
                 process.env.ACCESS_TOKEN_SECRET,
                 { expiresIn: "1h" }
             );
 
             const refreshToken = jwt.sign(
-                { userId: user._id},
+                { userId: user._id },
                 process.env.REFRESH_TOKEN_SECRET,
                 { expiresIn: "30d" }
             );
@@ -209,13 +209,13 @@ const loginUser = async (req, res) => {
         }
 
         const accessToken = jwt.sign(
-            { userid: user._id},
+            { userid: user._id },
             process.env.ACCESS_TOKEN_SECRET,
             { expiresIn: "1h" }
         );
 
         const refreshToken = jwt.sign(
-            { userId: user._id},
+            { userId: user._id },
             process.env.REFRESH_TOKEN_SECRET,
             { expiresIn: "30d" }
         );
@@ -419,8 +419,8 @@ const changePassword = async (req, res) => {
     }
 }
 
-const verifyRefralcode=async(req,res)=>{
-    try{
+const verifyRefralcode = async (req, res) => {
+    try {
         logger.info("Received request to verify referral code", { requestBody: req.body });
         const { referralCode } = req.body;
 
@@ -449,14 +449,62 @@ const verifyRefralcode=async(req,res)=>{
             message: ["Referral code verified successfully"],
         });
 
-    }catch(error){
+    } catch (error) {
         logger.error("Error verifying referral code", { error: error.message });
         return res.status(500).json({
             status: 500,
             message: [error.message],
-        }); 
+        });
     }
 }
+
+const getProfileById = async (req, res) => {
+    try {
+        logger.info(`Fetching user with ID: ${req.params.id}`);
+
+        let aggregation = [];
+
+        aggregation.push({
+            $match: { userId:req.params.id }
+        });
+        aggregation.push({
+            $project: {
+                _id:0,
+                userId: 0,
+                password: 0,
+                otp: 0,
+                otpExpire: 0,
+                refreshToken: 0,
+                referrals: 0,
+                __v: 0
+            }
+        })
+
+        const user = await UserModel.aggregate(aggregation);
+
+        if (!user.length) {
+            logger.warn(`User not found: ${req.params.id}`);
+            return res.status(404).json({
+                status: 404,
+                message: ["User not found"],
+            });
+        }
+
+        logger.info(`User fetched successfully: ${req.params.id}`);
+        return res.status(200).json({
+            status: 200,
+            message: ["User fetched successfully"],
+            data: user
+        });
+    } catch (error) {
+        logger.error(`Error fetching user: ${req.params.id}`, { error });
+        return res.status(500).json({
+            status: 500,
+            message: [error.message],
+        });
+    }
+};
+
 
 export {
     registerUser,
@@ -468,4 +516,5 @@ export {
     logOut,
     changePassword,
     verifyRefralcode,
+    getProfileById
 };
