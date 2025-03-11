@@ -6,42 +6,38 @@ const router = express.Router();
 
 router.get(
   "/google",
-  passport.authenticate("google", { scope: ["profile", "email"], session: false  })
+  passport.authenticate("google", { scope: ["profile", "email"], session: false })
 );
 
 router.get(
   "/google/callback",
-  passport.authenticate("google", { failureRedirect: "/" }),
-  (req, res) => {
-    try {
-      if (!req.user) {
-         logger.warn("Google login failed: User not found.");
-        return res.status(404).json({
-          status: 404,
-          message: ["User not found with the provided email . Please check the details and try again."]
+  (req, res, next) => {
+    passport.authenticate("google", (err, user, info) => {
+      if (err) {
+        logger.error(`Google login error: ${err.message}`);
+        return res.status(500).json({
+          status: 500,
+          message: [`Google login failed: ${err.message}`]
         });
       }
 
-      const { user, accessToken, refreshToken } = req.user;
-      logger.info(`Google login successful for user: ${user.email}`);
+      if (!user) {
+        logger.warn("Google login failed: No user returned.");
+        return res.status(404).json({
+          status: 404,
+          message: ["User not found with the provided email. Please check the details and try again."]
+        });
+      }
 
+      const { accessToken, refreshToken } = user;
+
+      logger.info(`Google login successful for user: ${user.user.email}`);
       return res.status(200).json({
         status: 200,
         message: ["Login successful"],
-        data: {
-          user,
-          accessToken,
-          refreshToken
-        }
+        data: { user: user.user, accessToken, refreshToken }
       });
-
-    } catch (error) {
-      logger.error(`Google login error: ${error.message}`);
-      return res.status(500).json({
-        status: 500,
-        message: [error.message]
-      });
-    }
+    })(req, res, next);
   }
 );
 

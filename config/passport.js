@@ -43,13 +43,9 @@ passport.use(
         user.refreshToken = newRefreshToken;
         await user.save();
         return done(null, {
-          status: 200,
-          message: ["Login successful"],
-          data: {
-            user,
-            accessToken: token,
-            refreshToken: newRefreshToken
-          }
+          user,
+          accessToken: token,
+          refreshToken: newRefreshToken
         });
       } catch (error) {
         logger.error(`Error in Google OAuth: ${error.message}`);
@@ -63,7 +59,7 @@ passport.use(
 );
 
 passport.serializeUser((user, done) => {
-  done(null, user.data.user._id);
+  done(null, user.user.userId);
 });
 
 passport.deserializeUser(async (id, done) => {
