@@ -8,12 +8,13 @@ import { logger } from '../utils/logger.js'
 
 const config = await loadConfig();
 
+
 passport.use(
   new GoogleStrategy(
     {
       clientID: config.GOOGLE_CLIENT_ID,
       clientSecret: config.GOOGLE_CLIENT_SECRET,
-      callbackURL: "http://localhost:3030/api/auth/google/callback"
+      callbackURL: "http://54.236.98.193:3030/api/auth/google/callback"
     },
     async (accessToken, refreshToken, profile, done) => {
       try {
@@ -42,21 +43,15 @@ passport.use(
 
         user.refreshToken = newRefreshToken;
         await user.save();
-        return done(null, {
-          user,
-          accessToken: token,
-          refreshToken: newRefreshToken
-        });
+        return done(null, { user, accessToken: token, refreshToken: newRefreshToken });
       } catch (error) {
         logger.error(`Error in Google OAuth: ${error.message}`);
-        return done(null, {
-          status: 500,
-          message: [error.message]
-        });
+        return done(error, false);
       }
     }
   )
 );
+
 
 passport.serializeUser((user, done) => {
   done(null, user.user.userId);
