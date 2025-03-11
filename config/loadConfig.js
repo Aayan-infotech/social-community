@@ -37,6 +37,7 @@ const loadConfig = async () => {
             APPLE_KEY_ID: secrets.APPLE_KEY_ID,
             APPLE_PRIVATE_KEY: secrets.APPLE_PRIVATE_KEY,
             APPLE_CALLBACK_URL: secrets.APPLE_CALLBACK_URL,
+            SESSION_SECRET:secrets.SESSION_SECRET
           };
         } catch (parseError) {
           console.error("JSON Parse Error:", parseError);
@@ -71,6 +72,7 @@ const loadConfig = async () => {
     APPLE_KEY_ID: process.env.APPLE_KEY_ID,
     APPLE_PRIVATE_KEY: process.env.APPLE_PRIVATE_KEY,
     APPLE_CALLBACK_URL: process.env.APPLE_CALLBACK_URL,
+    SESSION_SECRET: process.env.SESSION_SECRET,
   }
 };
 
