@@ -4,7 +4,8 @@ import {
     userValidationSchema,
     loginValidationSchema,
     setPasswordValidationSchema,
-    userValidationSchemaOTP
+    userValidationSchemaOTP,
+    updateProfileSchema
 } from '../validators/userValidator.js';
 import {
     registerUser,
@@ -38,6 +39,6 @@ router.post('/verifyOTP', validateRequest(userValidationSchemaOTP),verifyOtp);
 router.post('/refreshToken', refreshToken);
 router.post('/verifyRefral', verifyRefralcode);
 router.get('/getProfile/:id',authenticateUser,getProfileById);
-router.put('/updateProfile/:userId',authenticateUser,updateProfile)
+router.put('/updateProfile/:userId',validateRequest(updateProfileSchema),authenticateUser,updateProfile);
 
 export default router;

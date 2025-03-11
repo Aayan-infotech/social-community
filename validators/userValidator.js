@@ -106,10 +106,53 @@ const userValidationSchemaOTP = Joi.object({
     }),
 });
 
+const updateProfileSchema = Joi.object({
+    name: Joi.string().min(3).max(50).trim()
+        .messages({
+            "string.min": "Name should have at least 3 characters",
+            "string.max": "Name should not exceed 50 characters",
+        }),
+
+    email: Joi.string().email().lowercase()
+        .messages({
+            'string.base': 'Email must be a string.',
+            'string.email': 'Email must be valid.',
+            'any.required': 'Email is required.',
+        }),
+
+    mobile: Joi.string().pattern(/^\+91[0-9]{10}$/)
+        .messages({
+            'string.base': 'Mobile number must be a string.',
+            'string.empty': 'Mobile number is required.',
+            'string.pattern.base': 'Mobile number must include a valid country code and be in the format: +<country code><10-digit number>.',
+            'any.required': 'Mobile number is required.',
+        }),
+
+    state: Joi.string().min(2).max(50).trim()
+        .messages({
+            "string.min": "State should have at least 2 characters",
+            "string.max": "State should not exceed 50 characters",
+        }),
+
+    city: Joi.string().min(2).max(50).trim()
+        .messages({
+            "string.min": "City should have at least 2 characters",
+            "string.max": "City should not exceed 50 characters",
+        }),
+
+    gender: Joi.string().valid("male", "female", "other")
+        .messages({
+            "any.only": "Gender must be 'male', 'female' or 'other'",
+        })
+}).min(1)
+    .messages({
+        "object.min": "At least one field is required for update"
+    });
 
 export {
     userValidationSchema,
     loginValidationSchema,
     setPasswordValidationSchema,
-    userValidationSchemaOTP
+    userValidationSchemaOTP,
+    updateProfileSchema
 };
