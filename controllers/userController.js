@@ -465,11 +465,11 @@ const getProfileById = async (req, res) => {
         let aggregation = [];
 
         aggregation.push({
-            $match: { userId:req.params.id }
+            $match: { userId: req.params.id }
         });
         aggregation.push({
             $project: {
-                _id:0,
+                _id: 0,
                 userId: 0,
                 password: 0,
                 otp: 0,
@@ -505,6 +505,96 @@ const getProfileById = async (req, res) => {
     }
 };
 
+const updateProfile = async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const updateFields = req.body;
+
+        if (Object.keys(updateFields).length === 0) {
+            logger.warn(`No fields provided for update - User ID: ${userId}`);
+            return res.status(400).json({
+                status: 400,
+                message: ["No fields provided for update"],
+            });
+        }
+
+        logger.info(`Updating profile for user ID: ${userId} with fields: ${Object.keys(updateFields)}`);
+
+        const userExists = await UserModel.findOne({ userId });
+        if (!userExists) {
+            logger.warn(`User not found - User ID: ${userId}`);
+            return res.status(404).json({
+                status: 404,
+                message: ["User not found"],
+            });
+        }
+
+        if (updateFields.email) {
+            const emailExists = await UserModel.findOne({
+                email: updateFields.email,
+                userId: { $ne: userId }
+            });
+
+            if (emailExists) {
+                logger.warn(`Email already in use: ${updateFields.email} - User ID: ${userId}`);
+                return res.status(400).json({
+                    status: 400,
+                    message: ["Email already in use"],
+                });
+            }
+        }
+
+        if (updateFields.mobile) {
+            const mobileExists = await UserModel.findOne({
+                mobile: updateFields.mobile,
+                userId: { $ne: userId }
+            });
+
+            if (mobileExists) {
+                logger.warn(`Mobile number already in use: ${updateFields.mobile} - User ID: ${userId}`);
+                return res.status(400).json({
+                    status: 400,
+                    message: ["Mobile number already in use"],
+                });
+            }
+        }
+        const updateResult = await UserModel.updateOne(
+            { userId },
+            { $set: updateFields }
+        );
+
+        if (updateResult.matchedCount === 0) {
+            logger.warn(`User not found for update - User ID: ${userId}`);
+            return res.status(404).json({
+                status: 404,
+                message: ["User not found"],
+            });
+        }
+
+        if (updateResult.modifiedCount === 0) {
+            logger.info(`No changes made for User ID: ${userId}`);
+            return res.status(200).json({
+                status: 200,
+                message: ["No changes made"],
+                updatedFields: []
+            });
+        }
+
+        logger.info(`Profile updated successfully - User ID: ${userId}, Fields: ${Object.keys(updateFields)}`);
+        return res.status(200).json({
+            status: 200,
+            message: ["Profile updated successfully"],
+            updatedFields: Object.keys(updateFields),
+        });
+    } catch (error) {
+        logger.error(`Error updating profile for user ID: ${req.params.userId}`, { error });
+        return res.status(500).json({
+            status: 500,
+            message: [error.message],
+        });
+    }
+}
+
 
 export {
     registerUser,
@@ -516,5 +606,6 @@ export {
     logOut,
     changePassword,
     verifyRefralcode,
-    getProfileById
+    getProfileById,
+    updateProfile
 };

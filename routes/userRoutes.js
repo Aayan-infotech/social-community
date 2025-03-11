@@ -17,6 +17,7 @@ import {
     verifyOtp,
     verifyRefralcode,
     getProfileById,
+    updateProfile
 } from '../controllers/userController.js';
 import {
     authenticateUser,
@@ -37,5 +38,6 @@ router.post('/verifyOTP', validateRequest(userValidationSchemaOTP),verifyOtp);
 router.post('/refreshToken', refreshToken);
 router.post('/verifyRefral', verifyRefralcode);
 router.get('/getProfile/:id',authenticateUser,getProfileById);
+router.put('/updateProfile/:userId',authenticateUser,updateProfile)
 
 export default router;
