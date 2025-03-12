@@ -106,6 +106,19 @@ const userValidationSchemaOTP = Joi.object({
     }),
 });
 
+const wordLimit = (min, max) => {
+    return (value, helpers) => {
+        const wordCount = value.trim().split(/\s+/).length;
+        if (wordCount < min) {
+            return helpers.message(`Bio must have at least ${min} words.`);
+        }
+        if (wordCount > max) {
+            return helpers.message(`Bio must not exceed ${max} words.`);
+        }
+        return value;
+    };
+};
+
 const updateProfileSchema = Joi.object({
     name: Joi.string().min(3).max(50).trim()
         .messages({
@@ -143,7 +156,12 @@ const updateProfileSchema = Joi.object({
     gender: Joi.string().valid("male", "female", "other")
         .messages({
             "any.only": "Gender must be 'male', 'female' or 'other'",
+        }),
+    bio: Joi.string().max(200).trim().custom(wordLimit(10, 200), "Word limit validation")
+        .messages({
+            "string.max": "Bio must not exceed 2000 characters.",
         })
+
 }).min(1)
     .messages({
         "object.min": "At least one field is required for update"

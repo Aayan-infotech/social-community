@@ -575,16 +575,14 @@ const updateProfile = async (req, res) => {
             logger.info(`No changes made for User ID: ${userId}`);
             return res.status(200).json({
                 status: 200,
-                message: ["No changes made"],
-                updatedFields: []
+                message: ["No changes made"]
             });
         }
 
         logger.info(`Profile updated successfully - User ID: ${userId}, Fields: ${Object.keys(updateFields)}`);
         return res.status(200).json({
             status: 200,
-            message: ["Profile updated successfully"],
-            updatedFields: Object.keys(updateFields),
+            message: [`Profile updated successfully. Updated fields: ${Object.keys(updateFields).join(", ")}`]
         });
     } catch (error) {
         logger.error(`Error updating profile for user ID: ${req.params.userId}`, { error });
