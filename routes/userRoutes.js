@@ -18,7 +18,11 @@ import {
     verifyOtp,
     verifyRefralcode,
     getProfileById,
-    updateProfile
+    updateProfile,
+    friendRequest,
+    acceptRejectFriend,
+    friendList,
+    getFriendRequestList
 } from '../controllers/userController.js';
 import {
     authenticateUser,
@@ -40,5 +44,9 @@ router.post('/refreshToken', refreshToken);
 router.post('/verifyRefral', verifyRefralcode);
 router.get('/getProfile/:id',authenticateUser,getProfileById);
 router.put('/updateProfile/:userId',validateRequest(updateProfileSchema),authenticateUser,updateProfile);
+router.post('/add-friend',authenticateUser,friendRequest);
+router.put('/accept-reject-friend',authenticateUser,acceptRejectFriend);
+router.get('/friend-list',authenticateUser,friendList);
+router.get('/get-friend-request',authenticateUser,getFriendRequestList);
 
 export default router;
