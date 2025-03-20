@@ -93,15 +93,15 @@ const registerUser = async (req, res) => {
       otp,
     });
 
-    const otpSent = await sendOTP(mobile, otp);
+    // const otpSent = await sendOTP(mobile, otp);
 
-    if (!otpSent.success) {
-      logger.error("OTP sending failed", { mobile, error: otpSent.message });
-      return res.status(500).json({
-        status: 500,
-        message: otpSent.message,
-      });
-    }
+    // if (!otpSent.success) {
+    //   logger.error("OTP sending failed", { mobile, error: otpSent.message });
+    //   return res.status(500).json({
+    //     status: 500,
+    //     message: otpSent.message,
+    //   });
+    // }
 
     logger.info("OTP sent successfully", { mobile });
     return res.status(200).json({
@@ -640,15 +640,6 @@ const friendRequest = async (req, res) => {
   try {
     const id = req.user.userId;
     const { friendId } = req.body;
-    const friendExists = await UserModel.findOne({ userId: friendId });
-
-    if (!friendExists) {
-      return res.status(404).json({
-        status: 404,
-        message: ["Friend not found"],
-      });
-    }
-
     const user = await UserModel.findById(id);
 
     if (!user) {
@@ -660,6 +651,24 @@ const friendRequest = async (req, res) => {
 
     const userId = user?.userId;
 
+    if (userId === friendId) {
+      return res.status(400).json({
+        status: 400,
+        message: ["You cannot send friend request to yourself"],
+      });
+    }
+
+    const friendExists = await UserModel.findOne({ userId: friendId });
+
+    if (!friendExists) {
+      return res.status(404).json({
+        status: 404,
+        message: ["Friend not found"],
+      });
+    }
+
+    // if the user already in the Friends list then Cannot add the user to Friend Request
+
     let friendList = await Friend_List.findOne({ userId });
 
     if (!friendList) {
@@ -668,8 +677,15 @@ const friendRequest = async (req, res) => {
         friend_request: [friendId],
       });
     } else {
-      if (!friendList.friend_request.includes(friendId)) {
-        friendList.friend_request.push(friendId);
+      if (!friendList.friends.includes(friendId)) {
+        if (!friendList.friend_request.includes(friendId)) {
+          friendList.friend_request.push(friendId);
+        }
+      } else {
+        return res.status(400).json({
+          status: 400,
+          message: ["Friend already in your friend list"],
+        });
       }
     }
 
@@ -680,7 +696,6 @@ const friendRequest = async (req, res) => {
       message: ["Friend request added successfully"],
     });
   } catch (error) {
-    console.error(error);
     return res.status(500).json({
       status: 500,
       message: [error.message],
@@ -720,11 +735,11 @@ const acceptRejectFriend = async (req, res) => {
       friendList.friend_request = friendList.friend_request.filter(
         (friend) => friend !== friendId
       );
+
       friendList.friends.push(friendId);
 
       // if the accept the request create a new record for the friend
       let friendFriendList = await Friend_List.findOne({ userId: friendId });
-      console.error(friendFriendList);
       if (!friendFriendList) {
         friendFriendList = new Friend_List({
           userId: friendId,
@@ -749,7 +764,6 @@ const acceptRejectFriend = async (req, res) => {
       ],
     });
   } catch (error) {
-    console.error(error);
     return res.status(500).json({
       status: 500,
       message: [error.message],
@@ -779,15 +793,32 @@ const getFriendRequestList = async (req, res) => {
         as: "Friend_Request",
       },
     });
+    aggregation.push({
+      $project: {
+        "Friend_Request.password": 0,
+        "Friend_Request.otp": 0,
+        "Friend_Request.otpExpire": 0,
+        "Friend_Request.refreshToken": 0,
+        "Friend_Request.referrals": 0,
+        "Friend_Request.__v": 0,
+        "Friend_Request.createdAt": 0,
+        "Friend_Request.updatedAt": 0,
+        "Friend_Request.referredBy": 0,
+        _id: 0,
+        friends: 0,
+        friend_request: 0,
+        createdAt: 0,
+        updatedAt: 0,
+        __v: 0,
+      },
+    });
     const friendRequestList = await Friend_List.aggregate(aggregation);
-    console.error(friendRequestList);
     return res.status(200).json({
       status: 200,
       message: ["Friend request list fetched successfully"],
       data: friendRequestList,
     });
   } catch (error) {
-    console.error(error);
     return res.status(500).json({
       status: 500,
       message: [error.message],
@@ -817,15 +848,83 @@ const friendList = async (req, res) => {
         as: "Friends",
       },
     });
+    aggregation.push({
+      $project: {
+        "Friends.password": 0,
+        "Friends.otp": 0,
+        "Friends.otpExpire": 0,
+        "Friends.refreshToken": 0,
+        "Friends.referrals": 0,
+        "Friends.__v": 0,
+        "Friends.createdAt": 0,
+        "Friends.updatedAt": 0,
+        "Friends.referredBy": 0,
+        _id: 0,
+        friends: 0,
+        friend_request: 0,
+        createdAt: 0,
+        updatedAt: 0,
+        __v: 0,
+      },
+    });
+
     const allFriendList = await Friend_List.aggregate(aggregation);
-    console.error(allFriendList);
+
     return res.status(200).json({
       status: 200,
       message: ["Friend list fetched successfully"],
       data: allFriendList,
     });
   } catch (error) {
-    console.error(error);
+    return res.status(500).json({
+      status: 500,
+      message: [error.message],
+    });
+  }
+};
+
+const getFriendSuggestionList = async (req, res) => {
+  try {
+    const id = req.user.userId;
+    const userExists = await UserModel.findById(id);
+    if (!userExists) {
+      return res.status(404).json({
+        status: 404,
+        message: ["User not found"],
+      });
+    }
+    const userId = userExists?.userId;
+    const friendList = await Friend_List.findOne({ userId });
+
+    let friends = friendList ? friendList.friends : [];
+    let friend_request = friendList ? friendList.friend_request : [];
+
+    let aggregation = [];
+    aggregation.push({ $match: { city: { $eq: userExists?.city } } });
+    aggregation.push({ $match: { userId: { $ne: userId } } });
+    aggregation.push({ $match: { userId: { $nin: friends } } });
+    aggregation.push({
+      $match: { userId: { $nin: friend_request } },
+    });
+    aggregation.push({
+      $project: {
+        _id: 0,
+        userId: 1,
+        name: 1,
+        email: 1,
+        mobile: 1,
+        city: 1,
+        state: 1,
+      },
+    });
+
+    const friendSuggestionList = await UserModel.aggregate(aggregation);
+    return res.status(200).json({
+      status: 200,
+      message: ["Friend suggestion list fetched successfully"],
+      data: friendSuggestionList,
+    });
+  } catch (error) {
     return res.status(500).json({
       status: 500,
       message: [error.message],
@@ -849,4 +948,5 @@ export {
   acceptRejectFriend,
   getFriendRequestList,
   friendList,
+  getFriendSuggestionList,
 };

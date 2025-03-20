@@ -22,7 +22,8 @@ import {
     friendRequest,
     acceptRejectFriend,
     friendList,
-    getFriendRequestList
+    getFriendRequestList,
+    getFriendSuggestionList
 } from '../controllers/userController.js';
 import {
     authenticateUser,
@@ -48,5 +49,6 @@ router.post('/add-friend',authenticateUser,friendRequest);
 router.put('/accept-reject-friend',authenticateUser,acceptRejectFriend);
 router.get('/friend-list',authenticateUser,friendList);
 router.get('/get-friend-request',authenticateUser,getFriendRequestList);
+router.get('/friend-suggestion',authenticateUser,getFriendSuggestionList);
 
 export default router;
