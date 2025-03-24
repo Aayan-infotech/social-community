@@ -15,4 +15,4 @@ COPY . .
 EXPOSE 3030
 
 # Define the command to run your backend server
-CMD ["node", "app.js"]
+CMD ["node", "index.js"]
