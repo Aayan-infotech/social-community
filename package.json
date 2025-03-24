@@ -1,33 +1,33 @@
 {
-  "type": "module",
-  "name": "social-community",
+  "name": "social-community-new",
   "version": "1.0.0",
-  "description": "",
-  "main": "app.js",
+  "description": "this is social-community app",
+  "main": "index.js",
+  "type": "module",
   "scripts": {
-    "start": "node app.js",
-    "dev": "nodemon app.js"
+    "dev": "nodemon -r dotenv/config --experimental-json-modules src/index.js"
   },
-  "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@aws-sdk/client-secrets-manager": "^3.758.0",
+    "@aws-sdk/client-s3": "^3.772.0",
+    "@aws-sdk/client-secrets-manager": "^3.772.0",
     "aws-sdk": "^2.1692.0",
     "bcrypt": "^5.1.1",
-    "bcryptjs": "^2.4.3",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
-    "express-session": "^1.18.1",
     "joi": "^17.13.3",
     "jsonwebtoken": "^9.0.2",
-    "mongoose": "^8.9.5",
-    "nanoid": "^5.1.0",
-    "passport": "^0.7.0",
-    "passport-google-oauth20": "^2.0.0",
-    "twilio": "^5.4.2",
-    "winston": "^3.17.0",
-    "winston-loki": "^6.1.3"
+    "mongoose": "^8.12.1",
+    "multer": "^1.4.5-lts.2",
+    "nanoid": "^5.1.5",
+    "nodemailer": "^6.10.0",
+    "twilio": "^5.5.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.9",
+    "prettier": "^3.5.3"
   }
 }
