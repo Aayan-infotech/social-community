@@ -1,9 +1,7 @@
 import dotenv from "dotenv";
 import {
   SecretsManagerClient,
-  GetSecretValueCommand,
-  CreateSecretCommand,
-  UpdateSecretCommand,
+  GetSecretValueCommand
 } from "@aws-sdk/client-secrets-manager";
 
 dotenv.config();
