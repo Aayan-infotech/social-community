@@ -11,6 +11,7 @@ Object.entries(config).forEach(([key, value]) => {
     process.env[key] = value;
   }
 });
+console.log(222);
 
 connectDB()
   .then(() => {
