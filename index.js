@@ -11,11 +11,10 @@ Object.entries(config).forEach(([key, value]) => {
     process.env[key] = value;
   }
 });
-console.log(222);
 
 connectDB()
   .then(() => {
-    app.listen(3030 || 3030, () => {
+    app.listen(process.env.PORT || 3030, () => {
       console.log(`Server started on port ${process.env.PORT}`);
     });
   })

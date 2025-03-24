@@ -371,7 +371,6 @@ const logoutUser = asyncHanlder(async (req, res) => {
 
 const changePassword = asyncHanlder(async (req, res) => {
   const { currentPassword, newPassword, confirmPassword } = req.body;
-  console.log(confirmPassword);
 
   const user = req.user;
   if (!user) {

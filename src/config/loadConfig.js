@@ -3,6 +3,7 @@ import {
   SecretsManagerClient,
   GetSecretValueCommand,
   CreateSecretCommand,
+  UpdateSecretCommand,
 } from "@aws-sdk/client-secrets-manager";
 
 dotenv.config();
@@ -12,64 +13,18 @@ const REGION = process.env.AWS_REGION || "us-east-1";
 const SECRET_NAME = process.env.SECRET_NAME || "social-com";
 const secretsManager = new SecretsManagerClient({ region: REGION });
 
-// const defaultSecrets = {
-//   PORT: process.env.PORT || 8000,
-//   CORS_ORIGIN: process.env.CORS_ORIGIN || "http://localhost:3000",
-//   APP_URL: process.env.APP_URL || "http://localhost:3000",
-//   MONGODB_URI: process.env.MONGODB_URI,
-//   ACCESS_TOKEN_SECRET: process.env.ACCESS_TOKEN_SECRET,
-//   ACCESS_TOKEN_EXPIRY: process.env.ACCESS_TOKEN_EXPIRY || "15m",
-//   REFRESH_TOKEN_SECRET: process.env.REFRESH_TOKEN_SECRET,
-//   REFRESH_TOKEN_EXPIRY: process.env.REFRESH_TOKEN_EXPIRY || "7d",
-
-//   // AWS configuration
-//   AWS_REGION: process.env.AWS_REGION || "us-east-1",
-//   AWS_BUCKET_NAME: process.env.AWS_BUCKET_NAME,
-//   AWS_ACCESS_KEY_ID: process.env.AWS_ACCESS_KEY_ID,
-//   AWS_SECRET_ACCESS_KEY: process.env.AWS_SECRET_ACCESS_KEY,
-
-//   // Twilio configuration
-//   TWILIO_ACCOUNT_SID: process.env.TWILIO_ACCOUNT_SID,
-//   TWILIO_AUTH_TOKEN: process.env.TWILIO_AUTH_TOKEN,
-//   TWILIO_SERVICE_SID: process.env.TWILIO_SERVICE_SID,
-//   TWILIO_PHONE_NUMBER: process.env.TWILIO_PHONE_NUMBER,
-
-//   // Email configuration
-//   EMAIL_USER: process.env.EMAIL_USER,
-//   EMAIL_PASS: process.env.EMAIL_PASS,
-// };
-
-// // Function to create the secret
-// const createSecret = async () => {
-//   try {
-//     const command = new CreateSecretCommand({
-//       Name: SECRET_NAME,
-//       SecretString: JSON.stringify(defaultSecrets),
-//     });
-
-//     const response = await secretsManager.send(command);
-//     console.log(`Secret "${SECRET_NAME}" created successfully:`, response);
-//   } catch (error) {
-//     console.error("Error creating secret:", error);
-//     throw error;
-//   }
-// };
-
-// console.log(await createSecret());
-
 const loadConfig = async () => {
   if (ENV === "production") {
     try {
       const response = await secretsManager.send(
         new GetSecretValueCommand({ SecretId: SECRET_NAME })
       );
-      console.log("Secrets Response:", response);
 
       if (response.SecretString) {
         try {
           const secrets = JSON.parse(response.SecretString);
           return {
-            PORT: secrets.PORT,
+            PORT: secrets.PORT ,
             CORS_ORIGIN: secrets.CORS_ORIGIN,
             APP_URL: secrets.APP_URL,
             MONGODB_URI: secrets.MONGODB_URI,

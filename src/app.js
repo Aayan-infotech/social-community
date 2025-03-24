@@ -26,7 +26,7 @@ app.use(cookieParser())
 app.use(errorHandler);
 
 
-console.log(111);
+
 
 app.use("/api/",routes);
 app.get('/', (req, res, next) => res.end("Hello world"));
