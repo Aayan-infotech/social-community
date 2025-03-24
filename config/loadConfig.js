@@ -21,7 +21,7 @@ const loadConfig = async () => {
           const secrets = JSON.parse(response.SecretString);
           return {
             PORT: secrets.PORT || 3030,
-            DB_URI: secrets.DB_URI,
+            DB_URI: secrets.MONGODB_URI,
             ACCESS_TOKEN_SECRET: secrets.ACCESS_TOKEN_SECRET,
             REFRESH_TOKEN_SECRET: secrets.REFRESH_TOKEN_SECRET,
             AWS_REGION: secrets.AWS_REGION || 'us-east-1',
@@ -56,7 +56,7 @@ const loadConfig = async () => {
   return {
     NODE_ENV: process.env.NODE_ENV || 'development',
     PORT: process.env.PORT || 3030,
-    DB_URI: process.env.DB_URI,
+    DB_URI: process.env.MONGODB_URI,
     ACCESS_TOKEN_SECRET: process.env.ACCESS_TOKEN_SECRET,
     REFRESH_TOKEN_SECRET: process.env.REFRESH_TOKEN_SECRET,
     AWS_REGION: process.env.AWS_REGION || 'us-east-1',
