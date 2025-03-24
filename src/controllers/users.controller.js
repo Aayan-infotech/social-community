@@ -7,7 +7,10 @@ import { uploadImage } from "../utils/awsS3Utils.js";
 import { FriendsModel } from "../models/friends.model.js";
 
 const getUserProfile = asyncHanlder(async (req, res) => {
-  const user = await User.findById(req.user._id).select("-password");
+  const user = await User.findById(req.user._id).select("-password").lean();
+  const friends = await FriendsModel.findOne({ userId: user.userId });
+  let count = friends ? friends.friends.length : 0;
+  user.friendsCount = count;
   res.json(new ApiResponse(200, "User profile fetched successfully", user));
 });
 
@@ -180,7 +183,6 @@ const getFriendSuggestionList = asyncHanlder(async (req, res) => {
 
   let friends = friendList ? friendList.friends : [];
   let friend_request = friendList ? friendList.friend_requests : [];
-
 
   let aggregation = [];
   aggregation.push({ $match: { city: { $eq: user?.city } } });
