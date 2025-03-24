@@ -108,7 +108,7 @@ const loadConfig = async () => {
 
   return {
     NODE_ENV: process.env.NODE_ENV || "development",
-    PORT: process.env.PORT || 8000,
+    PORT: process.env.PORT || 3030,
     CORS_ORIGIN: process.env.CORS_ORIGIN || "http://localhost:3000",
     APP_URL: process.env.APP_URL || "http://localhost:3000",
     MONGODB_URI: process.env.MONGODB_URI,
