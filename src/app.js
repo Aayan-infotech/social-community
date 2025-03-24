@@ -28,6 +28,7 @@ app.use(errorHandler);
 
 
 app.use("/api/",routes);
+app.get('/', (req, res, next) => res.end("Hello world"));
 
 
 
