@@ -9,14 +9,16 @@ import {
   setPassword,
   logoutUser,
   changePassword,
-  refreshAccessToken
+  refreshAccessToken,
+  saveDeviceDetails
 } from "../controllers/auth.controller.js";
 import { validateRequest } from "../middlewares/validation.middleware.js";
 import {
   loginValidationSchema,
   userValidationSchema,
   setPasswordValidationSchema,
-  changePasswordSchema
+  changePasswordSchema,
+  saveDeviceDetailsSchema
 } from "../validators/userValidator.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 
@@ -32,5 +34,6 @@ router.post("/set-password",validateRequest(setPasswordValidationSchema),setPass
 router.post("/logout",verifyJWT,logoutUser);
 router.post("/change-password",verifyJWT,validateRequest(changePasswordSchema),changePassword);
 router.get("/refresh-token",refreshAccessToken);
+router.post('/save-device-details',verifyJWT,validateRequest(saveDeviceDetailsSchema),saveDeviceDetails);
 
 export default router;

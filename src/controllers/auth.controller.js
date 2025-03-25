@@ -442,6 +442,27 @@ const refreshAccessToken = asyncHanlder(async (req, res) => {
 });
 
 
+const saveDeviceDetails = asyncHanlder(async (req, res) => {
+  const { device_token, latitude , longitude , language } = req.body;
+  const user = req.user;
+  if (!user) {
+    throw new ApiError(401, "User not found");
+  }
+
+  user.device_token = device_token;
+  user.latitude = latitude;
+  user.longitude = longitude;
+  user.language = language;
+
+  const updatedData = await user.save();
+  if (!updatedData) {
+    throw new ApiError(500, "Failed to save device details");
+  }
+  return res.status(200).json(new ApiResponse(200, "Device Details saved successfully", updatedData));
+});
+
+
+
 
 export {
   signup,
@@ -454,5 +475,6 @@ export {
   setPassword,
   logoutUser,
   changePassword,
-  refreshAccessToken
+  refreshAccessToken,
+  saveDeviceDetails
 };

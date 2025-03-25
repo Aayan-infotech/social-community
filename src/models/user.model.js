@@ -90,7 +90,23 @@ const userSchema = new mongoose.Schema(
     profile_image:{
       type: String,
       default: null,
-    }
+    },
+    device_token:{
+      type: String,
+      default: null,
+    },
+    latitude : {
+      type: String,
+      default: null,
+    },
+    longitude : {
+      type: String,
+      default: null,
+    },
+    language: {
+      type: String,
+      default: 'en',
+    },
   },
   {
     timestamps: true,

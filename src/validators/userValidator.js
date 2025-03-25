@@ -200,6 +200,28 @@ const updateProfileSchema = Joi.object({
     }),
 });
 
+
+const saveDeviceDetailsSchema = Joi.object({
+  device_token: Joi.string().required().messages({
+    "string.base": "Device Token must be a string.",
+    "string.empty": "Device Token is required.",
+    "any.required": "Device Token is required.",
+  }),
+  latitude: Joi.number().required().messages({
+    "number.base": "Latitude must be a number.",
+    "number.empty": "Latitude is required.",
+    "any.required": "Latitude is required.",
+  }),
+  longitude: Joi.number().required().messages({
+    "number.base": "Longitude must be a number.",
+    "number.empty": "Longitude is required.",
+    "any.required": "Longitude is required.",
+  }),
+  language: Joi.string().optional().messages({
+    "string.base": "Language must be a string.",
+  })
+});
+
 export {
   userValidationSchema,
   loginValidationSchema,
@@ -207,4 +229,5 @@ export {
   userValidationSchemaOTP,
   updateProfileSchema,
   changePasswordSchema,
+  saveDeviceDetailsSchema,
 };
