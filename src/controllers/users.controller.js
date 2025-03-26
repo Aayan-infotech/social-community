@@ -151,58 +151,71 @@ const friendRequest = asyncHanlder(async (req, res) => {
 const acceptRejectFriendRequest = asyncHanlder(async (req, res) => {
   const { friendId, status } = req.body;
   const user = await User.findById(req.user._id);
-  console.log(user);
   if (!user) {
     throw new ApiError(404, "User not found");
   }
   const userId = user?.userId;
-  const friendList = await FriendsModel.findOne({ userId });
-  if (!friendList) {
+
+  const friendRequestExists = await FriendRequestModel.findOne({
+    senderId: friendId,
+    receiverId: userId,
+    status: "pending",
+  });
+
+  if (!friendRequestExists) {
     throw new ApiError(404, "Friend request not found");
   }
-  if (!friendList.friend_requests.includes(friendId)) {
-    throw new ApiError(404, "Friend request not found");
+
+  // check friend Exists in db
+
+  const friendExists = await User.findOne({
+    userId: friendId,
+  }).select(
+    "-password -refreshToken -_id -__v -referrals -referredBy -otpExpire -otp"
+  );
+  if (!friendExists) {
+    throw new ApiError(404, "Invalid friend id provided");
   }
-  if (status === "accept") {
-    friendList.friend_requests = friendList.friend_requests.filter(
-      (friend) => friend !== friendId
+
+  if (status === "accepted") {
+    // Add friend to both users' friend lists
+    const friendList = await FriendsModel.findOneAndUpdate(
+      { userId },
+      { $addToSet: { friends: friendId } },
+      { new: true, upsert: true }
     );
 
-    friendList.friends.push(friendId);
+    const friendFriendList = await FriendsModel.findOneAndUpdate(
+      { userId: friendId },
+      { $addToSet: { friends: userId } },
+      { new: true, upsert: true }
+    );
 
-    let friendFriendList = await FriendsModel.findOne({ userId: friendId });
-    if (!friendFriendList) {
-      friendFriendList = new FriendsModel({
-        userId: friendId,
-        friends: [userId],
-      });
-      await friendFriendList.save();
-    } else {
-      friendFriendList.friends.push(userId);
-    }
-
-    // Send push notification
+    // send push notification in the accepted case
     await sendPushNotification(
-      friendId,
+      friendExists?.device_token,
       "Friend Request Accepted",
       user?.name + " has accepted your friend request",
+      userId,
+      friendId,
       {
         type: "friend_request_accepted",
-        userId: userId,
         friendDetails: user,
       }
     );
-  } else {
-    friendList.friend_requests = friendList.friend_requests.filter(
-      (friend) => friend !== friendId
-    );
   }
 
-  const data = await friendList.save();
+  // update the status of the friend request
+  const data = await FriendRequestModel.findByIdAndUpdate(
+    friendRequestExists._id,
+    { $set: { status } },
+    { new: true }
+  );
+
   res.json(
     new ApiResponse(
       200,
-      status === "accept"
+      status === "accepted"
         ? "Friend request accepted"
         : "Friend request rejected",
       data
@@ -210,42 +223,18 @@ const acceptRejectFriendRequest = asyncHanlder(async (req, res) => {
   );
 });
 
-// this function will return the list of friend request a user made
-// const getFriendRequestList = asyncHanlder(async (req, res) => {
-//   const user = await User.findById(req.user._id);
-//   if (!user) {
-//     throw new ApiError(404, "User not found");
-//   }
-//   const userId = user?.userId;
-//   const friendList = await FriendsModel.findOne({ userId });
-//   if (!friendList) {
-//     throw new ApiError(404, "Friend request not found");
-//   }
-//   const friendRequests = await User.find({
-//     userId: { $in: friendList.friend_requests },
-//   }).select(
-//     "-password -refreshToken -_id -__v -referrals -referredBy -otpExpire -otp"
-//   );
-//   res.json(
-//     new ApiResponse(
-//       200,
-//       "Friend request list fetched successfully",
-//       friendRequests
-//     )
-//   );
-// });
-
 const getFriendRequestList = asyncHanlder(async (req, res) => {
   const user = await User.findById(req.user._id);
   if (!user) {
     throw new ApiError(404, "User not found");
   }
   const userId = user.userId;
-  const receivedRequests = await FriendsModel.find({
-    friend_requests: userId,
-  }).select("userId");
+  const friendRequests = await FriendRequestModel.find({
+    receiverId: userId,
+    status: "pending",
+  }).select("senderId");
 
-  const senderIds = receivedRequests.map((request) => request.userId);
+  const senderIds = friendRequests.map((request) => request.senderId);
 
   if (!senderIds.length) {
     throw new ApiError(404, "No friend requests found");
@@ -259,7 +248,7 @@ const getFriendRequestList = asyncHanlder(async (req, res) => {
   );
 
   res.json(
-    new ApiResponse(200, "Friend requests received successfully", senders)
+    new ApiResponse(200, "Friend requests fetched successfully", senders)
   );
 });
 
