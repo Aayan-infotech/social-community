@@ -7,13 +7,17 @@ import {
   acceptRejectFriendRequest,
   getFriendRequestList,
   getFriendList,
-  getFriendSuggestionList
+  getFriendSuggestionList,
+  getNotifications,
 } from "../controllers/users.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { validateRequest } from "../middlewares/validation.middleware.js";
-import { updateProfileSchema } from "../validators/userValidator.js";
+import {
+  updateProfileSchema,
+  friendRequestSchema,
+  acceptRejectFriendRequestSchema,
+} from "../validators/userValidator.js";
 import errorHandler from "../middlewares/errorhandler.middleware.js";
-
 
 const router = Router();
 
@@ -32,11 +36,21 @@ router.post(
   updateUserProfile
 );
 
-router.post('/friend-request',verifyJWT,friendRequest);
-router.put('/accept-reject-friend-request',verifyJWT,acceptRejectFriendRequest);
-router.get('/get-friend-request',verifyJWT,getFriendRequestList);
-router.get('/get-friends',verifyJWT,getFriendList);
-router.get('/get-friend-suggestions',verifyJWT,getFriendSuggestionList);
-
+router.post(
+  "/friend-request",
+  validateRequest(friendRequestSchema),
+  verifyJWT,
+  friendRequest
+);
+router.put(
+  "/accept-reject-friend-request",
+  validateRequest(acceptRejectFriendRequestSchema),
+  verifyJWT,
+  acceptRejectFriendRequest
+);
+router.get("/get-friend-request", verifyJWT, getFriendRequestList);
+router.get("/get-friends", verifyJWT, getFriendList);
+router.get("/get-friend-suggestions", verifyJWT, getFriendSuggestionList);
+router.get("/get-notifications", verifyJWT, getNotifications);
 
 export default router;

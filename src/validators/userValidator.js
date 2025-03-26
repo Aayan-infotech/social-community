@@ -222,6 +222,29 @@ const saveDeviceDetailsSchema = Joi.object({
   })
 });
 
+
+const friendRequestSchema = Joi.object({
+  friendId: Joi.string().required().messages({
+    "string.base": "Friend Id must be a string.",
+    "string.empty": "Friend Id is required.",
+    "any.required": "Friend Id is required.",
+  }),
+});
+
+const acceptRejectFriendRequestSchema = Joi.object({
+  friendId: Joi.string().required().messages({
+    "string.base": "Friend Id must be a string.",
+    "string.empty": "Friend Id is required.",
+    "any.required": "Friend Id is required.",
+  }),
+  status: Joi.string().valid("accepted", "rejected").required().messages({
+    "string.base": "Status must be a string.",
+    "string.empty": "Status is required.",
+    "any.only": "Status must be either 'accepted' or 'rejected'",
+    "any.required": "Status is required.",
+  }),
+});
+
 export {
   userValidationSchema,
   loginValidationSchema,
@@ -230,4 +253,6 @@ export {
   updateProfileSchema,
   changePasswordSchema,
   saveDeviceDetailsSchema,
+  friendRequestSchema,
+  acceptRejectFriendRequestSchema
 };
