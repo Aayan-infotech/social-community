@@ -2,9 +2,9 @@ import { asyncHanlder } from "../utils/asyncHandler.js";
 import { User } from "../models/user.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
-import jwt from "jsonwebtoken";
-import { uploadImage } from "../utils/awsS3Utils.js";
+import { deleteImage, uploadImage } from "../utils/awsS3Utils.js";
 import { FriendsModel } from "../models/friends.model.js";
+import sendPushNotification from "../utils/sendPushNotification.js";
 
 const getUserProfile = asyncHanlder(async (req, res) => {
   const user = await User.findById(req.user._id).select("-password").lean();
@@ -17,10 +17,17 @@ const getUserProfile = asyncHanlder(async (req, res) => {
 const updateUserProfile = asyncHanlder(async (req, res) => {
   const { name, email, mobile, state, city, gender, bio } = req.body;
 
-  let profile_image = null;
+  let profile_image = req.user?.profile_image ? req.user?.profile_image : null;
+
   if (req.files && req.files.profile_image) {
+    // Delete the previous profile image from aws account
+    if (req.user.profile_image) {
+      await deleteImage(req.user.profile_image);
+    }
+    // Upload the new profile image to aws account
     profile_image = await uploadImage(req.files.profile_image[0]);
   }
+
 
   const user = await User.findByIdAndUpdate(
     req.user?._id,
@@ -63,8 +70,8 @@ const friendRequest = asyncHanlder(async (req, res) => {
     throw new ApiError(404, "Friend not found");
   }
 
+
   let friendList = await FriendsModel.findOne({ userId });
-  console.log(friendList);
   if (!friendList) {
     friendList = new FriendsModel({ userId, friend_requests: [friendId] });
   } else {
@@ -78,6 +85,14 @@ const friendRequest = asyncHanlder(async (req, res) => {
       throw new ApiError(400, "Friend already in your friend list");
     }
   }
+
+  console.log(await sendPushNotification(
+    friendExists?.device_token,
+    "Friend Request",
+    "Friend Request Received",
+    { type: "friend_request" }
+  ));
+
   const data = await friendList.save();
   res.json(new ApiResponse(200, "Friend request added successfully", data));
 });

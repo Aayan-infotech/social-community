@@ -1,16 +1,6 @@
-import dotenv from "dotenv";
-import connectDB from "./src/db/index.js";
-import { app, config } from "./src/app.js";
-
-dotenv.config({
-  path: "./env",
-});
-
-Object.entries(config).forEach(([key, value]) => {
-  if (!process.env[key]) {
-    process.env[key] = value;
-  }
-});
+import "./bootstrap.js";
+const { default: connectDB } = await import("./src/db/index.js");
+const { app } = await import("./src/app.js");
 
 connectDB()
   .then(() => {
@@ -21,3 +11,4 @@ connectDB()
   .catch((err) => {
     console.log(`Mongo DB connection failed!!! ${err}`);
   });
+

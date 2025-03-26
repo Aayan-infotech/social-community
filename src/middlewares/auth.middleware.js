@@ -23,7 +23,10 @@ export const verifyJWT = asyncHanlder(async (req, res, next) => {
       req.user = user;
       next()
    } catch (error) {
-      throw new ApiError(401, error?.message || "Invalid Token ")
+      if (error.name === 'TokenExpiredError') {
+         throw new ApiError(401, "Token Expired");
+      }
+      throw new ApiError(401, error?.message || "Invalid Token")
    }
 
 });

@@ -1,7 +1,7 @@
 import dotenv from "dotenv";
 import {
   SecretsManagerClient,
-  GetSecretValueCommand
+  GetSecretValueCommand,
 } from "@aws-sdk/client-secrets-manager";
 
 dotenv.config();
@@ -22,7 +22,7 @@ const loadConfig = async () => {
         try {
           const secrets = JSON.parse(response.SecretString);
           return {
-            PORT: secrets.PORT ,
+            PORT: secrets.PORT,
             CORS_ORIGIN: secrets.CORS_ORIGIN,
             APP_URL: secrets.APP_URL,
             MONGODB_URI: secrets.MONGODB_URI,
@@ -36,16 +36,20 @@ const loadConfig = async () => {
             AWS_BUCKET_NAME: secrets.AWS_BUCKET_NAME,
             AWS_ACCESS_KEY_ID: secrets.AWS_ACCESS_KEY_ID,
             AWS_SECRET_ACCESS_KEY: secrets.AWS_SECRET_ACCESS_KEY,
-        
+
             // Twilio configuration
             TWILIO_ACCOUNT_SID: secrets.TWILIO_ACCOUNT_SID,
             TWILIO_AUTH_TOKEN: secrets.TWILIO_AUTH_TOKEN,
             TWILIO_SERVICE_SID: secrets.TWILIO_SERVICE_SID,
             TWILIO_PHONE_NUMBER: secrets.TWILIO_PHONE_NUMBER,
-        
+
             // Email configuration
             EMAIL_USER: secrets.EMAIL_USER,
             EMAIL_PASS: secrets.EMAIL_PASS,
+
+
+            // Firebase configuration
+            FIREBASE_CONFIG: secrets.FIREBASE_CONFIG,
           };
         } catch (parseError) {
           console.error("JSON Parse Error:", parseError);
