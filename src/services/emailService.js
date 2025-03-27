@@ -1,11 +1,14 @@
 import nodemailer from "nodemailer";
+import {loadConfig} from "../config/loadConfig.js";
+const config = await loadConfig();
 
 const transporter = nodemailer.createTransport({
-    host: "sandbox.smtp.mailtrap.io",
+    // host: "sandbox.smtp.mailtrap.io",
+    service: "gmail",
     port: 2525,
     auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
+        user: config.EMAIL_USER,
+        pass: config.EMAIL_PASS,
     },
 });
 
@@ -13,7 +16,7 @@ const transporter = nodemailer.createTransport({
 export const sendEmail = async (to, subject, html) => {
     try{
         await transporter.sendMail({
-            from: `"MyApp Support" <${process.env.EMAIL_USER}>`,
+            from: `"MyApp Support" <${config.EMAIL_USER}>`,
             to,
             subject,
             html,
