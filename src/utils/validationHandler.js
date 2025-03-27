@@ -4,6 +4,7 @@ const validateSchema = async (schema, data) => {
       return null;
     } catch (error) {
       if (error.isJoi) {
+        console.log(error);
         return error.details[0].message; 
       }
       throw error;

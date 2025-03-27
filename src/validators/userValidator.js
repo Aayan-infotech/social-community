@@ -1,10 +1,10 @@
 import Joi from "joi";
 
 const userValidationSchema = Joi.object({
-  name: Joi.string().min(3).max(50).required().messages({
+  name: Joi.string().min(1).max(50).required().messages({
     "string.base": "Name must be a string.",
     "string.empty": "Name is required.",
-    "string.min": "Name must be at least 3 characters.",
+    "string.min": "Name must be at least 1 characters.",
     "string.max": "Name cannot exceed 50 characters.",
     "any.required": "Name is required.",
   }),

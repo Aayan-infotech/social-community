@@ -1,5 +1,5 @@
 // Desc: Async Handler for handling async functions
-function asyncHanlder(fn) {
+function asyncHandler(fn) {
     return async (req, res, next) => {
         try {
             await fn(req, res, next)
@@ -13,4 +13,4 @@ function asyncHanlder(fn) {
         }
     }
 }
-export {asyncHanlder}
+export {asyncHandler}

@@ -1,4 +1,4 @@
-import { asyncHanlder } from "../utils/asyncHandler.js";
+import { asyncHandler } from "../utils/asyncHandler.js";
 import { User } from "../models/user.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
@@ -33,7 +33,7 @@ const options = {
   secure: true,
 };
 
-const signup = asyncHanlder(async (req, res) => {
+const signup = asyncHandler(async (req, res) => {
   const { name, email, mobile, state, city, gender, password, referralBy } =
     req.body;
 
@@ -127,7 +127,7 @@ const signup = asyncHanlder(async (req, res) => {
     );
 });
 
-const loginUser = asyncHanlder(async (req, res) => {
+const loginUser = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
   if (!email) {
@@ -176,7 +176,7 @@ const loginUser = asyncHanlder(async (req, res) => {
     );
 });
 
-const verifyEmail = asyncHanlder(async (req, res) => {
+const verifyEmail = asyncHandler(async (req, res) => {
   const { token } = req.params;
 
   const decoded = jwt.verify(token, process.env.REFRESH_TOKEN_SECRET);
@@ -195,7 +195,7 @@ const verifyEmail = asyncHanlder(async (req, res) => {
     .json(new ApiResponse(200, "Email verified successfully"));
 });
 
-const forgotPassword = asyncHanlder(async (req, res) => {
+const forgotPassword = asyncHandler(async (req, res) => {
   const { email } = req.body;
 
   if (!email) {
@@ -229,7 +229,7 @@ const forgotPassword = asyncHanlder(async (req, res) => {
     .json(new ApiResponse(200, "OTP has been send to your mobile and email"));
 });
 
-const resetPassword = asyncHanlder(async (req, res) => {
+const resetPassword = asyncHandler(async (req, res) => {
   const { token, password, confirm_password } = req.body;
 
   const passwordRegex =
@@ -256,7 +256,7 @@ const resetPassword = asyncHanlder(async (req, res) => {
     .json(new ApiResponse(200, "Password reset successful"));
 });
 
-const verifyOtp = asyncHanlder(async (req, res) => {
+const verifyOtp = asyncHandler(async (req, res) => {
   const { email, otp } = req.body;
   if (!email || !otp) {
     throw new ApiError(400, "Email and OTP are required");
@@ -286,7 +286,7 @@ const verifyOtp = asyncHanlder(async (req, res) => {
     .json(new ApiResponse(200, "OTP verified successfully"));
 });
 
-const resendOTP = asyncHanlder(async (req, res) => {
+const resendOTP = asyncHandler(async (req, res) => {
   const { emailOrMobile } = req.body;
   if (!emailOrMobile) {
     throw new ApiError(400, "Email/Mobile No is required");
@@ -318,7 +318,7 @@ const resendOTP = asyncHanlder(async (req, res) => {
     .json(new ApiResponse(200, "OTP has been send to your mobile and email"));
 });
 
-const setPassword = asyncHanlder(async (req, res) => {
+const setPassword = asyncHandler(async (req, res) => {
   const { email, password, confirm_password } = req.body;
   if (!email || !password || !confirm_password) {
     throw new ApiError(
@@ -344,7 +344,7 @@ const setPassword = asyncHanlder(async (req, res) => {
     .json(new ApiResponse(200, "Password updated successfully"));
 });
 
-const logoutUser = asyncHanlder(async (req, res) => {
+const logoutUser = asyncHandler(async (req, res) => {
   await User.findByIdAndUpdate(
     req.user._id,
     {
@@ -369,7 +369,7 @@ const logoutUser = asyncHanlder(async (req, res) => {
     .json(new ApiResponse(200, "User Logged Out"));
 });
 
-const changePassword = asyncHanlder(async (req, res) => {
+const changePassword = asyncHandler(async (req, res) => {
   const { currentPassword, newPassword, confirmPassword } = req.body;
 
   const user = req.user;
@@ -402,7 +402,7 @@ const changePassword = asyncHanlder(async (req, res) => {
 });
 
 
-const refreshAccessToken = asyncHanlder(async (req, res) => {
+const refreshAccessToken = asyncHandler(async (req, res) => {
   try {
       const incomingRefreshToken = req.cookies.refreshToken || req.body.refreshToken
 
@@ -442,7 +442,7 @@ const refreshAccessToken = asyncHanlder(async (req, res) => {
 });
 
 
-const saveDeviceDetails = asyncHanlder(async (req, res) => {
+const saveDeviceDetails = asyncHandler(async (req, res) => {
   const { device_token, latitude , longitude , language } = req.body;
   const user = req.user;
   if (!user) {

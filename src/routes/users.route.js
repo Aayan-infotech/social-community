@@ -25,13 +25,13 @@ router.get("/get-profile", verifyJWT, getUserProfile);
 router.post(
   "/update-profile",
   verifyJWT,
-  validateRequest(updateProfileSchema),
   upload.fields([
     {
       name: "profile_image",
       maxCount: 1,
     },
   ]),
+  validateRequest(updateProfileSchema),
   errorHandler,
   updateUserProfile
 );

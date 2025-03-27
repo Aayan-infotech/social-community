@@ -1,4 +1,4 @@
-import { asyncHanlder } from "../utils/asyncHandler.js";
+import { asyncHandler } from "../utils/asyncHandler.js";
 import { User } from "../models/user.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
@@ -8,7 +8,7 @@ import sendPushNotification from "../utils/sendPushNotification.js";
 import NotificationModel from "../models/notification.model.js";
 import FriendRequestModel from "./../models/friends_request.model.js";
 
-const getUserProfile = asyncHanlder(async (req, res) => {
+const getUserProfile = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user._id).select("-password").lean();
   const friends = await FriendsModel.findOne({ userId: user.userId });
   let count = friends ? friends.friends.length : 0;
@@ -16,7 +16,7 @@ const getUserProfile = asyncHanlder(async (req, res) => {
   res.json(new ApiResponse(200, "User profile fetched successfully", user));
 });
 
-const updateUserProfile = asyncHanlder(async (req, res) => {
+const updateUserProfile = asyncHandler(async (req, res) => {
   const { name, email, mobile, state, city, gender, bio } = req.body;
 
   // check the other user don't have the same email and mobile number
@@ -65,7 +65,7 @@ const updateUserProfile = asyncHanlder(async (req, res) => {
 });
 
 // Friends
-const friendRequest = asyncHanlder(async (req, res) => {
+const friendRequest = asyncHandler(async (req, res) => {
   const { friendId } = req.body;
   const user = await User.findById(req.user._id);
   if (!user) {
@@ -148,7 +148,7 @@ const friendRequest = asyncHanlder(async (req, res) => {
   res.json(new ApiResponse(200, "Friend request added successfully", data));
 });
 
-const acceptRejectFriendRequest = asyncHanlder(async (req, res) => {
+const acceptRejectFriendRequest = asyncHandler(async (req, res) => {
   const { friendId, status } = req.body;
   const user = await User.findById(req.user._id);
   if (!user) {
@@ -223,7 +223,7 @@ const acceptRejectFriendRequest = asyncHanlder(async (req, res) => {
   );
 });
 
-const getFriendRequestList = asyncHanlder(async (req, res) => {
+const getFriendRequestList = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user._id);
   if (!user) {
     throw new ApiError(404, "User not found");
@@ -252,7 +252,7 @@ const getFriendRequestList = asyncHanlder(async (req, res) => {
   );
 });
 
-const getFriendList = asyncHanlder(async (req, res) => {
+const getFriendList = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user._id);
   if (!user) {
     throw new ApiError(404, "User not found");
@@ -270,7 +270,7 @@ const getFriendList = asyncHanlder(async (req, res) => {
   res.json(new ApiResponse(200, "Friend list fetched successfully", friends));
 });
 
-const getFriendSuggestionList = asyncHanlder(async (req, res) => {
+const getFriendSuggestionList = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user._id);
   if (!user) {
     throw new ApiError(404, "User not found");
@@ -311,7 +311,7 @@ const getFriendSuggestionList = asyncHanlder(async (req, res) => {
   );
 });
 
-const getNotifications = asyncHanlder(async (req, res) => {
+const getNotifications = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user._id);
   if (!user) {
     throw new ApiError(404, "User not found");
