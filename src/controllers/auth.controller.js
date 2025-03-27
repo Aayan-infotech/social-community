@@ -235,16 +235,8 @@ const forgotPassword = asyncHandler(async (req, res) => {
 });
 
 const resetPassword = asyncHandler(async (req, res) => {
-  const { token, password, confirm_password } = req.body;
+  const { password, confirm_password } = req.body;
 
-  const passwordRegex =
-    /^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
-  if (!passwordRegex.test(password)) {
-    throw new ApiError(
-      400,
-      "Password must be at least 8 characters long and include at least 1 uppercase letter, 1 number, and 1 special character"
-    );
-  }
 
   if (password !== confirm_password) {
     throw new ApiError(400, "Passwords do not match");
@@ -258,7 +250,7 @@ const resetPassword = asyncHandler(async (req, res) => {
 
   return res
     .status(200)
-    .json(new ApiResponse(200, "Password reset successful"));
+    .json(new ApiResponse(200, "Password reset successful", user));
 });
 
 const verifyOtp = asyncHandler(async (req, res) => {
