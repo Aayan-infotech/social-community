@@ -316,22 +316,45 @@ const getNotifications = asyncHandler(async (req, res) => {
   if (!user) {
     throw new ApiError(404, "User not found");
   }
+
   const userId = user?.userId;
+
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+
+  const skip = (page - 1) * limit;
+
+  // Get total count for pagination info
+  const totalNotifications = await NotificationModel.countDocuments({
+    receiverId: userId,
+  });
+
+  // Fetch notifications with pagination
   const notificationList = await NotificationModel.find({
     receiverId: userId,
   })
     .sort({
       createdAt: -1,
     })
-    .select(" -data -__v");
+    .select("-data -__v")
+    .skip(skip)
+    .limit(limit);
+
   res.json(
     new ApiResponse(
       200,
       "Notification list fetched successfully",
-      notificationList
+      {
+        notificationList,
+        total_page: Math.ceil(totalNotifications / limit), 
+        current_page: page,
+        total_records:totalNotifications,
+        per_page: limit, 
+      }
     )
   );
 });
+
 
 export {
   getUserProfile,
