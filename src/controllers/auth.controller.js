@@ -74,14 +74,14 @@ const signup = asyncHandler(async (req, res) => {
   //   mobile OTP send code
   //   const send = await sendOTP(mobile, otp);
 
-  //   get the html
-  //   const html = `<div style='background:red;color:white'>Your OTP is ${otp}.</div>`;
-  //   // send otp to email address
-  //   const send = await sendEmail(email, "OTP Verification", html);
-  //   if (!send.success) {
-  //     // throw new ApiError(500, "Failed to send OTP to mobile number");
-  //     throw new ApiError(500, "Failed to send OTP to Email");
-  //   }
+    // get the html
+    const html = `<div style='background:red;color:white'>Your OTP is ${otp}.</div>`;
+    // send otp to email address
+    const send = await sendEmail(email, "OTP Verification", html);
+    if (!send.success) {
+      // throw new ApiError(500, "Failed to send OTP to mobile number");
+      throw new ApiError(500, "Failed to send OTP to Email");
+    }
 
   const user = new User({
     userId,
