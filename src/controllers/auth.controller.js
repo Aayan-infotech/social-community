@@ -37,14 +37,15 @@ const signup = asyncHandler(async (req, res) => {
   const { name, email, mobile, state, city, gender, password, referralBy } =
     req.body;
 
+  let userEmail = email.toLowerCase();
   const existingUser = await User.findOne({
-    $or: [{ email }, { mobile }],
+    $or: [{ email:userEmail }, { mobile }],
   });
 
   if (existingUser) {
-    if (existingUser.email === email && existingUser.mobile === mobile) {
+    if (existingUser.email === userEmail && existingUser.mobile === mobile) {
       throw new ApiError(400, "Email and Mobile number is already registered");
-    } else if (existingUser.email === email) {
+    } else if (existingUser.email === userEmail) {
       throw new ApiError(
         400,
         "Email is already registered. Please use a different email"
@@ -85,7 +86,7 @@ const signup = asyncHandler(async (req, res) => {
   const user = new User({
     userId,
     name,
-    email,
+    email: userEmail,
     mobile,
     state,
     city,
@@ -128,7 +129,9 @@ const signup = asyncHandler(async (req, res) => {
 });
 
 const loginUser = asyncHandler(async (req, res) => {
-  const { email, password } = req.body;
+  const { email,mobile, password } = req.body;
+
+  let userEmail = email.toLowerCase();
 
   if (!email) {
     throw new ApiError(400, "Email Is Required Field..!!");
@@ -136,7 +139,9 @@ const loginUser = asyncHandler(async (req, res) => {
   if (!password) {
     throw new ApiError(400, "Password Is Required Field..!!");
   }
-  let user = await User.findOne({ email });
+  let user = await User.findOne({
+    $or: [{ email:userEmail }, { mobile }],
+  });
 
   if (!user) {
     throw new ApiError(404, "User Doesn't Exist Or Invalid Email");
