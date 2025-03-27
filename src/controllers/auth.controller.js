@@ -288,7 +288,7 @@ const verifyOtp = asyncHandler(async (req, res) => {
 
   return res
     .status(200)
-    .json(new ApiResponse(200, "OTP verified successfully"));
+    .json(new ApiResponse(200, "OTP verified successfully",user));
 });
 
 const resendOTP = asyncHandler(async (req, res) => {
