@@ -11,13 +11,40 @@ import {
 import { generateOTP, sendOTP } from "../services/smsService.js";
 import { sendEmail } from "../services/emailService.js";
 
+// const generateAccessAndRefreshTokens = async (userId) => {
+//   try {
+//     const user = await User.findById(userId);
+//     const accessToken = user.generateAccessToken();
+//     const refreshToken = user.generateRefreshToken();
+//     user.refreshToken = refreshToken;
+//     await user.save({ validateBeforeSave: false });
+//     return { accessToken, refreshToken };
+//   } catch (error) {
+//     throw new ApiError(
+//       500,
+//       "Something went wrong while generating refresh and access token"
+//     );
+//   }
+// };
+
+
 const generateAccessAndRefreshTokens = async (userId) => {
   try {
     const user = await User.findById(userId);
+    if (!user) {
+      throw new ApiError(404, "User not found");
+    }
+
     const accessToken = user.generateAccessToken();
-    const refreshToken = user.generateRefreshToken();
-    user.refreshToken = refreshToken;
-    await user.save({ validateBeforeSave: false });
+    let refreshToken = user.refreshToken;
+    try {
+      jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
+    } catch (error) {
+      refreshToken = user.generateRefreshToken();
+      user.refreshToken = refreshToken;
+      await user.save({ validateBeforeSave: false });
+    }
+
     return { accessToken, refreshToken };
   } catch (error) {
     throw new ApiError(
@@ -26,6 +53,8 @@ const generateAccessAndRefreshTokens = async (userId) => {
     );
   }
 };
+
+
 
 const options = {
   httpOnly: true,

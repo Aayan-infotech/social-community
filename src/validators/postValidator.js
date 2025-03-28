@@ -42,4 +42,52 @@ const postValidationSchema = Joi.object({
     }),
 });
 
-export { postValidationSchema };
+const postLikeDislikeSchema = Joi.object({
+  postId: Joi.string().required().messages({
+    "string.base": "Post ID must be a string.",
+    "string.empty": "Post ID is required.",
+    "any.required": "Post ID is required to like or dislike a post.",
+  }),
+  like: Joi.boolean().required().messages({
+    "boolean.base": "Like must be a boolean.",
+    "any.required": "Like is required to like or dislike a post.",
+  }),
+});
+
+const postCommentSchema = Joi.object({
+  postId: Joi.string().required().messages({
+    "string.base": "Post ID must be a string.",
+    "string.empty": "Post ID is required.",
+    "any.required": "Post ID is required to comment on a post.",
+  }),
+  comment: Joi.string().required().messages({
+    "string.base": "Comment must be a string.",
+    "string.empty": "Comment is required.",
+    "any.required": "Comment is required to comment on a post.",
+  }),
+});
+
+const postEditCommentSchema = Joi.object({
+  postId: Joi.string().required().messages({
+    "string.base": "Post ID must be a string.",
+    "string.empty": "Post ID is required.",
+    "any.required": "Post ID is required to edit a comment on a post.",
+  }),
+  commentId: Joi.string().required().messages({
+    "string.base": "Comment ID must be a string.",
+    "string.empty": "Comment ID is required.",
+    "any.required": "Comment ID is required to edit a comment on a post.",
+  }),
+  comment: Joi.string().required().messages({
+    "string.base": "Comment must be a string.",
+    "string.empty": "Comment is required.",
+    "any.required": "Comment is required to edit a comment on a post.",
+  }),
+});
+
+export {
+  postValidationSchema,
+  postLikeDislikeSchema,
+  postCommentSchema,
+  postEditCommentSchema,
+};
