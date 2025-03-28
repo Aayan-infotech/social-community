@@ -46,6 +46,15 @@ const userValidationSchema = Joi.object({
     "string.max": "Password cannot exceed 15 characters.",
     "any.required": "Password is required.",
   }),
+  confirm_password: Joi.string()
+    .valid(Joi.ref("password"))
+    .required()
+    .messages({
+      "string.base": "Password must be a string.",
+      "string.empty": "Confirm Password is required.",
+      "any.only": "Password and Confirm Password should be same.",
+      "any.required": "Confirm Password is required.",
+    }),
   otp: Joi.string().optional().allow("").messages({
     "string.base": "OTP must be a string.",
   }),
@@ -200,7 +209,6 @@ const updateProfileSchema = Joi.object({
     }),
 });
 
-
 const saveDeviceDetailsSchema = Joi.object({
   device_token: Joi.string().required().messages({
     "string.base": "Device Token must be a string.",
@@ -219,9 +227,8 @@ const saveDeviceDetailsSchema = Joi.object({
   }),
   language: Joi.string().optional().messages({
     "string.base": "Language must be a string.",
-  })
+  }),
 });
-
 
 const friendRequestSchema = Joi.object({
   friendId: Joi.string().required().messages({
@@ -254,5 +261,5 @@ export {
   changePasswordSchema,
   saveDeviceDetailsSchema,
   friendRequestSchema,
-  acceptRejectFriendRequestSchema
+  acceptRejectFriendRequestSchema,
 };
