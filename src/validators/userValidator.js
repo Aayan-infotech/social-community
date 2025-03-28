@@ -100,15 +100,15 @@ const setPasswordValidationSchema = Joi.object({
     "string.max": "Password cannot exceed 15 characters.",
     "any.required": "Password is required.",
   }),
-  confirm_password: Joi.string().min(6).max(15).required().messages({
-    "string.base": "Password must be a string.",
-    "string.empty": "Password is required.",
-    "string.min": "Password must be at least 6 characters.",
-    "string.max": "Password cannot exceed 15 characters.",
-    "any.required": "Password is required.",
-    "any.equal": "Passwords do not match.",
-    "any.required": "Confirm Password is required.",
-  }),
+  confirm_password: Joi.string()
+   .valid(Joi.ref("password"))
+    .required()
+    .messages({
+      "string.base": "Password must be a string.",
+      "string.empty": "Confirm Password is required.",
+      "any.only": "Password and Confirm Password should be same.",
+      "any.required": "Confirm Password is required.",
+    }),
 });
 
 const userValidationSchemaOTP = Joi.object({
