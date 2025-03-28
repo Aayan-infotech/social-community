@@ -30,6 +30,11 @@ const userSchema = new mongoose.Schema(
       unique: true,
       sparse: true,
     },
+    country: {
+      type: String,
+      required: false,
+      default: null,
+    },
     state: {
       type: String,
       required: false,

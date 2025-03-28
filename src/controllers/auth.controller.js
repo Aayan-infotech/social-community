@@ -11,7 +11,6 @@ import {
 import { generateOTP, sendOTP } from "../services/smsService.js";
 import { sendEmail } from "../services/emailService.js";
 
-
 const generateAccessAndRefreshTokens = async (userId) => {
   try {
     const user = await User.findById(userId);
@@ -34,12 +33,21 @@ const options = {
 };
 
 const signup = asyncHandler(async (req, res) => {
-  const { name, email, mobile, state, city, gender, password, referralBy } =
-    req.body;
+  const {
+    name,
+    email,
+    mobile,
+    country,
+    state,
+    city,
+    gender,
+    password,
+    referralBy,
+  } = req.body;
 
   let userEmail = email.toLowerCase();
   const existingUser = await User.findOne({
-    $or: [{ email:userEmail }, { mobile }],
+    $or: [{ email: userEmail }, { mobile }],
   });
 
   if (existingUser) {
@@ -74,20 +82,21 @@ const signup = asyncHandler(async (req, res) => {
   //   mobile OTP send code
   //   const send = await sendOTP(mobile, otp);
 
-    // get the html
-    const html = `<div style='background:red;color:white'>Your OTP is ${otp}.</div>`;
-    // send otp to email address
-    const send = await sendEmail(email, "OTP Verification", html);
-    if (!send.success) {
-      // throw new ApiError(500, "Failed to send OTP to mobile number");
-      throw new ApiError(500, "Failed to send OTP to Email");
-    }
+  // get the html
+  const html = `<div style='background:red;color:white'>Your OTP is ${otp}.</div>`;
+  // send otp to email address
+  const send = await sendEmail(email, "OTP Verification", html);
+  if (!send.success) {
+    // throw new ApiError(500, "Failed to send OTP to mobile number");
+    throw new ApiError(500, "Failed to send OTP to Email");
+  }
 
   const user = new User({
     userId,
     name,
     email: userEmail,
     mobile,
+    country,
     state,
     city,
     gender,
@@ -129,7 +138,7 @@ const signup = asyncHandler(async (req, res) => {
 });
 
 const loginUser = asyncHandler(async (req, res) => {
-  const { email,mobile, password } = req.body;
+  const { email, mobile, password } = req.body;
 
   let userEmail = email.toLowerCase();
 
@@ -140,7 +149,7 @@ const loginUser = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Password Is Required Field..!!");
   }
   let user = await User.findOne({
-    $or: [{ email:userEmail }, { mobile }],
+    $or: [{ email: userEmail }, { mobile }],
   });
 
   if (!user) {
@@ -237,7 +246,6 @@ const forgotPassword = asyncHandler(async (req, res) => {
 const resetPassword = asyncHandler(async (req, res) => {
   const { password, confirm_password } = req.body;
 
-
   if (password !== confirm_password) {
     throw new ApiError(400, "Passwords do not match");
   }
@@ -280,7 +288,7 @@ const verifyOtp = asyncHandler(async (req, res) => {
 
   return res
     .status(200)
-    .json(new ApiResponse(200, "OTP verified successfully",user));
+    .json(new ApiResponse(200, "OTP verified successfully", user));
 });
 
 const resendOTP = asyncHandler(async (req, res) => {
@@ -398,49 +406,55 @@ const changePassword = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, "Password updated successfully"));
 });
 
-
 const refreshAccessToken = asyncHandler(async (req, res) => {
   try {
-      const incomingRefreshToken = req.cookies.refreshToken || req.body.refreshToken
+    const incomingRefreshToken =
+      req.cookies.refreshToken || req.body.refreshToken;
 
-      if (!incomingRefreshToken) {
-          throw new ApiError(401, "Invalid Token");
-      }
+    if (!incomingRefreshToken) {
+      throw new ApiError(401, "Invalid Token");
+    }
 
-      const decodedToken = jwt.verify(incomingRefreshToken, process.env.REFRESH_TOKEN_SECRET)
+    const decodedToken = jwt.verify(
+      incomingRefreshToken,
+      process.env.REFRESH_TOKEN_SECRET
+    );
 
-      const user = await User.findById(decodedToken?._id);
+    const user = await User.findById(decodedToken?._id);
 
-      if (!user) {
-          throw new ApiError(404, 'Invalid Refresh Token')
-      }
+    if (!user) {
+      throw new ApiError(404, "Invalid Refresh Token");
+    }
 
-      if (incomingRefreshToken !== user?.refreshToken) {
-          throw new ApiError(401, "Refresh token is expired or used");
-      }
-      //Generate a new Access Token and update the refresh token of the user
-      const option = {
-          httpOnly: true,
-          secure: true
-      }
-      const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user._id)
+    if (incomingRefreshToken !== user?.refreshToken) {
+      throw new ApiError(401, "Refresh token is expired or used");
+    }
+    //Generate a new Access Token and update the refresh token of the user
+    const option = {
+      httpOnly: true,
+      secure: true,
+    };
+    const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(
+      user._id
+    );
 
-      return res
-          .status(200)
-          .cookie("accessToken", accessToken, options)
-          .cookie("refreshToken", refreshToken, options)
-          .json(
-              new ApiResponse(200, "Access Token refreshed Successfully" ,{ accessToken, refreshToken })
-          );
-
+    return res
+      .status(200)
+      .cookie("accessToken", accessToken, options)
+      .cookie("refreshToken", refreshToken, options)
+      .json(
+        new ApiResponse(200, "Access Token refreshed Successfully", {
+          accessToken,
+          refreshToken,
+        })
+      );
   } catch (error) {
-      throw new ApiError(401, error?.message || "Invalid Token")
+    throw new ApiError(401, error?.message || "Invalid Token");
   }
 });
 
-
 const saveDeviceDetails = asyncHandler(async (req, res) => {
-  const { device_token, latitude , longitude , language } = req.body;
+  const { device_token, latitude, longitude, language } = req.body;
   const user = req.user;
   if (!user) {
     throw new ApiError(401, "User not found");
@@ -455,11 +469,12 @@ const saveDeviceDetails = asyncHandler(async (req, res) => {
   if (!updatedData) {
     throw new ApiError(500, "Failed to save device details");
   }
-  return res.status(200).json(new ApiResponse(200, "Device Details saved successfully", updatedData));
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(200, "Device Details saved successfully", updatedData)
+    );
 });
-
-
-
 
 export {
   signup,
@@ -473,5 +488,5 @@ export {
   logoutUser,
   changePassword,
   refreshAccessToken,
-  saveDeviceDetails
+  saveDeviceDetails,
 };
