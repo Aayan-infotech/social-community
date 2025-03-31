@@ -9,42 +9,41 @@ import NotificationModel from "../models/notification.model.js";
 import FriendRequestModel from "./../models/friends_request.model.js";
 
 const getUserProfile = asyncHandler(async (req, res) => {
-  // let aggregation = [];
-  // aggregation.push({ $match: { userId: req.user.userId } });
-  // aggregation.push({
-  //   $lookup: {
-  //     from: "friends",
-  //     localField: "userId",
-  //     foreignField: "userId",
-  //     as: "friends",
-  //   },
-  // });
-  // aggregation.push({
-  //   $unwind: "$friends",
-  // });
-  // aggregation.push({
-  //   $match: { friends: { $in: [req.user.userId] } },
-  // });
-
-  // aggregation.push({
-  //   $project: {
-  //     _id: 0,
-  //     userId: 1,
-  //     name: 1,
-  //     email: 1,
-  //     mobile: 1,
-  //     city: 1,
-  //     gender: 1,
-  //     bio: 1,
-  //     profile_image: 1,
-  //     friendsCount: { $size: "$friends" },
-  //   },
-  // });
-  // res.json(new ApiResponse(200, "User successfully fetched", user));
-  const user = await User.findById(req.user._id).select("-password").lean();
-  const friends = await FriendsModel.findOne({ userId: user.userId });
+  let aggregation = [];
+  aggregation.push({ $match: { userId: req.user.userId } });
+  const friends = await FriendsModel.findOne({ userId: req.user.userId });
   let count = friends ? friends.friends.length : 0;
-  user.friendsCount = count;
+
+  aggregation.push({
+    $project: {
+      _id: 0,
+      userId: 1,
+      name: 1,
+      email: 1,
+      mobile: 1,
+      city: 1,
+      gender: 1,
+      bio: 1,
+      profile_image: {
+        $ifNull: [
+          "$profile_image",
+          `${req.protocol}://${req.hostname}:${process.env.PORT}/placeholder/person.png`,
+        ],
+      },
+    },
+  });
+  aggregation.push({
+    $addFields: {
+      friendsCount: count,
+    },
+  });
+
+  const user = await User.aggregate(aggregation);
+  console.log(user);
+  // res.json(new ApiResponse(200, "User successfully fetched", user));
+  // const user = await User.findById(req.user._id).select("-password").lean();
+
+  // user.friendsCount = count;
   res.json(new ApiResponse(200, "User profile fetched successfully", user));
 });
 
