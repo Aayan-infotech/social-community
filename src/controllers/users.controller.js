@@ -46,19 +46,17 @@ const getUserProfile = asyncHandler(async (req, res) => {
 });
 
 const updateUserProfile = asyncHandler(async (req, res) => {
-  const { name, email, mobile, state, city, gender, bio } = req.body;
+  const { name, state, city, gender, bio } = req.body;
 
   // check the other user don't have the same email and mobile number
-  const userExists = await User.findOne({
-    $and: [{ _id: { $ne: req.user._id } }, { $or: [{ email }, { mobile }] }],
-  });
-  if (userExists) {
-    if (userExists.email === email) {
-      throw new ApiError(400, "Email already exists");
-    } else if (userExists.mobile === mobile) {
-      throw new ApiError(400, "Mobile number already exists");
-    }
-  }
+  const userExists = await User.findOne({ _id: { $ne: req.user._id } });
+  // if (userExists) {
+  //   if (userExists.email === email) {
+  //     throw new ApiError(400, "Email already exists");
+  //   } else if (userExists.mobile === mobile) {
+  //     throw new ApiError(400, "Mobile number already exists");
+  //   }
+  // }
 
   let profile_image = req.user?.profile_image
     ? req.user?.profile_image
@@ -78,8 +76,6 @@ const updateUserProfile = asyncHandler(async (req, res) => {
     {
       $set: {
         name,
-        email,
-        mobile,
         state,
         city,
         gender,
