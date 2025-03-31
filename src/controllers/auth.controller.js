@@ -120,6 +120,8 @@ const signup = asyncHandler(async (req, res) => {
     throw new ApiError(500, "Failed to send OTP to Email");
   }
 
+
+
   const user = new User({
     userId,
     name,
@@ -362,6 +364,7 @@ const setPassword = asyncHandler(async (req, res) => {
   }
 
   const user = await User.findOne({ email });
+  console.log(user);
   if (!user) {
     throw new ApiError(404, "User Not Found");
   }
@@ -369,6 +372,12 @@ const setPassword = asyncHandler(async (req, res) => {
   if (password !== confirm_password) {
     throw new ApiError(400, "Password and confirm Password Are Not Match");
   }
+
+  const isPreviousPassword = await user.isPreviousPassword(password);
+  if(isPreviousPassword){
+    throw new ApiError(400, "Password should not be same as previous password");
+  }
+
 
   user.password = password;
   await user.save();
@@ -427,12 +436,20 @@ const changePassword = asyncHandler(async (req, res) => {
     throw new ApiError(401, "Invalid Password");
   }
 
+  const isPreviousPassword = await user.isPreviousPassword(newPassword);
+  if (isPreviousPassword) {
+    throw new ApiError(400, "Password should not be same as previous password");
+  }
+
   user.password = newPassword;
   await user.save();
 
+
+  
+
   return res
     .status(200)
-    .json(new ApiResponse(200, "Password updated successfully"));
+    .json(new ApiResponse(200, "Password updated successfully",user));
 });
 
 const refreshAccessToken = asyncHandler(async (req, res) => {

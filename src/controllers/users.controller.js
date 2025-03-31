@@ -343,6 +343,8 @@ const getFriendSuggestionList = asyncHandler(async (req, res) => {
   let friends = friendList ? friendList.friends : [];
   let friend_request = friendList ? friendList.friend_requests : [];
 
+  console.log("friends", friends);
+
   let aggregation = [];
   aggregation.push({ $match: { city: { $eq: user?.city } } });
   aggregation.push({ $match: { userId: { $ne: userId } } });
@@ -359,13 +361,15 @@ const getFriendSuggestionList = asyncHandler(async (req, res) => {
     },
   });
 
+  aggregation.push({ $unwind: "$friend_data" });
+
   // Calculate mutual friends
   aggregation.push({
     $addFields: {
       mutualFriends: {
         $size: {
           $setIntersection: [
-            friends,
+            { $literal: friends },
             { $ifNull: ["$friend_data.friends", []] },
           ],
         },
@@ -426,6 +430,7 @@ const getFriendSuggestionList = asyncHandler(async (req, res) => {
   });
 
   const friendSuggestionList = await User.aggregate(aggregation);
+  // console.log(friendSuggestionList);
 
   res.json(
     new ApiResponse(

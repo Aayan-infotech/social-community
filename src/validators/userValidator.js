@@ -44,13 +44,25 @@ const userValidationSchema = Joi.object({
     "any.only": "Gender must be one of male, female, or other.",
     "any.required": "Gender is required.",
   }),
-  password: Joi.string().min(6).max(15).required().messages({
-    "string.base": "Password must be a string.",
-    "string.empty": "Password is required.",
-    "string.min": "Password must be at least 6 characters.",
-    "string.max": "Password cannot exceed 15 characters.",
-    "any.required": "Password is required.",
-  }),
+  password: Joi.string()
+    .min(8)
+    .max(15)
+    .pattern(
+      new RegExp(
+        "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,15}$"
+      )
+    )
+    .required()
+    .messages({
+      "string.base": "Password must be a string.",
+      "string.empty": "Password is required.",
+      "string.min": "Password must be at least 8 characters.",
+      "string.max": "Password cannot exceed 15 characters.",
+      "string.pattern.base":
+        "Password must include at least one lowercase letter, one uppercase letter, one number, and one special character (@$!%*?&).",
+      "any.required": "Password is required.",
+    }),
+
   confirm_password: Joi.string()
     .valid(Joi.ref("password"))
     .required()
@@ -98,15 +110,42 @@ const setPasswordValidationSchema = Joi.object({
     "string.base": "Email must be a string.",
     "string.email": "Email must be valid.",
   }),
-  password: Joi.string().min(6).max(15).required().messages({
-    "string.base": "Password must be a string.",
-    "string.empty": "Password is required.",
-    "string.min": "Password must be at least 6 characters.",
-    "string.max": "Password cannot exceed 15 characters.",
-    "any.required": "Password is required.",
-  }),
+  // password: Joi.string().min(6).max(15).required().messages({
+  //   "string.base": "Password must be a string.",
+  //   "string.empty": "Password is required.",
+  //   "string.min": "Password must be at least 6 characters.",
+  //   "string.max": "Password cannot exceed 15 characters.",
+  //   "any.required": "Password is required.",
+  // }),
+  // confirm_password: Joi.string()
+  //   .valid(Joi.ref("password"))
+  //   .required()
+  //   .messages({
+  //     "string.base": "Password must be a string.",
+  //     "string.empty": "Confirm Password is required.",
+  //     "any.only": "Password and Confirm Password should be same.",
+  //     "any.required": "Confirm Password is required.",
+  //   }),
+  password: Joi.string()
+    .min(8)
+    .max(15)
+    .pattern(
+      new RegExp(
+        "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,15}$"
+      )
+    )
+    .required()
+    .messages({
+      "string.base": "Password must be a string.",
+      "string.empty": "Password is required.",
+      "string.min": "Password must be at least 8 characters.",
+      "string.max": "Password cannot exceed 15 characters.",
+      "string.pattern.base":
+        "Password must include at least one lowercase letter, one uppercase letter, one number, and one special character (@$!%*?&).",
+      "any.required": "Password is required.",
+    }),
   confirm_password: Joi.string()
-   .valid(Joi.ref("password"))
+    .valid(Joi.ref("password"))
     .required()
     .messages({
       "string.base": "Password must be a string.",
@@ -139,22 +178,34 @@ const changePasswordSchema = Joi.object({
     "string.max": "Old Password cannot exceed 128 characters.",
     "any.required": "Old Password is required.",
   }),
-  newPassword: Joi.string().min(6).max(128).required().messages({
-    "string.base": "New Password must be a string.",
-    "string.empty": "New Password is required.",
-    "string.min": "New Password must be at least 6 characters.",
-    "string.max": "New Password cannot exceed 128 characters.",
-    "any.required": "New Password is required.",
+  newPassword: Joi.string()
+  .min(8)
+  .max(15)
+  .pattern(
+    new RegExp(
+      "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,15}$"
+    )
+  )
+  .required()
+  .messages({
+    "string.base": "Password must be a string.",
+    "string.empty": "Password is required.",
+    "string.min": "Password must be at least 8 characters.",
+    "string.max": "Password cannot exceed 15 characters.",
+    "string.pattern.base":
+      "Password must include at least one lowercase letter, one uppercase letter, one number, and one special character (@$!%*?&).",
+    "any.required": "Password is required.",
   }),
-  confirmPassword: Joi.string().min(6).max(128).required().messages({
-    "string.base": "Confirm  Password must be a string.",
-    "string.empty": "Confirm  Password is required.",
-    "string.min": "Confirm  Password must be at least 6 characters.",
-    "string.max": "Confirm  Password cannot exceed 128 characters.",
-    "any.required": "Confirm  Password is required.",
-    "any.equal": "Passwords do not match.",
-    "any.required": "Confirm  Password is required.",
+  confirmPassword: Joi.string()
+  .valid(Joi.ref("newPassword"))
+  .required()
+  .messages({
+    "string.base": "Password must be a string.",
+    "string.empty": "Confirm Password is required.",
+    "any.only": "Password and Confirm Password should be same.",
+    "any.required": "Confirm Password is required.",
   }),
+
 });
 
 const wordLimit = (min, max) => {
@@ -175,7 +226,6 @@ const updateProfileSchema = Joi.object({
     "string.min": "Name should have at least 3 characters",
     "string.max": "Name should not exceed 50 characters",
   }),
-
 
   state: Joi.string().min(2).max(50).trim().messages({
     "string.min": "State should have at least 2 characters",

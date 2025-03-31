@@ -92,25 +92,40 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: false,
     },
-    profile_image:{
+    profile_image: {
       type: String,
       default: null,
     },
-    device_token:{
+    device_token: {
       type: String,
       default: null,
     },
-    latitude : {
+    latitude: {
       type: String,
       default: null,
     },
-    longitude : {
+    longitude: {
       type: String,
       default: null,
     },
     language: {
       type: String,
-      default: 'en',
+      default: "en",
+    },
+    previous_passwords: {
+      type: [String],
+      required: true,
+      default: [],
+    },
+    isEmailVerified: {
+      type: Boolean,
+      default: false,
+      required: true,
+    },
+    isMobileVerified: {
+      type: Boolean,
+      default: false,
+      required: true,
     },
   },
   {
@@ -123,6 +138,24 @@ userSchema.pre("save", async function (next) {
   this.password = await bcrypt.hash(this.password, 10);
   next();
 });
+
+userSchema.pre("save", async function (next) {
+  if (!this.isModified("password")) return next();
+  this.previous_passwords.push(this.password);
+  next();
+});
+
+userSchema.methods.isPreviousPassword = async function (password) {
+  for (const hashedPassword of this.previous_passwords) {
+    const isMatch = await bcrypt.compare(password, hashedPassword);
+    if (isMatch) {
+      return true; 
+    }
+  }
+  return false; 
+};
+
+// check if the password is correct using bcrypt
 
 userSchema.methods.isPasswordCorrect = async function (password) {
   return await bcrypt.compare(password, this.password);
@@ -154,7 +187,6 @@ userSchema.methods.generateRefreshToken = function () {
   );
 };
 
-
-
+// handle the previous_password_change event
 
 export const User = mongoose.model("User", userSchema);
