@@ -8,19 +8,44 @@ import sendPushNotification from "../utils/sendPushNotification.js";
 import NotificationModel from "../models/notification.model.js";
 import FriendRequestModel from "./../models/friends_request.model.js";
 
-
 const getUserProfile = asyncHandler(async (req, res) => {
+  // let aggregation = [];
+  // aggregation.push({ $match: { userId: req.user.userId } });
+  // aggregation.push({
+  //   $lookup: {
+  //     from: "friends",
+  //     localField: "userId",
+  //     foreignField: "userId",
+  //     as: "friends",
+  //   },
+  // });
+  // aggregation.push({
+  //   $unwind: "$friends",
+  // });
+  // aggregation.push({
+  //   $match: { friends: { $in: [req.user.userId] } },
+  // });
 
-  let aggregation = [];
-  aggregation.push({ $match: { userId: req.user.userId } });
-
-
-
-  // const user = await User.findById(req.user._id).select("-password").lean();
-  // const friends = await FriendsModel.findOne({ userId: user.userId });
-  // let count = friends ? friends.friends.length : 0;
-  // user.friendsCount = count;
-  // res.json(new ApiResponse(200, "User profile fetched successfully", user));
+  // aggregation.push({
+  //   $project: {
+  //     _id: 0,
+  //     userId: 1,
+  //     name: 1,
+  //     email: 1,
+  //     mobile: 1,
+  //     city: 1,
+  //     gender: 1,
+  //     bio: 1,
+  //     profile_image: 1,
+  //     friendsCount: { $size: "$friends" },
+  //   },
+  // });
+  // res.json(new ApiResponse(200, "User successfully fetched", user));
+  const user = await User.findById(req.user._id).select("-password").lean();
+  const friends = await FriendsModel.findOne({ userId: user.userId });
+  let count = friends ? friends.friends.length : 0;
+  user.friendsCount = count;
+  res.json(new ApiResponse(200, "User profile fetched successfully", user));
 });
 
 const updateUserProfile = asyncHandler(async (req, res) => {
@@ -38,7 +63,9 @@ const updateUserProfile = asyncHandler(async (req, res) => {
     }
   }
 
-  let profile_image = req.user?.profile_image ? req.user?.profile_image : process.env.APP;
+  let profile_image = req.user?.profile_image
+    ? req.user?.profile_image
+    : process.env.APP;
 
   if (req.files && req.files.profile_image) {
     // Delete the previous profile image from aws account
@@ -48,7 +75,6 @@ const updateUserProfile = asyncHandler(async (req, res) => {
     // Upload the new profile image to aws account
     profile_image = await uploadImage(req.files.profile_image[0]);
   }
-
 
   const user = await User.findByIdAndUpdate(
     req.user?._id,
@@ -279,6 +305,41 @@ const getFriendList = asyncHandler(async (req, res) => {
 });
 
 const getFriendSuggestionList = asyncHandler(async (req, res) => {
+  // const user = await User.findById(req.user._id);
+  // if (!user) {
+  //   throw new ApiError(404, "User not found");
+  // }
+  // const userId = user?.userId;
+  // const friendList = await FriendsModel.findOne({ userId });
+
+  // let friends = friendList ? friendList.friends : [];
+  // let friend_request = friendList ? friendList.friend_requests : [];
+
+  // let aggregation = [];
+  // aggregation.push({ $match: { city: { $eq: user?.city } } });
+  // aggregation.push({ $match: { userId: { $ne: userId } } });
+  // aggregation.push({ $match: { userId: { $nin: friends } } });
+  // aggregation.push({
+  //   $match: { userId: { $nin: friend_request } },
+  // });
+
+  // aggregation.push({
+  //   $project: {
+  //     _id: 0,
+  //     userId: 1,
+  //     name: 1,
+  //     email: 1,
+  //     mobile: 1,
+  //     city: 1,
+  //     state: 1,
+  //     profile_image: {
+  //       $ifNull: ["$profile_image", `${req.protocol}://${req.hostname}:${process.env.PORT}/placeholder/person.png`],
+  //     },
+  //   },
+  // });
+
+  // const friendSuggestionList = await User.aggregate(aggregation);
+
   const user = await User.findById(req.user._id);
   if (!user) {
     throw new ApiError(404, "User not found");
@@ -293,12 +354,33 @@ const getFriendSuggestionList = asyncHandler(async (req, res) => {
   aggregation.push({ $match: { city: { $eq: user?.city } } });
   aggregation.push({ $match: { userId: { $ne: userId } } });
   aggregation.push({ $match: { userId: { $nin: friends } } });
-  aggregation.push({
-    $match: { userId: { $nin: friend_request } },
-  });
-  // return a placeholder image if there is no profile image
+  aggregation.push({ $match: { userId: { $nin: friend_request } } });
 
-  console.log(req.protocol,req.hostname,process.env.PORT);
+  // Lookup mutual friends
+  aggregation.push({
+    $lookup: {
+      from: "friends", // Your FriendsModel collection name
+      localField: "userId",
+      foreignField: "userId",
+      as: "friend_data",
+    },
+  });
+
+  // Calculate mutual friends
+  aggregation.push({
+    $addFields: {
+      mutualFriends: {
+        $size: {
+          $setIntersection: [
+            friends,
+            { $ifNull: ["$friend_data.friends", []] },
+          ],
+        },
+      },
+    },
+  });
+
+  // Project necessary fields
   aggregation.push({
     $project: {
       _id: 0,
@@ -309,7 +391,43 @@ const getFriendSuggestionList = asyncHandler(async (req, res) => {
       city: 1,
       state: 1,
       profile_image: {
-        $ifNull: ["$profile_image", `${req.protocol}://${req.hostname}:${process.env.PORT}/placeholder/person.png`],
+        $ifNull: [
+          "$profile_image",
+          `${req.protocol}://${req.hostname}:${process.env.PORT}/placeholder/person.png`,
+        ],
+      },
+      followedBy: {
+        $cond: {
+          if: { $gt: ["$mutualFriends", 0] },
+          then: {
+            $concat: [
+              "Followed by ",
+              { $arrayElemAt: ["$friend_data.friends", 0] },
+              {
+                $cond: {
+                  if: { $gt: ["$mutualFriends", 1] },
+                  then: " +",
+                  else: "",
+                },
+              },
+              {
+                $cond: {
+                  if: { $gt: ["$mutualFriends", 1] },
+                  then: { $toString: { $subtract: ["$mutualFriends", 1] } },
+                  else: "",
+                },
+              },
+              {
+                $cond: {
+                  if: { $gt: ["$mutualFriends", 1] },
+                  then: " others",
+                  else: "",
+                },
+              },
+            ],
+          },
+          else: "",
+        },
       },
     },
   });
@@ -355,20 +473,15 @@ const getNotifications = asyncHandler(async (req, res) => {
     .limit(limit);
 
   res.json(
-    new ApiResponse(
-      200,
-      "Notification list fetched successfully",
-      {
-        notificationList,
-        total_page: Math.ceil(totalNotifications / limit), 
-        current_page: page,
-        total_records:totalNotifications,
-        per_page: limit, 
-      }
-    )
+    new ApiResponse(200, "Notification list fetched successfully", {
+      notificationList,
+      total_page: Math.ceil(totalNotifications / limit),
+      current_page: page,
+      total_records: totalNotifications,
+      per_page: limit,
+    })
   );
 });
-
 
 export {
   getUserProfile,
