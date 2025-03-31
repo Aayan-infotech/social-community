@@ -49,7 +49,7 @@ const userValidationSchema = Joi.object({
     .max(15)
     .pattern(
       new RegExp(
-        "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,15}$"
+        "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&#])[A-Za-z\\d@$!%*?&#]{8,15}$"
       )
     )
     .required()
@@ -59,7 +59,7 @@ const userValidationSchema = Joi.object({
       "string.min": "Password must be at least 8 characters.",
       "string.max": "Password cannot exceed 15 characters.",
       "string.pattern.base":
-        "Password must include at least one lowercase letter, one uppercase letter, one number, and one special character (@$!%*?&).",
+        "Password must include at least one lowercase letter, one uppercase letter, one number, and one special character (@$!%*?&#).",
       "any.required": "Password is required.",
     }),
 
@@ -131,7 +131,7 @@ const setPasswordValidationSchema = Joi.object({
     .max(15)
     .pattern(
       new RegExp(
-        "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,15}$"
+        "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&#])[A-Za-z\\d@$!%*?&#]{8,15}$"
       )
     )
     .required()
@@ -141,7 +141,7 @@ const setPasswordValidationSchema = Joi.object({
       "string.min": "Password must be at least 8 characters.",
       "string.max": "Password cannot exceed 15 characters.",
       "string.pattern.base":
-        "Password must include at least one lowercase letter, one uppercase letter, one number, and one special character (@$!%*?&).",
+        "Password must include at least one lowercase letter, one uppercase letter, one number, and one special character (@$!%*?&#).",
       "any.required": "Password is required.",
     }),
   confirm_password: Joi.string()
@@ -183,7 +183,7 @@ const changePasswordSchema = Joi.object({
   .max(15)
   .pattern(
     new RegExp(
-      "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,15}$"
+      "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&#])[A-Za-z\\d@$!%*?&#]{8,15}$"
     )
   )
   .required()
@@ -193,7 +193,7 @@ const changePasswordSchema = Joi.object({
     "string.min": "Password must be at least 8 characters.",
     "string.max": "Password cannot exceed 15 characters.",
     "string.pattern.base":
-      "Password must include at least one lowercase letter, one uppercase letter, one number, and one special character (@$!%*?&).",
+      "Password must include at least one lowercase letter, one uppercase letter, one number, and one special character (@$!%*?&#).",
     "any.required": "Password is required.",
   }),
   confirmPassword: Joi.string()

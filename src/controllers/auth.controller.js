@@ -199,7 +199,7 @@ const loginUser = asyncHandler(async (req, res) => {
   );
 
   const loggedInUser = await User.findById(user._id).select(
-    "-password -refreshToken"
+    "-password -refreshToken -previous_passwords"
   );
 
   // cookies
@@ -237,7 +237,7 @@ const verifyEmail = asyncHandler(async (req, res) => {
 
   return res
     .status(200)
-    .json(new ApiResponse(200, "Email verified successfully"));
+    .json(new ApiResponse(200, "Email verified successfully",user));
 });
 
 const forgotPassword = asyncHandler(async (req, res) => {
@@ -384,7 +384,7 @@ const setPassword = asyncHandler(async (req, res) => {
 
   return res
     .status(200)
-    .json(new ApiResponse(200, "Password updated successfully"));
+    .json(new ApiResponse(200, "Password updated successfully",user));
 });
 
 const logoutUser = asyncHandler(async (req, res) => {
@@ -445,7 +445,7 @@ const changePassword = asyncHandler(async (req, res) => {
   await user.save();
 
 
-  
+
 
   return res
     .status(200)

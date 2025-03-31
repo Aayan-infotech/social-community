@@ -7,12 +7,15 @@ import { FriendsModel } from "../models/friends.model.js";
 import sendPushNotification from "../utils/sendPushNotification.js";
 import NotificationModel from "../models/notification.model.js";
 import FriendRequestModel from "./../models/friends_request.model.js";
+import PostModel from "../models/posts.model.js";
 
 const getUserProfile = asyncHandler(async (req, res) => {
   let aggregation = [];
   aggregation.push({ $match: { userId: req.user.userId } });
   const friends = await FriendsModel.findOne({ userId: req.user.userId });
   let count = friends ? friends.friends.length : 0;
+
+  const posts = await PostModel.find({ userId: req.user.userId }).countDocuments();
 
   aggregation.push({
     $project: {
@@ -38,6 +41,7 @@ const getUserProfile = asyncHandler(async (req, res) => {
   aggregation.push({
     $addFields: {
       friendsCount: count,
+      postsCount: posts,
     },
   });
 
