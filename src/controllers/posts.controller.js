@@ -1,7 +1,9 @@
 import CommentModel from "../models/comment.model.js";
 import PostModel from "../models/posts.model.js";
 import ReplyModel from "../models/reply.model.js";
+import { User } from "../models/user.model.js";
 import { ApiError } from "../utils/ApiError.js";
+import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { uploadImage } from "../utils/awsS3Utils.js";
 
@@ -25,11 +27,8 @@ const createPost = asyncHandler(async (req, res) => {
   });
 
   await post.save();
-  res.status(200).json({
-    status: 200,
-    message: "Post created successfully",
-    data: post,
-  });
+
+  res.json(new ApiResponse(200, "Post created successfully", post));
 });
 
 const updatePost = asyncHandler(async function (req, res) {
@@ -91,17 +90,16 @@ const getPosts = asyncHandler(async function (req, res) {
   const posts = await PostModel.aggregate(aggregation);
   console.log(posts);
 
-  res.status(200).json({
-    status: 200,
-    message: "Posts fetched successfully",
-    data: {
+
+  res.json(
+    new ApiResponse(200, "Posts fetched successfully", {
       posts,
       total_page: Math.ceil(totalPosts / limit),
       current_page: page,
       total_records: totalPosts,
       per_page: limit,
-    },
-  });
+    })
+  );
 });
 
 const likeDisLikePost = asyncHandler(async (req, res) => {
@@ -128,11 +126,8 @@ const likeDisLikePost = asyncHandler(async (req, res) => {
 
   await post.save();
 
-  res.status(200).json({
-    status: 200,
-    message: "Post liked/disliked successfully",
-    data: post,
-  });
+
+  res.json(new ApiResponse(200, "Post liked/disliked successfully", post));
 });
 
 const addComment = asyncHandler(async (req, res) => {
@@ -153,28 +148,8 @@ const addComment = asyncHandler(async (req, res) => {
   post.comments.push(addComment._id);
   await post.save();
 
-  res.status(200).json({
-    status: 200,
-    message: "Comment added successfully",
-    data: addComment,
-  });
+  res.json(new ApiResponse(200, "Comment added successfully", addComment));
 
-  // const post = await PostModel.findById(postId);
-  // if (!post) {
-  //   throw new ApiError(404, "Post not found");
-  // }
-
-  // post.comments.push({
-  //   userId,
-  //   comment,
-  // });
-  // await post.save();
-
-  // res.status(200).json({
-  //   status: 200,
-  //   message: "Comment added successfully",
-  //   data: post,
-  // });
 });
 
 const editComment = asyncHandler(async function (req, res) {
@@ -192,11 +167,7 @@ const editComment = asyncHandler(async function (req, res) {
     throw new ApiError(404, "Comment not found");
   }
 
-  res.status(200).json({
-    status: 200,
-    message: "Comment updated successfully",
-    data: updateComment,
-  });
+  res.json(new ApiResponse(200, "Comment updated successfully", updateComment));
 });
 
 const getComments = asyncHandler(async (req, res) => {
@@ -254,17 +225,15 @@ const getComments = asyncHandler(async (req, res) => {
 
   const comments = await CommentModel.aggregate(aggregation);
 
-  res.status(200).json({
-    status: 200,
-    message: "Comments fetched successfully",
-    data: {
+  res.json(
+    new ApiResponse(200, "Comments fetched successfully", {
       comments,
       total_page: Math.ceil(totalComments / limit),
       current_page: page,
       total_records: totalComments,
       per_page: limit,
-    },
-  });
+    })
+  );
 });
 
 const addReplyComment = asyncHandler(async (req, res) => {
@@ -288,11 +257,7 @@ const addReplyComment = asyncHandler(async (req, res) => {
   getComment.replies.push(replyComment._id);
   await getComment.save();
 
-  res.status(200).json({
-    status: 200,
-    message: "Reply comment added successfully",
-    data: replyComment,
-  });
+  res.json(new ApiResponse(200, "Reply comment added successfully", replyComment));
 });
 
 const getPostDetails = asyncHandler(async (req, res) => {
@@ -345,11 +310,35 @@ const getPostDetails = asyncHandler(async (req, res) => {
 
   const post = await PostModel.aggregate(aggregation);
 
-  res.status(200).json({
-    status: 200,
-    message: "Post fetched successfully",
-    data: post,
+  res.json(new ApiResponse(200, "Post details", post));
+});
+
+const getPostLikedBy = asyncHandler(async (req, res) => {
+  const postId = req.params.postId;
+  if (!postId) {
+    throw new ApiError(400, "Post ID is required");
+  }
+
+  const post = await PostModel.findById(postId);
+  if (!post) {
+    throw new ApiError(404, "Post not found");
+  }
+
+  let aggregation = [];
+  aggregation.push({
+    $match: { userId: { $in: post.likedBy } },
   });
+  aggregation.push({
+    $project: {
+      name: 1,
+      profile_image: 1,
+      userId: 1,
+    },
+  });
+
+  const users = await User.aggregate(aggregation);
+
+  res.json(new ApiResponse(200, "Post liked by users", users));
 });
 
 export {
@@ -361,4 +350,5 @@ export {
   getComments,
   addReplyComment,
   getPostDetails,
+  getPostLikedBy,
 };

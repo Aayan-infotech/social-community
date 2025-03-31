@@ -30,6 +30,7 @@ const uploadImage = async (file) => {
     const command = new PutObjectCommand(params);
     const data = await s3.send(command);
 
+    // remove the file 
     fs.unlinkSync(file.path);
 
     return `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${file.filename}`;

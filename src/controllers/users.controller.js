@@ -8,12 +8,19 @@ import sendPushNotification from "../utils/sendPushNotification.js";
 import NotificationModel from "../models/notification.model.js";
 import FriendRequestModel from "./../models/friends_request.model.js";
 
+
 const getUserProfile = asyncHandler(async (req, res) => {
-  const user = await User.findById(req.user._id).select("-password").lean();
-  const friends = await FriendsModel.findOne({ userId: user.userId });
-  let count = friends ? friends.friends.length : 0;
-  user.friendsCount = count;
-  res.json(new ApiResponse(200, "User profile fetched successfully", user));
+
+  let aggregation = [];
+  aggregation.push({ $match: { userId: req.user.userId } });
+
+
+
+  // const user = await User.findById(req.user._id).select("-password").lean();
+  // const friends = await FriendsModel.findOne({ userId: user.userId });
+  // let count = friends ? friends.friends.length : 0;
+  // user.friendsCount = count;
+  // res.json(new ApiResponse(200, "User profile fetched successfully", user));
 });
 
 const updateUserProfile = asyncHandler(async (req, res) => {
@@ -31,7 +38,7 @@ const updateUserProfile = asyncHandler(async (req, res) => {
     }
   }
 
-  let profile_image = req.user?.profile_image ? req.user?.profile_image : null;
+  let profile_image = req.user?.profile_image ? req.user?.profile_image : process.env.APP;
 
   if (req.files && req.files.profile_image) {
     // Delete the previous profile image from aws account
@@ -41,6 +48,7 @@ const updateUserProfile = asyncHandler(async (req, res) => {
     // Upload the new profile image to aws account
     profile_image = await uploadImage(req.files.profile_image[0]);
   }
+
 
   const user = await User.findByIdAndUpdate(
     req.user?._id,
@@ -288,6 +296,9 @@ const getFriendSuggestionList = asyncHandler(async (req, res) => {
   aggregation.push({
     $match: { userId: { $nin: friend_request } },
   });
+  // return a placeholder image if there is no profile image
+
+  console.log(req.protocol,req.hostname,process.env.PORT);
   aggregation.push({
     $project: {
       _id: 0,
@@ -297,6 +308,9 @@ const getFriendSuggestionList = asyncHandler(async (req, res) => {
       mobile: 1,
       city: 1,
       state: 1,
+      profile_image: {
+        $ifNull: ["$profile_image", `${req.protocol}://${req.hostname}:${process.env.PORT}/placeholder/person.png`],
+      },
     },
   });
 

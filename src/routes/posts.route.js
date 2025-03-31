@@ -8,7 +8,8 @@ import {
   editComment,
   getComments,
   addReplyComment,
-  getPostDetails
+  getPostDetails,
+  getPostLikedBy
 } from "../controllers/posts.controller.js";
 import { validateRequest } from "../middlewares/validation.middleware.js";
 import {
@@ -59,5 +60,6 @@ router.get("/get-comments/:postId", verifyJWT, getComments);
 router.post("/add-reply",verifyJWT, addReplyComment);
 
 router.get('/post-details/:postId',verifyJWT,getPostDetails);
+router.get('/get-post-likedby/:postId',verifyJWT,getPostLikedBy);
 
 export default router;
