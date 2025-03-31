@@ -24,6 +24,9 @@ const getUserProfile = asyncHandler(async (req, res) => {
       city: 1,
       gender: 1,
       bio: 1,
+      state: 1,
+      country: 1,
+      referralCode: 1,
       profile_image: {
         $ifNull: [
           "$profile_image",
@@ -39,11 +42,6 @@ const getUserProfile = asyncHandler(async (req, res) => {
   });
 
   const user = await User.aggregate(aggregation);
-  console.log(user);
-  // res.json(new ApiResponse(200, "User successfully fetched", user));
-  // const user = await User.findById(req.user._id).select("-password").lean();
-
-  // user.friendsCount = count;
   res.json(new ApiResponse(200, "User profile fetched successfully", user));
 });
 
