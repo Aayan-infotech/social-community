@@ -15,7 +15,9 @@ const getUserProfile = asyncHandler(async (req, res) => {
   const friends = await FriendsModel.findOne({ userId: req.user.userId });
   let count = friends ? friends.friends.length : 0;
 
-  const posts = await PostModel.find({ userId: req.user.userId }).countDocuments();
+  const posts = await PostModel.find({
+    userId: req.user.userId,
+  }).countDocuments();
 
   aggregation.push({
     $project: {
@@ -89,7 +91,7 @@ const updateUserProfile = asyncHandler(async (req, res) => {
     },
     { new: true }
   ).select(
-    "-password -refreshToken -_id -__v -referrals -referredBy -otpExpire -otp"
+    "-password -refreshToken -previous_passwords -_id -__v -referrals -referredBy -otpExpire -otp"
   );
 
   res.json(new ApiResponse(200, "User profile updated successfully", user));
@@ -110,7 +112,7 @@ const friendRequest = asyncHandler(async (req, res) => {
   const friendExists = await User.findOne({
     userId: friendId,
   }).select(
-    "-password -refreshToken -_id -__v -referrals -referredBy -otpExpire -otp"
+    "-password -refreshToken -previous_passwords -_id -__v -referrals -referredBy -otpExpire -otp"
   );
 
   if (!friendExists) {
@@ -132,6 +134,8 @@ const friendRequest = asyncHandler(async (req, res) => {
     status: "pending",
   });
 
+  const data = await friendRequest.save();
+
   // Send push notification to the friend
   await sendPushNotification(
     friendExists?.device_token,
@@ -145,37 +149,6 @@ const friendRequest = asyncHandler(async (req, res) => {
     }
   );
 
-  const data = await friendRequest.save();
-
-  // let friendList = await FriendsModel.findOne({ userId });
-  // if (!friendList) {
-  //   friendList = new FriendsModel({ userId, friend_requests: [friendId] });
-  // } else {
-  //   if (!friendList.friends.includes(friendId)) {
-  //     if (!friendList.friend_requests.includes(friendId)) {
-  //       friendList.friend_requests.push(friendId);
-  //     } else {
-  //       throw new ApiError(400, "Friend request already sent");
-  //     }
-  //   } else {
-  //     throw new ApiError(400, "Friend already in your friend list");
-  //   }
-  // }
-
-  // // Send push notification to the friend
-  // await sendPushNotification(
-  //   friendExists?.device_token,
-  //   "Friend Request",
-  //   "You have received a friend request from " + user?.name,
-  //   userId,
-  //   friendId,
-  //   {
-  //     type: "friend_request",
-  //     friendDetails: friendExists,
-  //   }
-  // );
-
-  // const data = await friendList.save();
   res.json(new ApiResponse(200, "Friend request added successfully", data));
 });
 
@@ -202,7 +175,7 @@ const acceptRejectFriendRequest = asyncHandler(async (req, res) => {
   const friendExists = await User.findOne({
     userId: friendId,
   }).select(
-    "-password -refreshToken -_id -__v -referrals -referredBy -otpExpire -otp"
+    "-password -refreshToken -previous_passwords -_id -__v -referrals -referredBy -otpExpire -otp"
   );
   if (!friendExists) {
     throw new ApiError(404, "Invalid friend id provided");
@@ -275,7 +248,7 @@ const getFriendRequestList = asyncHandler(async (req, res) => {
   const senders = await User.find({
     userId: { $in: senderIds },
   }).select(
-    "-password -refreshToken -_id -__v -referrals -referredBy -otpExpire -otp"
+    "-password -refreshToken -previous_passwords -_id -__v -referrals -referredBy -otpExpire -otp"
   );
 
   res.json(
@@ -296,47 +269,12 @@ const getFriendList = asyncHandler(async (req, res) => {
   const friends = await User.find({
     userId: { $in: friendList.friends },
   }).select(
-    "-password -refreshToken -_id -__v -referrals -referredBy -otpExpire -otp"
+    "-password -refreshToken -previous_passwords -_id -__v -referrals -referredBy -otpExpire -otp"
   );
   res.json(new ApiResponse(200, "Friend list fetched successfully", friends));
 });
 
 const getFriendSuggestionList = asyncHandler(async (req, res) => {
-  // const user = await User.findById(req.user._id);
-  // if (!user) {
-  //   throw new ApiError(404, "User not found");
-  // }
-  // const userId = user?.userId;
-  // const friendList = await FriendsModel.findOne({ userId });
-
-  // let friends = friendList ? friendList.friends : [];
-  // let friend_request = friendList ? friendList.friend_requests : [];
-
-  // let aggregation = [];
-  // aggregation.push({ $match: { city: { $eq: user?.city } } });
-  // aggregation.push({ $match: { userId: { $ne: userId } } });
-  // aggregation.push({ $match: { userId: { $nin: friends } } });
-  // aggregation.push({
-  //   $match: { userId: { $nin: friend_request } },
-  // });
-
-  // aggregation.push({
-  //   $project: {
-  //     _id: 0,
-  //     userId: 1,
-  //     name: 1,
-  //     email: 1,
-  //     mobile: 1,
-  //     city: 1,
-  //     state: 1,
-  //     profile_image: {
-  //       $ifNull: ["$profile_image", `${req.protocol}://${req.hostname}:${process.env.PORT}/placeholder/person.png`],
-  //     },
-  //   },
-  // });
-
-  // const friendSuggestionList = await User.aggregate(aggregation);
-
   const user = await User.findById(req.user._id);
   if (!user) {
     throw new ApiError(404, "User not found");
@@ -347,41 +285,51 @@ const getFriendSuggestionList = asyncHandler(async (req, res) => {
   let friends = friendList ? friendList.friends : [];
   let friend_request = friendList ? friendList.friend_requests : [];
 
-  console.log("friends", friends);
+  // console.log("friends", friends);
 
   let aggregation = [];
-  aggregation.push({ $match: { city: { $eq: user?.city } } });
+  aggregation.push({ $match: { city: user?.city } });
   aggregation.push({ $match: { userId: { $ne: userId } } });
   aggregation.push({ $match: { userId: { $nin: friends } } });
   aggregation.push({ $match: { userId: { $nin: friend_request } } });
 
-  // Lookup mutual friends
   aggregation.push({
     $lookup: {
-      from: "friends", // Your FriendsModel collection name
+      from: "friends",
       localField: "userId",
       foreignField: "userId",
-      as: "friend_data",
+      as: "friends_data",
     },
   });
 
-  aggregation.push({ $unwind: "$friend_data" });
+  aggregation.push({
+    $unwind: { path: "$friends_data", preserveNullAndEmptyArrays: true },
+  });
 
-  // Calculate mutual friends
   aggregation.push({
     $addFields: {
       mutualFriends: {
-        $size: {
-          $setIntersection: [
-            { $literal: friends },
-            { $ifNull: ["$friend_data.friends", []] },
-          ],
-        },
+        $setIntersection: [friends, { $ifNull: ["$friends_data.friends", []] }],
       },
     },
   });
 
-  // Project necessary fields
+  aggregation.push({
+    $lookup: {
+      from: "users",
+      localField: "mutualFriends",
+      foreignField: "userId",
+      as: "firstMutualFriendDetails",
+    },
+  });
+
+  aggregation.push({
+    $unwind: {
+      path: "$firstMutualFriendDetails",
+      preserveNullAndEmptyArrays: true, 
+    },
+  });
+
   aggregation.push({
     $project: {
       _id: 0,
@@ -397,44 +345,51 @@ const getFriendSuggestionList = asyncHandler(async (req, res) => {
           `${req.protocol}://${req.hostname}:${process.env.PORT}/placeholder/person.png`,
         ],
       },
+      // friendsCount: { $size: { $ifNull: ["$friends_data.friends", []] } },
+      // friends: { $ifNull: ["$friends_data.friends", []] },
+      // mutualFriends: { $ifNull: ["$mutualFriends", []] },
+      // mutualFriendsCount: { $size: { $ifNull: ["$mutualFriends", []] } },
+      // firstMutualFriend: {
+      //   name: "$firstMutualFriendDetails.name",
+      // },
       followedBy: {
         $cond: {
-          if: { $gt: ["$mutualFriends", 0] },
+          if: { $gt: [{ $size: { $ifNull: ["$mutualFriends", []] } }, 0] },
           then: {
             $concat: [
               "Followed by ",
-              { $arrayElemAt: ["$friend_data.friends", 0] },
+              "$firstMutualFriendDetails.name",
               {
                 $cond: {
-                  if: { $gt: ["$mutualFriends", 1] },
-                  then: " +",
-                  else: "",
-                },
-              },
-              {
-                $cond: {
-                  if: { $gt: ["$mutualFriends", 1] },
-                  then: { $toString: { $subtract: ["$mutualFriends", 1] } },
-                  else: "",
-                },
-              },
-              {
-                $cond: {
-                  if: { $gt: ["$mutualFriends", 1] },
-                  then: " others",
+                  if: {
+                    $gt: [{ $size: { $ifNull: ["$mutualFriends", []] } }, 1],
+                  }, // More than 1 mutual friend
+                  then: {
+                    $concat: [
+                      " +",
+                      {
+                        $toString: {
+                          $subtract: [
+                            { $size: { $ifNull: ["$mutualFriends", []] } },
+                            1,
+                          ],
+                        },
+                      },
+                      " others",
+                    ],
+                  },
                   else: "",
                 },
               },
             ],
           },
-          else: "",
+          else: null,
         },
       },
     },
   });
 
   const friendSuggestionList = await User.aggregate(aggregation);
-  // console.log(friendSuggestionList);
 
   res.json(
     new ApiResponse(
