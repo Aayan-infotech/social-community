@@ -10,13 +10,14 @@ import FriendRequestModel from "./../models/friends_request.model.js";
 import PostModel from "../models/posts.model.js";
 
 const getUserProfile = asyncHandler(async (req, res) => {
+  const userId = req.query.user_id || req.user.userId;
   let aggregation = [];
-  aggregation.push({ $match: { userId: req.user.userId } });
-  const friends = await FriendsModel.findOne({ userId: req.user.userId });
+  aggregation.push({ $match: { userId } });
+  const friends = await FriendsModel.findOne({ userId });
   let count = friends ? friends.friends.length : 0;
 
   const posts = await PostModel.find({
-    userId: req.user.userId,
+    userId,
   }).countDocuments();
 
   aggregation.push({
@@ -48,6 +49,9 @@ const getUserProfile = asyncHandler(async (req, res) => {
   });
 
   const user = await User.aggregate(aggregation);
+  if (!user.length) {
+    throw new ApiError(404, "User not found");
+  }
   res.json(new ApiResponse(200, "User profile fetched successfully", user));
 });
 
@@ -275,24 +279,29 @@ const getFriendList = asyncHandler(async (req, res) => {
 });
 
 const getFriendSuggestionList = asyncHandler(async (req, res) => {
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.max(1, parseInt(req.query.limit) || 10);
+  const skip = (page - 1) * limit;
+
   const user = await User.findById(req.user._id);
   if (!user) {
     throw new ApiError(404, "User not found");
   }
+
   const userId = user?.userId;
   const friendList = await FriendsModel.findOne({ userId });
 
-  let friends = friendList ? friendList.friends : [];
-  let friend_request = friendList ? friendList.friend_requests : [];
+  const friends = friendList?.friends || [];
+  const friend_request = friendList?.friend_requests || [];
 
-  // console.log("friends", friends);
+  const baseMatchPipeline = [
+    { $match: { city: user?.city } },
+    { $match: { userId: { $ne: userId } } },
+    { $match: { userId: { $nin: friends } } },
+    { $match: { userId: { $nin: friend_request } } },
+  ];
 
-  let aggregation = [];
-  aggregation.push({ $match: { city: user?.city } });
-  aggregation.push({ $match: { userId: { $ne: userId } } });
-  aggregation.push({ $match: { userId: { $nin: friends } } });
-  aggregation.push({ $match: { userId: { $nin: friend_request } } });
-
+  const aggregation = [];
   aggregation.push({
     $lookup: {
       from: "friends",
@@ -301,7 +310,6 @@ const getFriendSuggestionList = asyncHandler(async (req, res) => {
       as: "friends_data",
     },
   });
-
   aggregation.push({
     $unwind: { path: "$friends_data", preserveNullAndEmptyArrays: true },
   });
@@ -324,10 +332,20 @@ const getFriendSuggestionList = asyncHandler(async (req, res) => {
   });
 
   aggregation.push({
-    $unwind: {
-      path: "$firstMutualFriendDetails",
-      preserveNullAndEmptyArrays: true, 
+    $addFields: {
+      firstMutualFriendDetails: {
+        $arrayElemAt: ["$firstMutualFriendDetails", 0],
+      },
+      mutualFriendsCount: { $size: { $ifNull: ["$mutualFriends", []] } },
     },
+  });
+
+  aggregation.push({
+    $skip: skip,
+  });
+
+  aggregation.push({
+    $limit: limit,
   });
 
   aggregation.push({
@@ -345,36 +363,20 @@ const getFriendSuggestionList = asyncHandler(async (req, res) => {
           `${req.protocol}://${req.hostname}:${process.env.PORT}/placeholder/person.png`,
         ],
       },
-      // friendsCount: { $size: { $ifNull: ["$friends_data.friends", []] } },
-      // friends: { $ifNull: ["$friends_data.friends", []] },
-      // mutualFriends: { $ifNull: ["$mutualFriends", []] },
-      // mutualFriendsCount: { $size: { $ifNull: ["$mutualFriends", []] } },
-      // firstMutualFriend: {
-      //   name: "$firstMutualFriendDetails.name",
-      // },
       followedBy: {
         $cond: {
-          if: { $gt: [{ $size: { $ifNull: ["$mutualFriends", []] } }, 0] },
+          if: { $gt: ["$mutualFriendsCount", 0] },
           then: {
             $concat: [
               "Followed by ",
               "$firstMutualFriendDetails.name",
               {
                 $cond: {
-                  if: {
-                    $gt: [{ $size: { $ifNull: ["$mutualFriends", []] } }, 1],
-                  }, // More than 1 mutual friend
+                  if: { $gt: ["$mutualFriendsCount", 1] },
                   then: {
                     $concat: [
                       " +",
-                      {
-                        $toString: {
-                          $subtract: [
-                            { $size: { $ifNull: ["$mutualFriends", []] } },
-                            1,
-                          ],
-                        },
-                      },
+                      { $toString: { $subtract: ["$mutualFriendsCount", 1] } },
                       " others",
                     ],
                   },
@@ -389,14 +391,27 @@ const getFriendSuggestionList = asyncHandler(async (req, res) => {
     },
   });
 
-  const friendSuggestionList = await User.aggregate(aggregation);
+  const results = await User.aggregate([
+    ...baseMatchPipeline,
+    {
+      $facet: {
+        metadata: [{ $count: "totalCount" }],
+        data: aggregation,
+      },
+    },
+  ]);
+
+  const totalCount = results[0].metadata[0]?.totalCount || 0;
+  const friendSuggestionList = results[0].data;
 
   res.json(
-    new ApiResponse(
-      200,
-      "Friend suggestion list fetched successfully",
-      friendSuggestionList
-    )
+    new ApiResponse(200, "Friend suggestion list fetched successfully", {
+      friendSuggestionList,
+      total_page: Math.ceil(totalCount / limit),
+      current_page: page,
+      total_records: totalCount,
+      per_page: limit,
+    })
   );
 });
 
@@ -440,6 +455,112 @@ const getNotifications = asyncHandler(async (req, res) => {
   );
 });
 
+const getUserPosts = asyncHandler(async (req, res) => {
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.max(1, parseInt(req.query.limit) || 10);
+  const skip = (page - 1) * limit;
+
+  const { user_id, type } = req.query;
+
+  const user = await User.findOne({ userId: user_id }).select(
+    "-password -refreshToken -previous_passwords -_id -__v -referrals -referredBy -otpExpire -otp -device_token"
+  );
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
+  const types = ["social", "professional"];
+  if (!types.includes(type)) {
+    throw new ApiError(400, "Invalid type provided");
+  }
+
+  const userId = user.userId;
+
+  const baseMatchPipeline = [{ $match: { userId } }, { $match: { type } }];
+
+  const aggregation = [];
+  aggregation.push({
+    $match: {
+      userId,
+      type,
+    },
+  });
+
+  aggregation.push({
+    $lookup: {
+      from: "users",
+      localField: "userId",
+      foreignField: "userId",
+      as: "user",
+    },
+  });
+  aggregation.push({
+    $lookup: {
+      from: "users",
+      localField: "userId",
+      foreignField: "userId",
+      as: "user",
+    },
+  });
+  aggregation.push({
+    $unwind: "$user",
+  });
+  aggregation.push({
+    $addFields: {
+      comment_count: { $size: "$comments" },
+    },
+  });
+  aggregation.push({
+    $unset: ["likedBy", "comments"],
+  });
+  aggregation.push({
+    $project: {
+      "user.name": 1,
+      "user.profile_image": 1,
+      "user.userId": 1,
+      title: 1,
+      description: 1,
+      type: 1,
+      media: 1,
+      likes: 1,
+      comment_count: 1,
+      createdAt: 1,
+      "user.profile_image": {
+        $ifNull: [
+          "$user.profile_image",
+          `${req.protocol}://${req.hostname}:${process.env.PORT}/placeholder/person.png`,
+        ],
+      },
+    },
+  });
+
+  const results = await PostModel.aggregate([
+    ...baseMatchPipeline,
+    {
+      $facet: {
+        metadata: [{ $count: "totalCount" }],
+        data: aggregation,
+      },
+    },
+  ]);
+
+  const totalCount = results[0].metadata[0]?.totalCount || 0;
+  const posts = results[0].data;
+
+  if (!posts.length) {
+    throw new ApiError(404, "No posts found for this user");
+  }
+
+  res.json(
+    new ApiResponse(200, "User posts fetched successfully", {
+      posts,
+      total_page: Math.ceil(totalCount / limit),
+      current_page: page,
+      total_records: totalCount,
+      per_page: limit,
+    })
+  );
+});
+
 export {
   getUserProfile,
   updateUserProfile,
@@ -449,4 +570,5 @@ export {
   getFriendList,
   getFriendSuggestionList,
   getNotifications,
+  getUserPosts,
 };

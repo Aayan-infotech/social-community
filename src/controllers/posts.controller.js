@@ -88,8 +88,7 @@ const getPosts = asyncHandler(async function (req, res) {
   });
 
   const posts = await PostModel.aggregate(aggregation);
-  console.log(posts);
-
+  // console.log(posts);
 
   res.json(
     new ApiResponse(200, "Posts fetched successfully", {
@@ -126,7 +125,6 @@ const likeDisLikePost = asyncHandler(async (req, res) => {
 
   await post.save();
 
-
   res.json(new ApiResponse(200, "Post liked/disliked successfully", post));
 });
 
@@ -149,7 +147,6 @@ const addComment = asyncHandler(async (req, res) => {
   await post.save();
 
   res.json(new ApiResponse(200, "Comment added successfully", addComment));
-
 });
 
 const editComment = asyncHandler(async function (req, res) {
@@ -257,7 +254,9 @@ const addReplyComment = asyncHandler(async (req, res) => {
   getComment.replies.push(replyComment._id);
   await getComment.save();
 
-  res.json(new ApiResponse(200, "Reply comment added successfully", replyComment));
+  res.json(
+    new ApiResponse(200, "Reply comment added successfully", replyComment)
+  );
 });
 
 const getPostDetails = asyncHandler(async (req, res) => {
@@ -305,6 +304,12 @@ const getPostDetails = asyncHandler(async (req, res) => {
       likes: 1,
       comment_count: 1,
       createdAt: 1,
+      "user.profile_image": {
+        $ifNull: [
+          "$user.profile_image",
+          `${req.protocol}://${req.hostname}:${process.env.PORT}/placeholder/person.png`,
+        ],
+      },
     },
   });
 

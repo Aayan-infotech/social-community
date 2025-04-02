@@ -9,6 +9,7 @@ import {
   getFriendList,
   getFriendSuggestionList,
   getNotifications,
+  getUserPosts,
 } from "../controllers/users.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { validateRequest } from "../middlewares/validation.middleware.js";
@@ -52,5 +53,6 @@ router.get("/get-friend-request", verifyJWT, getFriendRequestList);
 router.get("/get-friends", verifyJWT, getFriendList);
 router.get("/get-friend-suggestions", verifyJWT, getFriendSuggestionList);
 router.get("/get-notifications", verifyJWT, getNotifications);
+router.get('/get-user-posts', verifyJWT, getUserPosts);
 
 export default router;
