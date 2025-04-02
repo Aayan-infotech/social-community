@@ -292,18 +292,14 @@ const getFriendSuggestionList = asyncHandler(async (req, res) => {
   const friendList = await FriendsModel.findOne({ userId });
 
   const friends = friendList?.friends || [];
-  const sentRequests = await FriendRequestModel.find({ senderId: userId,status:"pending" }).select("receiverId");
-  const sentRequestUserIds = sentRequests.map((req) => req.receiverId);
 
   const baseMatchPipeline = [
     { $match: { city: user?.city } },
     { $match: { userId: { $ne: userId } } },
     { $match: { userId: { $nin: friends } } },
-    { $match: { userId: { $nin: sentRequestUserIds } } },
   ];
 
   const aggregation = [];
-
 
   aggregation.push({
     $lookup: {
@@ -340,6 +336,26 @@ const getFriendSuggestionList = asyncHandler(async (req, res) => {
         $arrayElemAt: ["$firstMutualFriendDetails", 0],
       },
       mutualFriendsCount: { $size: { $ifNull: ["$mutualFriends", []] } },
+    },
+  });
+
+  aggregation.push({
+    $lookup: {
+      from: "friendrequests",
+      let: { senderId: userId, receiverId: "$userId" },
+      pipeline: [
+        {
+          $match: {
+            $expr: {
+              $and: [
+                { $eq: ["$senderId", "$$senderId"] },
+                { $eq: ["$receiverId", "$$receiverId"] },
+              ],
+            },
+          },
+        },
+      ],
+      as: "friend_request_sended",
     },
   });
 
@@ -389,6 +405,13 @@ const getFriendSuggestionList = asyncHandler(async (req, res) => {
             ],
           },
           else: null,
+        },
+      },
+      friend_request_sended: {
+        $cond: {
+          if: { $gt: [{ $size: "$friend_request_sended" }, 0] },
+          then: true,
+          else: false,
         },
       },
     },
