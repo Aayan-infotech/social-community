@@ -292,16 +292,19 @@ const getFriendSuggestionList = asyncHandler(async (req, res) => {
   const friendList = await FriendsModel.findOne({ userId });
 
   const friends = friendList?.friends || [];
-  const friend_request = friendList?.friend_requests || [];
+  const sentRequests = await FriendRequestModel.find({ senderId: userId,status:"pending" }).select("receiverId");
+  const sentRequestUserIds = sentRequests.map((req) => req.receiverId);
 
   const baseMatchPipeline = [
     { $match: { city: user?.city } },
     { $match: { userId: { $ne: userId } } },
     { $match: { userId: { $nin: friends } } },
-    { $match: { userId: { $nin: friend_request } } },
+    { $match: { userId: { $nin: sentRequestUserIds } } },
   ];
 
   const aggregation = [];
+
+
   aggregation.push({
     $lookup: {
       from: "friends",
