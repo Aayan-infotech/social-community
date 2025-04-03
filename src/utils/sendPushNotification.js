@@ -12,15 +12,12 @@ const sendPushNotification = async (
   data = {}
 ) => {
   const message = {
-    token: deviceToken,
+    tokens: deviceToken,
     notification: {
       title,
       body,
     },
-    data: {
-      type: data?.type,
-      friendDetails: JSON.stringify(data?.friendDetails),
-    },
+    data
   };
 
   // Save notificationi in the database
@@ -33,11 +30,8 @@ const sendPushNotification = async (
     data,
   });
 
-  // Log the saved notification in the console
-  console.log("Notification saved successfully", saveNotification);
-
   try {
-    const response = await firebaseAdmin.messaging().send(message);
+    const response = await firebaseAdmin.messaging().sendEachForMulticast(message);
 
     console.log("Successfully sent message:", response);
     return response;

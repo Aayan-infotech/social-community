@@ -85,9 +85,37 @@ const postEditCommentSchema = Joi.object({
   }),
 });
 
+const postReplySchema = Joi.object({
+  commentId: Joi.string().required().messages({
+    "string.base": "Comment ID must be a string.",
+    "string.empty": "Comment ID is required.",
+    "any.required": "Comment ID is required to reply to a comment.",
+  }),
+  comment: Joi.string().required().messages({
+    "string.base": "Reply must be a string.",
+    "string.empty": "Reply is required.",
+    "any.required": "Reply is required to reply to a comment.",
+  })
+});
+
+const postEditReplySchema = Joi.object({
+  replyId: Joi.string().required().messages({
+    "string.base": "Reply ID must be a string.",
+    "string.empty": "Reply ID is required.",
+    "any.required": "Reply ID is required to edit a reply.",
+  }),
+  comment: Joi.string().required().messages({
+    "string.base": "Reply must be a string.",
+    "string.empty": "Reply is required.",
+    "any.required": "Reply is required to edit a reply.",
+  })
+});
+
 export {
   postValidationSchema,
   postLikeDislikeSchema,
   postCommentSchema,
   postEditCommentSchema,
+  postReplySchema,
+  postEditReplySchema,
 };

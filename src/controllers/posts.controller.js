@@ -88,7 +88,6 @@ const getPosts = asyncHandler(async function (req, res) {
   });
 
   const posts = await PostModel.aggregate(aggregation);
-  // console.log(posts);
 
   res.json(
     new ApiResponse(200, "Posts fetched successfully", {
@@ -152,7 +151,7 @@ const addComment = asyncHandler(async (req, res) => {
 const editComment = asyncHandler(async function (req, res) {
   const { postId, commentId, comment } = req.body;
   const userId = req.user.userId;
-  console.log(userId);
+
 
   const updateComment = await CommentModel.findOneAndUpdate(
     { _id: commentId, userId, postId },
@@ -237,6 +236,10 @@ const addReplyComment = asyncHandler(async (req, res) => {
   const { commentId, comment } = req.body;
   const userId = req.user.userId;
 
+  if(!userId){
+    throw new ApiError(400,"User Not found");
+  }
+
   // find the comment
   const getComment = await CommentModel.findById(commentId);
   if (!getComment) {
@@ -247,7 +250,7 @@ const addReplyComment = asyncHandler(async (req, res) => {
   const replyComment = new ReplyModel({
     userId,
     commentId,
-    comment,
+    comment
   });
 
   await replyComment.save();
@@ -257,6 +260,77 @@ const addReplyComment = asyncHandler(async (req, res) => {
   res.json(
     new ApiResponse(200, "Reply comment added successfully", replyComment)
   );
+});
+
+const editReplyComment = asyncHandler(async (req, res) => {
+  const { replyId, comment } = req.body;
+  const userId = req.user.userId;
+
+  if(!userId){
+    throw new ApiError(400,"User Not found");
+  }
+
+  // find the reply comment
+  const getReplyComment = await ReplyModel.findById(replyId);
+  if (!getReplyComment) {
+    throw new ApiError(404, "Reply comment not found");
+  }
+
+  // update the reply comment
+  getReplyComment.comment = comment;
+  await getReplyComment.save();
+
+  res.json(
+    new ApiResponse(200, "Reply comment updated successfully", getReplyComment)
+  );
+});
+
+const getReplyofComment = asyncHandler(async (req, res) => {
+  const commentId = req.query.commentId;
+  if (!commentId) {
+    throw new ApiError(400, "Comment ID is required");
+  }
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.max(1, parseInt(req.query.limit) || 10);
+  const skip = (page - 1) * limit;
+
+  const aggregation = [];
+  aggregation.push({
+    $match: { commentId: commentId },
+  });
+
+  aggregation.push({
+    $lookup: {
+      from: "users",
+      localField: "userId",
+      foreignField: "userId",
+      as: "user",
+    },
+  });
+  aggregation.push({
+    $unwind: "$user",
+  });
+
+  aggregation.push({
+    skip: skip,
+  });
+  aggregation.push({
+    $limit: limit,
+  });
+
+  aggregation.push({
+    $project: {
+      "user.name": 1,
+      "user.profile_image": 1,
+      "user.userId": 1,
+      comment: 1,
+      createdAt: 1,
+    },
+  });
+
+  const replyComments = await ReplyModel.aggregate(aggregation);
+  
+
 });
 
 const getPostDetails = asyncHandler(async (req, res) => {
@@ -356,4 +430,6 @@ export {
   addReplyComment,
   getPostDetails,
   getPostLikedBy,
+  editReplyComment,
+  getReplyofComment,
 };

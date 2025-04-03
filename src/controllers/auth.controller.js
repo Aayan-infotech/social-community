@@ -27,7 +27,6 @@ import { sendEmail } from "../services/emailService.js";
 //   }
 // };
 
-
 const generateAccessAndRefreshTokens = async (userId) => {
   try {
     const user = await User.findById(userId);
@@ -53,8 +52,6 @@ const generateAccessAndRefreshTokens = async (userId) => {
     );
   }
 };
-
-
 
 const options = {
   httpOnly: true,
@@ -119,8 +116,6 @@ const signup = asyncHandler(async (req, res) => {
     // throw new ApiError(500, "Failed to send OTP to mobile number");
     throw new ApiError(500, "Failed to send OTP to Email");
   }
-
-
 
   const user = new User({
     userId,
@@ -237,7 +232,7 @@ const verifyEmail = asyncHandler(async (req, res) => {
 
   return res
     .status(200)
-    .json(new ApiResponse(200, "Email verified successfully",user));
+    .json(new ApiResponse(200, "Email verified successfully", user));
 });
 
 const forgotPassword = asyncHandler(async (req, res) => {
@@ -364,7 +359,6 @@ const setPassword = asyncHandler(async (req, res) => {
   }
 
   const user = await User.findOne({ email });
-  console.log(user);
   if (!user) {
     throw new ApiError(404, "User Not Found");
   }
@@ -374,25 +368,36 @@ const setPassword = asyncHandler(async (req, res) => {
   }
 
   const isPreviousPassword = await user.isPreviousPassword(password);
-  if(isPreviousPassword){
+  if (isPreviousPassword) {
     throw new ApiError(400, "Password should not be same as previous password");
   }
-
 
   user.password = password;
   await user.save();
 
   return res
     .status(200)
-    .json(new ApiResponse(200, "Password updated successfully",user));
+    .json(new ApiResponse(200, "Password updated successfully", user));
 });
 
 const logoutUser = asyncHandler(async (req, res) => {
+  const { device_token } = req.body;
+  if (!device_token) {
+    throw new ApiError(400, "Device token is required");
+  }
+
+
+  let removeIndex = req.user.device_token.indexOf(device_token);
+  if (removeIndex !== -1) {
+    req.user.device_token.splice(removeIndex, 1);
+  }
+  // Expire the access and refresh token on logout
   await User.findByIdAndUpdate(
     req.user._id,
     {
       $set: {
         refreshToken: "",
+        device_token: req.user.device_token,
       },
     },
     {
@@ -444,12 +449,9 @@ const changePassword = asyncHandler(async (req, res) => {
   user.password = newPassword;
   await user.save();
 
-
-
-
   return res
     .status(200)
-    .json(new ApiResponse(200, "Password updated successfully",user));
+    .json(new ApiResponse(200, "Password updated successfully", user));
 });
 
 const refreshAccessToken = asyncHandler(async (req, res) => {
@@ -505,7 +507,9 @@ const saveDeviceDetails = asyncHandler(async (req, res) => {
     throw new ApiError(401, "User not found");
   }
 
-  user.device_token = device_token;
+  if (!user.device_token.includes(device_token)) {
+    user.device_token.push(device_token);
+  }
   user.latitude = latitude;
   user.longitude = longitude;
   user.language = language;

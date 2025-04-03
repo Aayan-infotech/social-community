@@ -149,8 +149,8 @@ const friendRequest = asyncHandler(async (req, res) => {
     friendId,
     {
       type: "friend_request",
-      friendDetails: friendExists,
-    }
+      friendDetails: JSON.stringify(friendExists),
+    },
   );
 
   res.json(new ApiResponse(200, "Friend request added successfully", data));

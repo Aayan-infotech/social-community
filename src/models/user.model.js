@@ -97,8 +97,8 @@ const userSchema = new mongoose.Schema(
       default: null,
     },
     device_token: {
-      type: String,
-      default: null,
+      type: [String],
+      default: [],
     },
     latitude: {
       type: String,
@@ -141,6 +141,9 @@ userSchema.pre("save", async function (next) {
 
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();
+  if (this.previous_passwords.length >= 5) {
+    this.previous_passwords.shift();
+  }
   this.previous_passwords.push(this.password);
   next();
 });

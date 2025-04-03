@@ -8,8 +8,10 @@ import {
   editComment,
   getComments,
   addReplyComment,
+  editReplyComment,
   getPostDetails,
-  getPostLikedBy
+  getPostLikedBy,
+  getReplyofComment
 } from "../controllers/posts.controller.js";
 import { validateRequest } from "../middlewares/validation.middleware.js";
 import {
@@ -17,6 +19,8 @@ import {
   postLikeDislikeSchema,
   postCommentSchema,
   postEditCommentSchema,
+  postReplySchema,
+  postEditReplySchema
 } from "../validators/postValidator.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import errorHandler from "../middlewares/errorhandler.middleware.js";
@@ -57,7 +61,9 @@ router.put(
   editComment
 );
 router.get("/get-comments/:postId", verifyJWT, getComments);
-router.post("/add-reply",verifyJWT, addReplyComment);
+router.post("/add-reply",verifyJWT,validateRequest(postReplySchema),addReplyComment);
+router.put("/edit-reply",verifyJWT,validateRequest(postEditReplySchema),editReplyComment);
+router.get("/get-reply",verifyJWT,getReplyofComment);
 
 router.get('/post-details/:postId',verifyJWT,getPostDetails);
 router.get('/get-post-likedby/:postId',verifyJWT,getPostLikedBy);
