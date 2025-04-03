@@ -127,6 +127,10 @@ const userSchema = new mongoose.Schema(
       default: false,
       required: true,
     },
+    aboutMe: {
+      type: String,
+      default: null,
+    },
   },
   {
     timestamps: true,

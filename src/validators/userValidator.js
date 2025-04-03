@@ -292,6 +292,102 @@ const acceptRejectFriendRequestSchema = Joi.object({
   }),
 });
 
+
+const upsertExperienceSchema = Joi.object({
+  id: Joi.string().optional().allow("").messages({
+    "string.base": "Experience Id must be a string.",
+  }),
+  title: Joi.string().min(1).max(150).required().messages({
+    "string.base": "Title must be a string.",
+    "string.empty": "Title is required.",
+    "string.min": "Title must be at least 1 characters.",
+    "string.max": "Title cannot exceed 150 characters.",
+    "any.required": "Title is required.",
+  }),
+  employmentType: Joi.string().required().valid("Full-time", "Part-time", "Internship", "Self-employed", "Freelance", "Trainee").messages({
+    "string.base": "Employment Type must be a string.",
+    "string.empty": "Employment Type is required.",
+    "any.only": "Employment Type must be one of 'Full-time', 'Part-time', 'Internship', 'Self-employed', 'Freelance', or 'Trainee'.",
+    "any.required": "Employment Type is required.",
+  }),
+  companyName: Joi.string().min(1).max(150).required().messages({
+    "string.base": "Company Name must be a string.",
+    "string.empty": "Company Name is required.",
+    "string.min": "Company Name must be at least 1 characters.",
+    "string.max": "Company Name cannot exceed 150 characters.",
+    "any.required": "Company Name is required.",
+  }),
+  startDate: Joi.date().required().messages({
+    "date.base": "Start Date must be a valid date.",
+    "date.empty": "Start Date is required.",
+    "any.required": "Start Date is required.",
+  }),
+  endDate: Joi.date().optional().allow("").messages({
+    "date.base": "End Date must be a valid date.",
+  }),
+  location: Joi.string().optional().allow("").messages({
+    "string.base": "Location must be a string.",
+  }),
+  locationType: Joi.string().valid("On-site", "Remote", "Hybrid").optional().messages({
+    "string.base": "Location Type must be a string.",
+    "any.only": "Location Type must be one of 'On-site', 'Remote', or 'Hybrid'.",
+  }),
+  description: Joi.string().optional().allow("").messages({
+    "string.base": "Description must be a string.",
+  }),
+  skills: Joi.array().items(Joi.string()).optional().allow("").messages({
+    "array.base": "Skills must be an array of strings.",
+  }),
+  isCurrentWorking: Joi.boolean().optional().messages({
+    "boolean.base": "Is Current Working must be a boolean.",
+  }),
+});
+
+
+const educationSchema = Joi.object({
+  id: Joi.string().optional().allow("").messages({
+    "string.base": "Education Id must be a string.",
+  }),
+  institutionName: Joi.string().min(1).max(150).required().messages({
+    "string.base": "Institution Name must be a string.",
+    "string.empty": "Institution Name is required.",
+    "string.min": "Institution Name must be at least 1 characters.",
+    "string.max": "Institution Name cannot exceed 150 characters.",
+    "any.required": "Institution Name is required.",
+  }),
+  degree: Joi.string().min(1).max(150).required().messages({
+    "string.base": "Degree must be a string.",
+    "string.empty": "Degree is required.",
+    "string.min": "Degree must be at least 1 characters.",
+    "string.max": "Degree cannot exceed 150 characters.",
+    "any.required": "Degree is required.",
+  }),
+  fieldOfStudy: Joi.string().min(1).max(150).required().messages({
+    "string.base": "Field of Study must be a string.",
+    "string.empty": "Field of Study is required.",
+    "string.min": "Field of Study must be at least 1 characters.",
+    "string.max": "Field of Study cannot exceed 150 characters.",
+    "any.required": "Field of Study is required.",
+  }),
+  startDate: Joi.date().required().messages({
+    "date.base": "Start Date must be a valid date.",
+    "date.empty": "Start Date is required.",
+    "any.required": "Start Date is required.",
+  }),
+  endDate: Joi.date().optional().allow("").messages({
+    "date.base": "End Date must be a valid date.",
+  }),
+  description: Joi.string().optional().allow("").messages({
+    "string.base": "Description must be a string.",
+  }),
+  skills: Joi.array().items(Joi.string()).optional().allow("").messages({
+    "array.base": "Skills must be an array of strings.",
+  }),
+  grade: Joi.string().optional().allow("").messages({
+    "string.base": "Grade must be a string.",
+  }),
+});
+
 export {
   userValidationSchema,
   loginValidationSchema,
@@ -302,4 +398,6 @@ export {
   saveDeviceDetailsSchema,
   friendRequestSchema,
   acceptRejectFriendRequestSchema,
+  upsertExperienceSchema,
+  educationSchema
 };

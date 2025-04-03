@@ -2,7 +2,7 @@ import multer from "multer";
 import { extname } from "path";
 import { ApiError } from "../utils/ApiError.js";
 
-const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.pdf'];
+const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.pdf','.mp4'];
 
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {

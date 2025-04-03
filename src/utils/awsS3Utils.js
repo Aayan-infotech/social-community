@@ -1,6 +1,11 @@
-import { S3Client, PutObjectCommand ,DeleteObjectCommand } from "@aws-sdk/client-s3";
+import {
+  S3Client,
+  PutObjectCommand,
+  DeleteObjectCommand,
+} from "@aws-sdk/client-s3";
 import fs from "fs";
 import { ApiError } from "./ApiError.js";
+import sharp from "sharp";
 
 // Initialize the S3 client
 const s3 = new S3Client({
@@ -17,8 +22,7 @@ const uploadImage = async (file) => {
     const fileContent = fs.readFileSync(file.path);
     if (!fileContent) {
       throw new ApiError(400, "Invalid file");
-    }
-
+    } 
     const params = {
       Bucket: process.env.AWS_BUCKET_NAME,
       Key: file.filename,
@@ -26,35 +30,61 @@ const uploadImage = async (file) => {
       ContentType: file.mimetype,
     };
 
-
     const command = new PutObjectCommand(params);
     const data = await s3.send(command);
 
-    // remove the file 
+    // remove the file
     fs.unlinkSync(file.path);
 
-    return `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${file.filename}`;
+    // return `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${file.filename}`;
+    return {success: true, fileUrl: `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${file.filename}`};
   } catch (error) {
     fs.unlinkSync(file.path);
     throw new ApiError(500, error.message);
   }
 };
 
-// Delete the image on the aws upload server using the imageURL 
+// Delete the image on the aws upload server using the imageURL
 const deleteImage = async (imageUrl) => {
   try {
-    const fileName = imageUrl.split('/').pop();
+    const fileName = imageUrl.split("/").pop();
     const params = {
       Bucket: process.env.AWS_BUCKET_NAME,
       Key: fileName,
     };
 
     await s3.send(new DeleteObjectCommand(params));
-    return `Image ${fileName} deleted successfully from S3`;  
+    return `Image ${fileName} deleted successfully from S3`;
   } catch (error) {
     throw new ApiError(500, error.message);
   }
 };
 
-export { uploadImage ,deleteImage };
+const saveCompressedImage = async (file, width, height) => {
+  try {
+    const resizedBuffer = await sharp(file.path)
+      .resize(width)
+      .toFormat("webp")
+      .toBuffer();
 
+    // generate a unique name for the thumbnail
+    const thumbnailName = `image-${Date.now()}.webp`;
+    const thumbnailPath = `public/temp/${thumbnailName}`;
+    fs.writeFileSync(thumbnailPath, resizedBuffer);
+
+    const fileObject = {
+      path: thumbnailPath,
+      originalname: thumbnailName,
+      filename: thumbnailName,
+      mimetype: "image/webp",
+    };
+
+    const thumbnailUrl = await uploadImage(fileObject);
+
+    return { success: true, thumbnailUrl };
+  } catch (error) {
+    throw new ApiError(500, error.message);
+  }
+};
+
+export { uploadImage, deleteImage, saveCompressedImage };

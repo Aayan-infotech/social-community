@@ -1,25 +1,72 @@
+import mongoose from "mongoose";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { User } from "../models/user.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
-import { deleteImage, uploadImage } from "../utils/awsS3Utils.js";
+import {
+  deleteImage,
+  saveCompressedImage,
+  uploadImage,
+} from "../utils/awsS3Utils.js";
 import { FriendsModel } from "../models/friends.model.js";
 import sendPushNotification from "../utils/sendPushNotification.js";
 import NotificationModel from "../models/notification.model.js";
 import FriendRequestModel from "./../models/friends_request.model.js";
 import PostModel from "../models/posts.model.js";
+import fs from "fs";
+import { Experience } from "../models/experience.model.js";
+import { Education } from "../models/education.model.js";
 
 const getUserProfile = asyncHandler(async (req, res) => {
   const userId = req.query.user_id || req.user.userId;
-  let aggregation = [];
+
+  const aggregation = [];
   aggregation.push({ $match: { userId } });
-  const friends = await FriendsModel.findOne({ userId });
-  let count = friends ? friends.friends.length : 0;
+  aggregation.push({
+    $lookup: {
+      from: "educations",
+      localField: "userId",
+      foreignField: "userId",
+      as: "education",
+    },
+  });
+  aggregation.push({
+    $lookup: {
+      from: "experiences",
+      localField: "userId",
+      foreignField: "userId",
+      as: "experience",
+    },
+  });
 
-  const posts = await PostModel.find({
-    userId,
-  }).countDocuments();
-
+  aggregation.push({
+    $lookup: {
+      from: "friends",
+      localField: "userId",
+      foreignField: "userId",
+      as: "friendsData",
+    },
+  });
+  aggregation.push({
+    $lookup: {
+      from: "posts",
+      localField: "userId",
+      foreignField: "userId",
+      as: "postsData",
+    },
+  });
+  aggregation.push({
+    $addFields: {
+      profile_image: {
+        $ifNull: [
+          "$profile_image",
+          `${req.protocol}://${req.hostname}:${process.env.PORT}/placeholder/person.png`,
+        ],
+      },
+      friendsCount: { $size: { $ifNull: ["$friendsData.friends", []] } },
+      postsCount: { $size: "$postsData" },
+    },
+  });
   aggregation.push({
     $project: {
       _id: 0,
@@ -32,27 +79,23 @@ const getUserProfile = asyncHandler(async (req, res) => {
       bio: 1,
       state: 1,
       country: 1,
+      aboutMe: 1,
       referralCode: 1,
-      profile_image: {
-        $ifNull: [
-          "$profile_image",
-          `${req.protocol}://${req.hostname}:${process.env.PORT}/placeholder/person.png`,
-        ],
-      },
-    },
-  });
-  aggregation.push({
-    $addFields: {
-      friendsCount: count,
-      postsCount: posts,
+      profile_image: 1,
+      experience: 1,
+      friendsCount: 1,
+      postsCount: 1,
+      education: 1,
     },
   });
 
   const user = await User.aggregate(aggregation);
+
   if (!user.length) {
     throw new ApiError(404, "User not found");
   }
-  res.json(new ApiResponse(200, "User profile fetched successfully", user));
+
+  res.json(new ApiResponse(200, "User profile fetched successfully", user[0]));
 });
 
 const updateUserProfile = asyncHandler(async (req, res) => {
@@ -67,18 +110,30 @@ const updateUserProfile = asyncHandler(async (req, res) => {
   //     throw new ApiError(400, "Mobile number already exists");
   //   }
   // }
+  console.log(req.files);
 
   let profile_image = req.user?.profile_image
     ? req.user?.profile_image
     : process.env.APP;
 
   if (req.files && req.files.profile_image) {
-    // Delete the previous profile image from aws account
+    // Delete the previous profile image from AWS
     if (req.user.profile_image) {
       await deleteImage(req.user.profile_image);
     }
-    // Upload the new profile image to aws account
-    profile_image = await uploadImage(req.files.profile_image[0]);
+
+    // Upload the new profile image to AWS S3
+    const updateStatus = await saveCompressedImage(
+      req.files.profile_image[0],
+      200
+    );
+    // console.log("updateStatus", updateStatus);
+    if (updateStatus.success) {
+      profile_image = updateStatus.thumbnailUrl;
+    }
+
+    // remove the oringinal file from the server
+    fs.unlinkSync(req.files.profile_image[0].path);
   }
 
   const user = await User.findByIdAndUpdate(
@@ -150,7 +205,7 @@ const friendRequest = asyncHandler(async (req, res) => {
     {
       type: "friend_request",
       friendDetails: JSON.stringify(friendExists),
-    },
+    }
   );
 
   res.json(new ApiResponse(200, "Friend request added successfully", data));
@@ -587,6 +642,151 @@ const getUserPosts = asyncHandler(async (req, res) => {
   );
 });
 
+const updateUserAboutMe = asyncHandler(async (req, res) => {
+  const { aboutMe } = req.body;
+  if (!aboutMe) {
+    throw new ApiError(400, "About me is required");
+  }
+
+  const user = await User.findByIdAndUpdate(
+    req.user._id,
+    { aboutMe },
+    { new: true }
+  ).select(
+    "-password -refreshToken -previous_passwords -_id -__v -referrals -referredBy -otpExpire -otp"
+  );
+
+  res.json(new ApiResponse(200, "About me updated successfully", user));
+});
+
+// const upsertExperience = asyncHandler(async (req, res) => {
+//   // throw new ApiError(400, "Not implemented yet");
+//   const {
+//     title,
+//     employmentType,
+//     companyName,
+//     startDate,
+//     endDate,
+//     location,
+//     locationType,
+//     description,
+//     isCurrentWorking,
+//     skills,
+//   } = req.body;
+//   const userId = req.user.userId;
+
+//   console.log(req.body);
+//   // upsert the experience in the DB
+
+//   const experience = await Experience.findByIdAndUpdate(
+//     req.body.id,
+//     {
+//       $set: {
+//         title,
+//         employmentType,
+//         companyName,
+//         startDate,
+//         endDate,
+//         location,
+//         locationType,
+//         description,
+//         isCurrentWorking,
+//         skills,
+//       },
+//     },
+//     { new: true, upsert: true }
+//   );
+//   if (!experience) {
+//     throw new ApiError(404, "Experience not found");
+//   }
+
+//   res.json(new ApiResponse(200, "Experience updated successfully", experience));
+// });
+const upsertExperience = asyncHandler(async (req, res) => {
+  const {
+    id,
+    title,
+    employmentType,
+    companyName,
+    startDate,
+    endDate,
+    location,
+    locationType,
+    description,
+    isCurrentWorking,
+    skills,
+  } = req.body;
+  const userId = req.user.userId;
+
+  if (!title || !employmentType || !companyName || !startDate) {
+    throw new ApiError(400, "Missing required fields");
+  }
+
+  let updateData = {
+    title,
+    employmentType,
+    companyName,
+    startDate,
+    location,
+    locationType,
+    description,
+    isCurrentWorking,
+    skills,
+    userId,
+  };
+
+  if (isCurrentWorking) {
+    updateData.endDate = null;
+  } else {
+    updateData.endDate = endDate || null;
+  }
+
+  const experience = await Experience.findByIdAndUpdate(
+    id || new mongoose.Types.ObjectId(),
+    { $set: updateData },
+    { new: true, upsert: true }
+  );
+
+  res.json(new ApiResponse(200, "Experience updated successfully", experience));
+
+});
+
+const upsertEducation = asyncHandler(async (req, res) => {
+  const {
+    id,
+    institutionName,
+    degree,
+    fieldOfStudy,
+    startDate,
+    endDate,
+    description,
+    skills,
+    grade,
+  } = req.body;
+
+  const userId = req.user.userId;
+
+  const updateData = {
+    institutionName,
+    degree,
+    fieldOfStudy,
+    startDate,
+    endDate: endDate || null,
+    description,
+    skills,
+    grade,
+    userId,
+  };
+
+  const education = await Education.findByIdAndUpdate(
+    id || new mongoose.Types.ObjectId(),
+    { $set: updateData },
+    { new: true, upsert: true }
+  );
+
+  res.json(new ApiResponse(200, "Education updated successfully", education));
+});
+
 export {
   getUserProfile,
   updateUserProfile,
@@ -597,4 +797,7 @@ export {
   getFriendSuggestionList,
   getNotifications,
   getUserPosts,
+  updateUserAboutMe,
+  upsertExperience,
+  upsertEducation,
 };

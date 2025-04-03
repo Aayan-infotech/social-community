@@ -10,6 +10,9 @@ import {
   getFriendSuggestionList,
   getNotifications,
   getUserPosts,
+  updateUserAboutMe,
+  upsertExperience,
+  upsertEducation
 } from "../controllers/users.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { validateRequest } from "../middlewares/validation.middleware.js";
@@ -17,6 +20,8 @@ import {
   updateProfileSchema,
   friendRequestSchema,
   acceptRejectFriendRequestSchema,
+  upsertExperienceSchema,
+  educationSchema
 } from "../validators/userValidator.js";
 import errorHandler from "../middlewares/errorhandler.middleware.js";
 
@@ -54,5 +59,8 @@ router.get("/get-friends", verifyJWT, getFriendList);
 router.get("/get-friend-suggestions", verifyJWT, getFriendSuggestionList);
 router.get("/get-notifications", verifyJWT, getNotifications);
 router.get('/get-user-posts', verifyJWT, getUserPosts);
+router.put('/update-about-me', verifyJWT, updateUserAboutMe);
+router.post('/upsert-experience',verifyJWT, validateRequest(upsertExperienceSchema),upsertExperience);
+router.post('/upsert-education',verifyJWT,validateRequest(educationSchema),upsertEducation);
 
 export default router;

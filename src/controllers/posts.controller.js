@@ -5,7 +5,8 @@ import { User } from "../models/user.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
-import { uploadImage } from "../utils/awsS3Utils.js";
+import { uploadImage, saveCompressedImage } from "../utils/awsS3Utils.js";
+import fs from "fs";
 
 const createPost = asyncHandler(async (req, res) => {
   const { title, description, type } = req.body;
@@ -13,7 +14,25 @@ const createPost = asyncHandler(async (req, res) => {
   let media = [];
   if (req.files && req.files.media) {
     for (const file of req.files.media) {
-      media.push(await uploadImage(file));
+      // console.log(file);
+      if (file.mimetype !== "video/mp4") {
+        const saveUpload = await saveCompressedImage(file, 600);
+        if (!saveUpload.success) {
+          throw new ApiError(400, "Image upload failed");
+        } else {
+          media.push(saveUpload.thumbnailUrl);
+        }
+      }else{
+        const upload = await uploadImage(file);
+        if (!upload.success) {
+          throw new ApiError(400, "Video upload failed");
+        } else {
+          media.push(upload.fileUrl);
+        }
+      }
+
+      // remove the file from the server
+      fs.unlinkSync(file.path);
     }
   }
 
@@ -152,7 +171,6 @@ const editComment = asyncHandler(async function (req, res) {
   const { postId, commentId, comment } = req.body;
   const userId = req.user.userId;
 
-
   const updateComment = await CommentModel.findOneAndUpdate(
     { _id: commentId, userId, postId },
     { comment },
@@ -236,8 +254,8 @@ const addReplyComment = asyncHandler(async (req, res) => {
   const { commentId, comment } = req.body;
   const userId = req.user.userId;
 
-  if(!userId){
-    throw new ApiError(400,"User Not found");
+  if (!userId) {
+    throw new ApiError(400, "User Not found");
   }
 
   // find the comment
@@ -250,7 +268,7 @@ const addReplyComment = asyncHandler(async (req, res) => {
   const replyComment = new ReplyModel({
     userId,
     commentId,
-    comment
+    comment,
   });
 
   await replyComment.save();
@@ -266,8 +284,8 @@ const editReplyComment = asyncHandler(async (req, res) => {
   const { replyId, comment } = req.body;
   const userId = req.user.userId;
 
-  if(!userId){
-    throw new ApiError(400,"User Not found");
+  if (!userId) {
+    throw new ApiError(400, "User Not found");
   }
 
   // find the reply comment
@@ -329,8 +347,6 @@ const getReplyofComment = asyncHandler(async (req, res) => {
   });
 
   const replyComments = await ReplyModel.aggregate(aggregation);
-  
-
 });
 
 const getPostDetails = asyncHandler(async (req, res) => {
