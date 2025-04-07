@@ -11,7 +11,8 @@ import {
   editReplyComment,
   getPostDetails,
   getPostLikedBy,
-  getReplyofComment
+  getReplyofComment,
+  updatePost,
 } from "../controllers/posts.controller.js";
 import { validateRequest } from "../middlewares/validation.middleware.js";
 import {
@@ -20,7 +21,8 @@ import {
   postCommentSchema,
   postEditCommentSchema,
   postReplySchema,
-  postEditReplySchema
+  postEditReplySchema,
+  updatePostSchema,
 } from "../validators/postValidator.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import errorHandler from "../middlewares/errorhandler.middleware.js";
@@ -39,6 +41,20 @@ router.post(
   errorHandler,
   validateRequest(postValidationSchema),
   createPost
+);
+
+router.put(
+  "/update-post",
+  verifyJWT,
+  upload.fields([
+    {
+      name: "media",
+      maxCount: 2,
+    },
+  ]),
+  validateRequest(updatePostSchema),
+  errorHandler,
+  updatePost
 );
 
 router.get("/get-posts", verifyJWT, getPosts);
@@ -61,11 +77,21 @@ router.put(
   editComment
 );
 router.get("/get-comments/:postId", verifyJWT, getComments);
-router.post("/add-reply",verifyJWT,validateRequest(postReplySchema),addReplyComment);
-router.put("/edit-reply",verifyJWT,validateRequest(postEditReplySchema),editReplyComment);
-router.get("/get-reply",verifyJWT,getReplyofComment);
+router.post(
+  "/add-reply",
+  verifyJWT,
+  validateRequest(postReplySchema),
+  addReplyComment
+);
+router.put(
+  "/edit-reply",
+  verifyJWT,
+  validateRequest(postEditReplySchema),
+  editReplyComment
+);
+router.get("/get-reply", verifyJWT, getReplyofComment);
 
-router.get('/post-details/:postId',verifyJWT,getPostDetails);
-router.get('/get-post-likedby/:postId',verifyJWT,getPostLikedBy);
+router.get("/post-details/:postId", verifyJWT, getPostDetails);
+router.get("/get-post-likedby/:postId", verifyJWT, getPostLikedBy);
 
 export default router;

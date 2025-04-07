@@ -111,6 +111,30 @@ const postEditReplySchema = Joi.object({
   })
 });
 
+const updatePostSchema = Joi.object({
+  postId: Joi.string().required().messages({
+    "string.base": "Post ID must be a string.",
+    "string.empty": "Post ID is required.",
+    "any.required": "Post ID is required to update a post.",
+  }),
+  title: Joi.string().min(3).max(100).optional().messages({
+    "string.base": "Title must be a string.",
+    "string.empty": "Title is required.",
+    "string.min": "Title must be at least 3 characters.",
+    "string.max": "Title cannot exceed 100 characters.",
+  }),
+  description: Joi.string().optional().allow("").messages({
+    "string.base": "Description must be a string.",
+  }),
+  type: Joi.string().valid("social", "professional").optional().messages({
+    "string.base": "Type must be a string.",
+    "any.only": 'Type must be either "social" or "professional".',
+  }),
+  media: Joi.string().optional().allow("").messages({
+    "string.base": "media must be a string.",
+  }),
+});
+
 export {
   postValidationSchema,
   postLikeDislikeSchema,
@@ -118,4 +142,5 @@ export {
   postEditCommentSchema,
   postReplySchema,
   postEditReplySchema,
+  updatePostSchema,
 };

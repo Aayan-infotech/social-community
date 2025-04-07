@@ -48,4 +48,4 @@ const handleReferral=async(referralCode, newUserId)=>{
     return referrer.userId;
 }
 
-export { generateReferralCode, generateUniqueUserId, handleReferral };
+export { generateReferralCode, generateUniqueUserId, handleReferral  };

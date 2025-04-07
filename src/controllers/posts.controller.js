@@ -12,6 +12,7 @@ import {
   compressVideo,
 } from "../utils/awsS3Utils.js";
 import fs, { stat } from "fs";
+import { isValidObjectId } from "../utils/isValidObjectId.js";
 
 const createPost = asyncHandler(async (req, res) => {
   const { title, description, type } = req.body;
@@ -37,7 +38,7 @@ const createPost = asyncHandler(async (req, res) => {
           originalname: file.originalname,
           filename: file.filename,
           mimetype: file.mimetype,
-        }
+        };
         const upload = await uploadVideo(compressedFile);
         if (!upload.success) {
           throw new ApiError(400, "Video upload failed");
@@ -65,8 +66,58 @@ const createPost = asyncHandler(async (req, res) => {
 });
 
 const updatePost = asyncHandler(async function (req, res) {
-  const postId = req.params.postId;
-  const { title, description, type } = req.body;
+  const { postId, title, description, type } = req.body;
+  if (!isValidObjectId(postId)) {
+    throw new ApiError(400, "Invalid post ID");
+  }
+
+  const post = await PostModel.findById(postId);
+  if (!post) {
+    throw new ApiError(404, "Post not found");
+  }
+
+  // update the post images and videos
+  let media = post.media || [];
+  if (req.files && req.files.media) {
+    for (const file of req.files.media) {
+      if (file.mimetype !== "video/mp4") {
+        const saveUpload = await saveCompressedImage(file, 600);
+        if (!saveUpload.success) {
+          throw new ApiError(400, "Image upload failed");
+        } else {
+          post.media.push(saveUpload.thumbnailUrl);
+        }
+      } else {
+        const status = await compressVideo(file.path, "./public/temp");
+        if (!status.success) {
+          throw new ApiError(400, "Video compression failed");
+        }
+        const compressedFile = {
+          path: status.outputPath,
+          originalname: file.originalname,
+          filename: file.filename,
+          mimetype: file.mimetype,
+        };
+        const upload = await uploadVideo(compressedFile);
+        if (!upload.success) {
+          throw new ApiError(400, "Video upload failed");
+        } else {
+          post.media.push(upload.videoUrl);
+        }
+      }
+
+      fs.unlinkSync(file.path);
+    }
+  }
+
+  post.title = title || post.title;
+  post.description = description || post.description;
+  post.type = type || post.type;
+  post.media = media || post.media;
+
+  await post.save();
+
+  res.json(new ApiResponse(200, "Post updated successfully", post));
 });
 
 const getPosts = asyncHandler(async function (req, res) {
@@ -462,4 +513,5 @@ export {
   getPostLikedBy,
   editReplyComment,
   getReplyofComment,
+  updatePost,
 };
