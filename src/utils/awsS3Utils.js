@@ -6,6 +6,9 @@ import {
 import fs from "fs";
 import { ApiError } from "./ApiError.js";
 import sharp from "sharp";
+import { Upload } from "@aws-sdk/lib-storage";
+import ffmpeg from "fluent-ffmpeg";
+import path from "path";
 
 // Initialize the S3 client
 const s3 = new S3Client({
@@ -22,7 +25,7 @@ const uploadImage = async (file) => {
     const fileContent = fs.readFileSync(file.path);
     if (!fileContent) {
       throw new ApiError(400, "Invalid file");
-    } 
+    }
     const params = {
       Bucket: process.env.AWS_BUCKET_NAME,
       Key: file.filename,
@@ -37,7 +40,10 @@ const uploadImage = async (file) => {
     fs.unlinkSync(file.path);
 
     // return `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${file.filename}`;
-    return {success: true, fileUrl: `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${file.filename}`};
+    return {
+      success: true,
+      fileUrl: `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${file.filename}`,
+    };
   } catch (error) {
     fs.unlinkSync(file.path);
     throw new ApiError(500, error.message);
@@ -45,7 +51,7 @@ const uploadImage = async (file) => {
 };
 
 // Delete the image on the aws upload server using the imageURL
-const deleteImage = async (imageUrl) => {
+const deleteObject = async (imageUrl) => {
   try {
     const fileName = imageUrl.split("/").pop();
     const params = {
@@ -54,7 +60,7 @@ const deleteImage = async (imageUrl) => {
     };
 
     await s3.send(new DeleteObjectCommand(params));
-    return `Image ${fileName} deleted successfully from S3`;
+    return `${fileName} deleted successfully from S3`;
   } catch (error) {
     throw new ApiError(500, error.message);
   }
@@ -81,10 +87,75 @@ const saveCompressedImage = async (file, width, height) => {
 
     const thumbnailUrl = await uploadImage(fileObject);
 
-    return { success: true, thumbnailUrl };
+    if(thumbnailUrl.success) {
+      return {
+        success: true,
+        thumbnailUrl: thumbnailUrl.fileUrl,
+      };
+    }else{
+      throw new ApiError(500, "Failed to upload thumbnail");
+    }
   } catch (error) {
     throw new ApiError(500, error.message);
   }
 };
 
-export { uploadImage, deleteImage, saveCompressedImage };
+const uploadVideo = async (file) => {
+  try {
+    if (!file) {
+      throw new Error("No file uploaded");
+    }
+
+    const fileStream = fs.createReadStream(file.path);
+
+    const uploadParams = {
+      Bucket: process.env.AWS_BUCKET_NAME,
+      Key: `videos/${file.filename}`,
+      Body: fileStream,
+      ContentType: file.mimetype,
+    };
+
+    const upload = new Upload({
+      client: s3,
+      params: uploadParams,
+      tags: [],
+      queueSize: 3,
+    });
+
+    upload.on("httpUploadProgress", (progress) => {
+      console.log(`Uploading: ${progress.loaded} / ${progress.total}`);
+    });
+
+    const result = await upload.done();
+
+    fs.unlinkSync(file.path);
+
+    return { success: true, videoUrl: result.Location };
+  } catch (error) {
+    console.error(error);
+    throw new ApiError(500, error.message);
+  }
+};
+
+const compressVideo = (inputPath, outputFolder) => {
+  return new Promise((resolve, reject) => {
+    const compressedFilename = `compressed-${Date.now()}-${Math.round(Math.random() * 1e9)}.mp4`;
+    const outputPath = path.join(outputFolder, compressedFilename);
+    ffmpeg(inputPath)
+      .videoCodec("libx264")
+      .audioCodec("aac")
+      .size("480x360")
+      .outputOptions(["-preset slow", "-crf 28", "-movflags +faststart"])
+      .on("end", () => resolve({ success: true, outputPath }))
+      .on("error", (err) => reject(err))
+      .save(outputPath);
+  });
+};
+
+export {
+  uploadImage,
+  deleteObject,
+  saveCompressedImage,
+  uploadVideo,
+  compressVideo,
+};

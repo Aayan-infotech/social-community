@@ -5,8 +5,13 @@ import { User } from "../models/user.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
-import { uploadImage, saveCompressedImage } from "../utils/awsS3Utils.js";
-import fs from "fs";
+import {
+  uploadImage,
+  saveCompressedImage,
+  uploadVideo,
+  compressVideo,
+} from "../utils/awsS3Utils.js";
+import fs, { stat } from "fs";
 
 const createPost = asyncHandler(async (req, res) => {
   const { title, description, type } = req.body;
@@ -22,15 +27,24 @@ const createPost = asyncHandler(async (req, res) => {
         } else {
           media.push(saveUpload.thumbnailUrl);
         }
-      }else{
-        const upload = await uploadImage(file);
+      } else {
+        const status = await compressVideo(file.path, "./public/temp");
+        if (!status.success) {
+          throw new ApiError(400, "Video compression failed");
+        }
+        const compressedFile = {
+          path: status.outputPath,
+          originalname: file.originalname,
+          filename: file.filename,
+          mimetype: file.mimetype,
+        }
+        const upload = await uploadVideo(compressedFile);
         if (!upload.success) {
           throw new ApiError(400, "Video upload failed");
         } else {
-          media.push(upload.fileUrl);
+          media.push(upload.videoUrl);
         }
       }
-
       // remove the file from the server
       fs.unlinkSync(file.path);
     }

@@ -179,33 +179,32 @@ const changePasswordSchema = Joi.object({
     "any.required": "Old Password is required.",
   }),
   newPassword: Joi.string()
-  .min(8)
-  .max(15)
-  .pattern(
-    new RegExp(
-      "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&#])[A-Za-z\\d@$!%*?&#]{8,15}$"
+    .min(8)
+    .max(15)
+    .pattern(
+      new RegExp(
+        "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&#])[A-Za-z\\d@$!%*?&#]{8,15}$"
+      )
     )
-  )
-  .required()
-  .messages({
-    "string.base": "Password must be a string.",
-    "string.empty": "Password is required.",
-    "string.min": "Password must be at least 8 characters.",
-    "string.max": "Password cannot exceed 15 characters.",
-    "string.pattern.base":
-      "Password must include at least one lowercase letter, one uppercase letter, one number, and one special character (@$!%*?&#).",
-    "any.required": "Password is required.",
-  }),
+    .required()
+    .messages({
+      "string.base": "Password must be a string.",
+      "string.empty": "Password is required.",
+      "string.min": "Password must be at least 8 characters.",
+      "string.max": "Password cannot exceed 15 characters.",
+      "string.pattern.base":
+        "Password must include at least one lowercase letter, one uppercase letter, one number, and one special character (@$!%*?&#).",
+      "any.required": "Password is required.",
+    }),
   confirmPassword: Joi.string()
-  .valid(Joi.ref("newPassword"))
-  .required()
-  .messages({
-    "string.base": "Password must be a string.",
-    "string.empty": "Confirm Password is required.",
-    "any.only": "Password and Confirm Password should be same.",
-    "any.required": "Confirm Password is required.",
-  }),
-
+    .valid(Joi.ref("newPassword"))
+    .required()
+    .messages({
+      "string.base": "Password must be a string.",
+      "string.empty": "Confirm Password is required.",
+      "any.only": "Password and Confirm Password should be same.",
+      "any.required": "Confirm Password is required.",
+    }),
 });
 
 const wordLimit = (min, max) => {
@@ -292,7 +291,6 @@ const acceptRejectFriendRequestSchema = Joi.object({
   }),
 });
 
-
 const upsertExperienceSchema = Joi.object({
   id: Joi.string().optional().allow("").messages({
     "string.base": "Experience Id must be a string.",
@@ -304,12 +302,23 @@ const upsertExperienceSchema = Joi.object({
     "string.max": "Title cannot exceed 150 characters.",
     "any.required": "Title is required.",
   }),
-  employmentType: Joi.string().required().valid("Full-time", "Part-time", "Internship", "Self-employed", "Freelance", "Trainee").messages({
-    "string.base": "Employment Type must be a string.",
-    "string.empty": "Employment Type is required.",
-    "any.only": "Employment Type must be one of 'Full-time', 'Part-time', 'Internship', 'Self-employed', 'Freelance', or 'Trainee'.",
-    "any.required": "Employment Type is required.",
-  }),
+  employmentType: Joi.string()
+    .required()
+    .valid(
+      "Full-time",
+      "Part-time",
+      "Internship",
+      "Self-employed",
+      "Freelance",
+      "Trainee"
+    )
+    .messages({
+      "string.base": "Employment Type must be a string.",
+      "string.empty": "Employment Type is required.",
+      "any.only":
+        "Employment Type must be one of 'Full-time', 'Part-time', 'Internship', 'Self-employed', 'Freelance', or 'Trainee'.",
+      "any.required": "Employment Type is required.",
+    }),
   companyName: Joi.string().min(1).max(150).required().messages({
     "string.base": "Company Name must be a string.",
     "string.empty": "Company Name is required.",
@@ -328,10 +337,14 @@ const upsertExperienceSchema = Joi.object({
   location: Joi.string().optional().allow("").messages({
     "string.base": "Location must be a string.",
   }),
-  locationType: Joi.string().valid("On-site", "Remote", "Hybrid").optional().messages({
-    "string.base": "Location Type must be a string.",
-    "any.only": "Location Type must be one of 'On-site', 'Remote', or 'Hybrid'.",
-  }),
+  locationType: Joi.string()
+    .valid("On-site", "Remote", "Hybrid")
+    .optional()
+    .messages({
+      "string.base": "Location Type must be a string.",
+      "any.only":
+        "Location Type must be one of 'On-site', 'Remote', or 'Hybrid'.",
+    }),
   description: Joi.string().optional().allow("").messages({
     "string.base": "Description must be a string.",
   }),
@@ -342,7 +355,6 @@ const upsertExperienceSchema = Joi.object({
     "boolean.base": "Is Current Working must be a boolean.",
   }),
 });
-
 
 const educationSchema = Joi.object({
   id: Joi.string().optional().allow("").messages({
@@ -388,6 +400,24 @@ const educationSchema = Joi.object({
   }),
 });
 
+const addStorySchema = Joi.object({
+  mediaType: Joi.string().valid("image", "video", "text").required().messages({
+    "string.base": "Media Type must be a string.",
+    "any.only": "Media Type must be either 'image', 'video', or 'text'.",
+    "any.required": "Media Type is required.",
+  }),
+
+  
+  description: Joi.string()
+    .when("mediaType", {
+      is: "text",
+      then: Joi.required().messages({
+        "any.required": "Description is required when mediaType is 'text'.",
+      }),
+      otherwise: Joi.optional(),
+    }),
+});
+
 export {
   userValidationSchema,
   loginValidationSchema,
@@ -399,5 +429,6 @@ export {
   friendRequestSchema,
   acceptRejectFriendRequestSchema,
   upsertExperienceSchema,
-  educationSchema
+  educationSchema,
+  addStorySchema,
 };

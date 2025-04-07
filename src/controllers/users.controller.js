@@ -4,8 +4,10 @@ import { User } from "../models/user.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import {
-  deleteImage,
+  deleteObject,
   saveCompressedImage,
+  compressVideo,
+  uploadVideo,
   uploadImage,
 } from "../utils/awsS3Utils.js";
 import { FriendsModel } from "../models/friends.model.js";
@@ -16,6 +18,8 @@ import PostModel from "../models/posts.model.js";
 import fs from "fs";
 import { Experience } from "../models/experience.model.js";
 import { Education } from "../models/education.model.js";
+import { Story } from "../models/story.model.js";
+import path from "path";
 
 const getUserProfile = asyncHandler(async (req, res) => {
   const userId = req.query.user_id || req.user.userId;
@@ -101,16 +105,7 @@ const getUserProfile = asyncHandler(async (req, res) => {
 const updateUserProfile = asyncHandler(async (req, res) => {
   const { name, state, city, gender, bio } = req.body;
 
-  // check the other user don't have the same email and mobile number
   const userExists = await User.findOne({ _id: { $ne: req.user._id } });
-  // if (userExists) {
-  //   if (userExists.email === email) {
-  //     throw new ApiError(400, "Email already exists");
-  //   } else if (userExists.mobile === mobile) {
-  //     throw new ApiError(400, "Mobile number already exists");
-  //   }
-  // }
-  console.log(req.files);
 
   let profile_image = req.user?.profile_image
     ? req.user?.profile_image
@@ -119,7 +114,7 @@ const updateUserProfile = asyncHandler(async (req, res) => {
   if (req.files && req.files.profile_image) {
     // Delete the previous profile image from AWS
     if (req.user.profile_image) {
-      await deleteImage(req.user.profile_image);
+      await deleteObject(req.user.profile_image);
     }
 
     // Upload the new profile image to AWS S3
@@ -748,7 +743,6 @@ const upsertExperience = asyncHandler(async (req, res) => {
   );
 
   res.json(new ApiResponse(200, "Experience updated successfully", experience));
-
 });
 
 const upsertEducation = asyncHandler(async (req, res) => {
@@ -787,6 +781,69 @@ const upsertEducation = asyncHandler(async (req, res) => {
   res.json(new ApiResponse(200, "Education updated successfully", education));
 });
 
+const addStory = asyncHandler(async (req, res) => {
+  const { mediaType, description } = req.body;
+  const userId = req.user.userId;
+  const storyFile = req.files?.media;
+  if (mediaType === "video" || mediaType === "image") {
+    if (!storyFile || !storyFile.length) {
+      throw new ApiError(400, "Please upload a file");
+    }
+  }
+
+  let mediaUrl = null;
+  if (mediaType !== "text") {
+    if (storyFile && storyFile.length) {
+      // const uploadStatus = await uploadImage(storyFile[0]);
+      if(mediaType === "image"){
+        const uploadStatus = await saveCompressedImage(storyFile[0], 200);
+        if (uploadStatus.success) {
+          mediaUrl = uploadStatus.thumbnailUrl;
+        }
+      } else if(mediaType === "video"){
+        const compressedVideo = await compressVideo(storyFile[0].path,'./public/temp');
+        console.log("compressedVideo", compressedVideo);
+        if (!compressedVideo.success) {
+          // mediaUrl = uploadStatus.fileUrl;
+          throw new ApiError(400, "Unable to upload video to server");
+        }
+
+        const videoFile = {
+          path: compressedVideo.outputPath,
+          originalname: storyFile[0].originalname,
+          filename: storyFile[0].filename,
+          mimetype: storyFile[0].mimetype,
+        }
+
+
+        const uploadStatus = await uploadVideo(videoFile);
+        if (uploadStatus.success) {
+          mediaUrl = uploadStatus.videoUrl;
+        } else {
+          throw new ApiError(400, "Unable to upload video to server");
+        }
+
+        // remove the raw and compressed file from the server 
+        fs.unlinkSync(storyFile[0].path);
+      }
+    }
+    if (!mediaUrl) {
+      throw new ApiError(400, "Unable to upload file to server");
+    }
+  }
+
+  const story = new Story({
+    userId,
+    mediaType,
+    mediaUrl,
+    description,
+  });
+
+  await story.save();
+
+  res.json(new ApiResponse(200, "Story added successfully", story));
+});
+
 export {
   getUserProfile,
   updateUserProfile,
@@ -800,4 +857,5 @@ export {
   updateUserAboutMe,
   upsertExperience,
   upsertEducation,
+  addStory,
 };
