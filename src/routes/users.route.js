@@ -14,6 +14,7 @@ import {
   upsertExperience,
   upsertEducation,
   addStory,
+  getStories,
 } from "../controllers/users.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { validateRequest } from "../middlewares/validation.middleware.js";
@@ -87,5 +88,7 @@ router.post(
   errorHandler,
   addStory
 );
+
+router.get('/get-stories',verifyJWT,getStories);
 
 export default router;

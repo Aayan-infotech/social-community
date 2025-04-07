@@ -795,13 +795,16 @@ const addStory = asyncHandler(async (req, res) => {
   if (mediaType !== "text") {
     if (storyFile && storyFile.length) {
       // const uploadStatus = await uploadImage(storyFile[0]);
-      if(mediaType === "image"){
+      if (mediaType === "image") {
         const uploadStatus = await saveCompressedImage(storyFile[0], 200);
         if (uploadStatus.success) {
           mediaUrl = uploadStatus.thumbnailUrl;
         }
-      } else if(mediaType === "video"){
-        const compressedVideo = await compressVideo(storyFile[0].path,'./public/temp');
+      } else if (mediaType === "video") {
+        const compressedVideo = await compressVideo(
+          storyFile[0].path,
+          "./public/temp"
+        );
         console.log("compressedVideo", compressedVideo);
         if (!compressedVideo.success) {
           // mediaUrl = uploadStatus.fileUrl;
@@ -813,8 +816,7 @@ const addStory = asyncHandler(async (req, res) => {
           originalname: storyFile[0].originalname,
           filename: storyFile[0].filename,
           mimetype: storyFile[0].mimetype,
-        }
-
+        };
 
         const uploadStatus = await uploadVideo(videoFile);
         if (uploadStatus.success) {
@@ -823,7 +825,7 @@ const addStory = asyncHandler(async (req, res) => {
           throw new ApiError(400, "Unable to upload video to server");
         }
 
-        // remove the raw and compressed file from the server 
+        // remove the raw and compressed file from the server
         fs.unlinkSync(storyFile[0].path);
       }
     }
@@ -844,6 +846,59 @@ const addStory = asyncHandler(async (req, res) => {
   res.json(new ApiResponse(200, "Story added successfully", story));
 });
 
+const getStories = asyncHandler(async (req, res) => {
+  const userId = req.user.userId;
+  const friendList = await FriendsModel.findOne({userId}).select('friends');
+  const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const userIdsToFetch = [userId, ...friendList.friends];
+  const stories = await Story.aggregate([
+    {
+      $match: {
+        userId: { $in: userIdsToFetch },
+        createdAt: { $gte: twentyFourHoursAgo },
+      },
+    },
+    {
+      $sort: { createdAt: -1 },
+    },
+    {
+      $group: {
+        _id: "$userId",
+        stories: {
+          $push: {
+            mediaType: "$mediaType",
+            mediaUrl: "$mediaUrl",
+            description: "$description",
+            createdAt: "$createdAt",
+          },
+        },
+      },
+    },
+    {
+      $lookup: {
+        from: "users",
+        localField: "_id",
+        foreignField: "userId",
+        as: "userInfo",
+      },
+    },
+    {
+      $unwind: "$userInfo",
+    },
+    {
+      $project: {
+        userId: "$_id",
+        name: "$userInfo.name",
+        profile_image: "$userInfo.profile_image",
+        stories: 1,
+        _id: 0,
+      },
+    },
+  ]);
+
+  res.json(new ApiResponse(200, "Get the Stories Successfully", stories));
+});
+
 export {
   getUserProfile,
   updateUserProfile,
@@ -858,4 +913,5 @@ export {
   upsertExperience,
   upsertEducation,
   addStory,
+  getStories,
 };
