@@ -10,6 +10,7 @@ import {
 } from "../utils/HelperFunctions.js";
 import { generateOTP, sendOTP } from "../services/smsService.js";
 import { sendEmail } from "../services/emailService.js";
+import { DeleteAccountRequestModel } from "../models/delete_account_request.model.js";
 
 // const generateAccessAndRefreshTokens = async (userId) => {
 //   try {
@@ -165,7 +166,6 @@ const signup = asyncHandler(async (req, res) => {
 
 const loginUser = asyncHandler(async (req, res) => {
   const { email, mobile, password } = req.body;
-
   let userEmail = email.toLowerCase();
 
   if (!email) {
@@ -178,9 +178,23 @@ const loginUser = asyncHandler(async (req, res) => {
     $or: [{ email: userEmail }, { mobile }],
   });
 
+
   if (!user) {
-    throw new ApiError(404, "User Doesn't Exist Or Invalid Email");
+    throw new ApiError(404, "User Doesn't Exist Or Invalid Email Or Mobile No");
   }
+
+  // check if the User is DeleteaccountRequest is in pending or approved status
+  let deleteAccountRequest = await DeleteAccountRequestModel.findOne({
+    userId: user.userId,
+    status: { $in: ["pending", "approved"] },
+  });
+  if (deleteAccountRequest) {
+    throw new ApiError(
+      400,
+      "Your account is suspended. Please contact support for more information."
+    );
+  }
+
 
   const isValidPassord = await user.isPasswordCorrect(password);
 

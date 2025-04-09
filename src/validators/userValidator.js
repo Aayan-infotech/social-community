@@ -418,6 +418,23 @@ const addStorySchema = Joi.object({
     }),
 });
 
+const updateDeleteRequestSchema = Joi.object({
+  requestId: Joi.string().required().messages({
+    "string.base": "Request Id must be a string.",
+    "string.empty": "Request Id is required.",
+    "any.required": "Request Id is required.",
+  }),
+  status: Joi.string()
+    .valid("approved", "rejected")
+    .required()
+    .messages({
+      "string.base": "Status must be a string.",
+      "string.empty": "Status is required.",
+      "any.only": "Status must be either 'approved' or 'rejected'.",
+      "any.required": "Status is required.",
+    }),
+})
+
 export {
   userValidationSchema,
   loginValidationSchema,
@@ -431,4 +448,5 @@ export {
   upsertExperienceSchema,
   educationSchema,
   addStorySchema,
+  updateDeleteRequestSchema,
 };

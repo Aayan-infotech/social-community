@@ -19,7 +19,8 @@ import fs from "fs";
 import { Experience } from "../models/experience.model.js";
 import { Education } from "../models/education.model.js";
 import { Story } from "../models/story.model.js";
-import path from "path";
+import { DeleteAccountRequestModel } from "../models/delete_account_request.model.js";
+import { isValidObjectId } from "./../utils/isValidObjectId.js";
 
 const getUserProfile = asyncHandler(async (req, res) => {
   const userId = req.query.user_id || req.user.userId;
@@ -848,7 +849,7 @@ const addStory = asyncHandler(async (req, res) => {
 
 const getStories = asyncHandler(async (req, res) => {
   const userId = req.user.userId;
-  const friendList = await FriendsModel.findOne({userId}).select('friends');
+  const friendList = await FriendsModel.findOne({ userId }).select("friends");
   const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const userIdsToFetch = [userId, ...friendList.friends];
   const stories = await Story.aggregate([
@@ -899,6 +900,188 @@ const getStories = asyncHandler(async (req, res) => {
   res.json(new ApiResponse(200, "Get the Stories Successfully", stories));
 });
 
+const getAllUsers = asyncHandler(async (req, res) => {
+  // pagination
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.max(1, parseInt(req.query.limit) || 10);
+  const skip = (page - 1) * limit;
+
+  // add the pagination to the query
+  const users = await User.find()
+    .select(
+      "name userId email mobile profile_image gender city state country aboutMe referralCode"
+    )
+    .skip(skip)
+    .limit(limit);
+  const totalUsers = await User.countDocuments({});
+  const totalPages = Math.ceil(totalUsers / limit);
+  const currentPage = page;
+  const totalRecords = totalUsers;
+  const perPage = limit;
+  if (!users.length) {
+    throw new ApiError(404, "No users found");
+  }
+  res.json(
+    new ApiResponse(200, "Fetched all users successfully", {
+      users,
+      total_page: totalPages,
+      current_page: currentPage,
+      total_records: totalRecords,
+      per_page: perPage,
+    })
+  );
+});
+
+const deleteAccountRequest = asyncHandler(async (req, res) => {
+  const { reason } = req.body;
+  const userId = req.user.userId;
+
+  // Check if the delete account request already exists
+  const existingRequest = await DeleteAccountRequestModel.findOne({
+    userId,
+    status: ["pending", "approved"],
+  });
+  if (existingRequest) {
+    throw new ApiError(
+      400,
+      "A delete account request already exists for this user"
+    );
+  }
+
+  if (!reason) {
+    throw new ApiError(400, "Reason is required");
+  }
+
+  const deleteRequest = new DeleteAccountRequestModel({
+    userId,
+    reason,
+  });
+  await deleteRequest.save();
+
+  res.json(
+    new ApiResponse(
+      200,
+      "Delete account request submitted successfully",
+      deleteRequest
+    )
+  );
+});
+
+const getAllDeleteRequest = asyncHandler(async (req, res) => {
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.max(1, parseInt(req.query.limit) || 10);
+  const skip = (page - 1) * limit;
+
+  const aggregation = [];
+  aggregation.push({
+    $match: { status: "pending", isDeleted: false },
+  });
+  aggregation.push({
+    $lookup: {
+      from: "users",
+      localField: "userId",
+      foreignField: "userId",
+      as: "user",
+    },
+  });
+  aggregation.push({
+    $unwind: "$user",
+  });
+  aggregation.push({
+    $addFields: {
+      profile_image: {
+        $ifNull: [
+          "$user.profile_image",
+          `${req.protocol}://${req.hostname}:${process.env.PORT}/placeholder/person.png`,
+        ],
+      },
+    },
+  });
+
+  aggregation.push({
+    $project: {
+      _id: 1,
+      userId: 1,
+      reason: 1,
+      status: 1,
+      profile_image: 1,
+      name: "$user.name",
+      email: "$user.email",
+    },
+  });
+
+  aggregation.push({
+    $skip: skip,
+  });
+  aggregation.push({
+    $limit: limit,
+  });
+
+  const deleteRequests = await DeleteAccountRequestModel.aggregate(aggregation);
+  const totalRequests = await DeleteAccountRequestModel.countDocuments({
+    status: "pending",
+  });
+  const totalPages = Math.ceil(totalRequests / limit);
+  const currentPage = page;
+  const totalRecords = totalRequests;
+  const perPage = limit;
+
+  if (!deleteRequests.length) {
+    return res.json(
+      new ApiResponse(200, "No delete account requests found", [])
+    );
+  }
+
+  res.json(
+    new ApiResponse(200, "Fetched all delete account requests successfully", {
+      deleteRequests,
+      total_page: totalPages,
+      current_page: currentPage,
+      total_records: totalRecords,
+      per_page: perPage,
+    })
+  );
+});
+
+const updateDeleteRequest = asyncHandler(async (req, res) => {
+  const { requestId, status } = req.body;
+
+  if (!isValidObjectId(requestId)) {
+    throw new ApiError(400, "Invalid request ID");
+  }
+
+  // Check if the delete account request exists
+  const deleteRequest = await DeleteAccountRequestModel.findById(requestId);
+  if (!deleteRequest) {
+    throw new ApiError(404, "Delete account request not found");
+  }
+
+  // Update the status of the delete account request
+  if (status === "approved") {
+    // update the user status to deleted add isDeleted key in the userModel
+    await User.findOneAndUpdate(
+      { userId: deleteRequest.userId },
+      { $set: { isDeleted: true } }
+    );
+
+    deleteRequest.status = status;
+    await deleteRequest.save();
+
+    res.json(
+      new ApiResponse(
+        200,
+        "Delete account request updated successfully",
+        deleteRequest
+      )
+    );
+  } else {
+    await DeleteAccountRequestModel.findByIdAndDelete(requestId);
+    return res.json(
+      new ApiResponse(200, "Delete account request deleted successfully", null)
+    );
+  }
+});
+
 export {
   getUserProfile,
   updateUserProfile,
@@ -914,4 +1097,8 @@ export {
   upsertEducation,
   addStory,
   getStories,
+  getAllUsers,
+  deleteAccountRequest,
+  getAllDeleteRequest,
+  updateDeleteRequest,
 };

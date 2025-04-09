@@ -15,6 +15,10 @@ import {
   upsertEducation,
   addStory,
   getStories,
+  getAllUsers,
+  deleteAccountRequest,
+  getAllDeleteRequest,
+  updateDeleteRequest,
 } from "../controllers/users.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { validateRequest } from "../middlewares/validation.middleware.js";
@@ -25,6 +29,7 @@ import {
   upsertExperienceSchema,
   educationSchema,
   addStorySchema,
+  updateDeleteRequestSchema,
 } from "../validators/userValidator.js";
 import errorHandler from "../middlewares/errorhandler.middleware.js";
 
@@ -90,5 +95,13 @@ router.post(
 );
 
 router.get('/get-stories',verifyJWT,getStories);
+
+router.post('/delete-account-request',verifyJWT,deleteAccountRequest);
+
+// web apis
+router.get("/get-all-users",verifyJWT,getAllUsers);
+router.get("/get-all-delete-request",verifyJWT,getAllDeleteRequest);
+router.put("/update-delete-request",verifyJWT,validateRequest(updateDeleteRequestSchema),updateDeleteRequest);
+
 
 export default router;
