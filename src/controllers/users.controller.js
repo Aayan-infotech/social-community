@@ -974,7 +974,7 @@ const getAllDeleteRequest = asyncHandler(async (req, res) => {
 
   const aggregation = [];
   aggregation.push({
-    $match: { status: "pending", isDeleted: false },
+    $match: { status: "pending" },
   });
   aggregation.push({
     $lookup: {
@@ -1018,6 +1018,7 @@ const getAllDeleteRequest = asyncHandler(async (req, res) => {
   });
 
   const deleteRequests = await DeleteAccountRequestModel.aggregate(aggregation);
+  console.log(deleteRequests);
   const totalRequests = await DeleteAccountRequestModel.countDocuments({
     status: "pending",
   });
