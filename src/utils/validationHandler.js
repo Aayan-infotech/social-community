@@ -3,6 +3,7 @@ const validateSchema = async (schema, data) => {
       await schema.validateAsync(data, { abortEarly: true }); 
       return null;
     } catch (error) {
+      console.log(error);
       if (error.isJoi) {
         return error.details[0].message; 
       }

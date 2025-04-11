@@ -13,6 +13,7 @@ import {
   getPostLikedBy,
   getReplyofComment,
   updatePost,
+  getShortsVideo,
 } from "../controllers/posts.controller.js";
 import { validateRequest } from "../middlewares/validation.middleware.js";
 import {
@@ -35,7 +36,7 @@ router.post(
   upload.fields([
     {
       name: "media",
-      maxCount: 2,
+      maxCount: 1,
     },
   ]),
   errorHandler,
@@ -49,7 +50,7 @@ router.put(
   upload.fields([
     {
       name: "media",
-      maxCount: 2,
+      maxCount: 1,
     },
   ]),
   validateRequest(updatePostSchema),
@@ -93,5 +94,6 @@ router.get("/get-reply", verifyJWT, getReplyofComment);
 
 router.get("/post-details/:postId", verifyJWT, getPostDetails);
 router.get("/get-post-likedby/:postId", verifyJWT, getPostLikedBy);
+router.get("/get-shorts",verifyJWT,getShortsVideo);
 
 export default router;

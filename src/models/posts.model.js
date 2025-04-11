@@ -1,11 +1,19 @@
 import mongoose from "mongoose";
+import { type } from "os";
 
 const postSchema = new mongoose.Schema(
   {
     title: { type: String, required: true },
     description: { type: String, default: null },
     type: { type: String, enum: ["social", "professional"], required: true },
-    media: { type: [String], default: [] },
+    // media: [
+    //   {
+    //     url: { type: String, required: true },
+    //     type: { type: String, enum: ["image", "video"], required: true },
+    //   },
+    // ],
+    media: { type: String, required: true },
+    mediaType: { type: String, enum: ["image", "video"], required: true },
     likes: { type: Number, default: 0 },
     likedBy: { type: [String], default: [] },
     userId: { type: String, ref: "User", required: true },

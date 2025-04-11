@@ -17,7 +17,7 @@ const sendPushNotification = async (
       title,
       body,
     },
-    data
+    data,
   };
 
   // Save notificationi in the database
@@ -31,7 +31,9 @@ const sendPushNotification = async (
   });
 
   try {
-    const response = await firebaseAdmin.messaging().sendEachForMulticast(message);
+    const response = await firebaseAdmin
+      .messaging()
+      .sendEachForMulticast(message);
 
     console.log("Successfully sent message:", response);
     return response;

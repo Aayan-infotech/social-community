@@ -13,42 +13,61 @@ import {
 } from "../utils/awsS3Utils.js";
 import fs, { stat } from "fs";
 import { isValidObjectId } from "../utils/isValidObjectId.js";
+import { url } from "inspector";
 
 const createPost = asyncHandler(async (req, res) => {
   const { title, description, type } = req.body;
 
-  let media = [];
+  // let media = [];
+  let media = null;
+  let mediaType = null;
   if (req.files && req.files.media) {
-    for (const file of req.files.media) {
-      // console.log(file);
-      if (file.mimetype !== "video/mp4") {
-        const saveUpload = await saveCompressedImage(file, 600);
-        if (!saveUpload.success) {
-          throw new ApiError(400, "Image upload failed");
-        } else {
-          media.push(saveUpload.thumbnailUrl);
-        }
+    const file = req.files.media[0];
+    // for (const file of req.files.media) {
+    // console.log(file);
+    if (file.mimetype !== "video/mp4") {
+      const saveUpload = await saveCompressedImage(file, 600);
+      if (!saveUpload.success) {
+        throw new ApiError(400, "Image upload failed");
       } else {
-        const status = await compressVideo(file.path, "./public/temp");
-        if (!status.success) {
-          throw new ApiError(400, "Video compression failed");
-        }
-        const compressedFile = {
-          path: status.outputPath,
-          originalname: file.originalname,
-          filename: file.filename,
-          mimetype: file.mimetype,
-        };
-        const upload = await uploadVideo(compressedFile);
-        if (!upload.success) {
-          throw new ApiError(400, "Video upload failed");
-        } else {
-          media.push(upload.videoUrl);
-        }
+        // const uploadImageObject = {
+        //   url: saveUpload.thumbnailUrl,
+        //   type: "image",
+        // };
+        // media.push(uploadImageObject);
+
+        media = saveUpload.thumbnailUrl;
+        mediaType = "image";
       }
-      // remove the file from the server
-      fs.unlinkSync(file.path);
+    } else {
+      const status = await compressVideo(file.path, "./public/temp");
+      if (!status.success) {
+        throw new ApiError(400, "Video compression failed");
+      }
+      const compressedFile = {
+        path: status.outputPath,
+        originalname: file.originalname,
+        filename: file.filename,
+        mimetype: file.mimetype,
+      };
+      const upload = await uploadVideo(compressedFile);
+      if (!upload.success) {
+        throw new ApiError(400, "Video upload failed");
+      } else {
+        // media.push(upload.videoUrl);
+        // const uploadVideoObject = {
+        //   url: upload.videoUrl,
+        //   type: "video",
+        // };
+        // media.push(uploadVideoObject);
+
+        media = upload.videoUrl;
+        mediaType = "video";
+      }
     }
+    // remove the file from the server
+    fs.unlinkSync(file.path);
+    // }
   }
 
   // save the post data
@@ -58,6 +77,7 @@ const createPost = asyncHandler(async (req, res) => {
     type,
     userId: req.user.userId,
     media,
+    mediaType,
   });
 
   await post.save();
@@ -124,11 +144,17 @@ const getPosts = asyncHandler(async function (req, res) {
   const page = Math.max(1, parseInt(req.query.page) || 1);
   const limit = Math.max(1, parseInt(req.query.limit) || 10);
   const skip = (page - 1) * limit;
+  const userId = req.query.userId || req.user.userId;
+
+  const getUser = await User.find({ userId });
+  if (!getUser.length > 0) {
+    throw new ApiError(400, "Invalid User Id");
+  }
 
   // do this with aggregation
-  const excludeUserId = req.user.userId;
+  // const excludeUserId = req.user.userId;
   const totalPosts = await PostModel.find({
-    userId: { $ne: excludeUserId },
+    userId: { $eq: userId },
   }).countDocuments();
 
   let aggregation = [];
@@ -144,7 +170,7 @@ const getPosts = asyncHandler(async function (req, res) {
     $unwind: "$user",
   });
   aggregation.push({
-    $match: { userId: { $ne: excludeUserId } },
+    $match: { userId: { $eq: userId } },
   });
   aggregation.push({
     $sort: { createdAt: -1 },
@@ -164,14 +190,20 @@ const getPosts = asyncHandler(async function (req, res) {
       description: 1,
       type: 1,
       media: 1,
+      mediaType: 1,
       likes: 1,
-      likedBy: 1,
-      comments: 1,
-      createdAt: 1,
+      // likedBy: 1,
+      // comments: 1,
+      // createdAt: 1,
+      comment_count: { $size: "$comments" },
     },
   });
 
   const posts = await PostModel.aggregate(aggregation);
+
+  if (posts.length === 0) {
+    return res.json(new ApiResponse(200, "No posts found", []));
+  }
 
   res.json(
     new ApiResponse(200, "Posts fetched successfully", {
@@ -186,6 +218,9 @@ const getPosts = asyncHandler(async function (req, res) {
 
 const likeDisLikePost = asyncHandler(async (req, res) => {
   const { postId, like } = req.body;
+  if(!isValidObjectId(postId)){
+    throw new ApiError(400, "Invalid post ID");
+  }
   const userId = req.user.userId;
   const post = await PostModel.findById(postId);
   if (!post) {
@@ -213,6 +248,9 @@ const likeDisLikePost = asyncHandler(async (req, res) => {
 
 const addComment = asyncHandler(async (req, res) => {
   const { postId, comment } = req.body;
+  if (!isValidObjectId(postId)) {
+    throw new ApiError(400, "Invalid post ID");
+  }
   const userId = req.user.userId;
   const post = await PostModel.findById(postId);
   if (!post) {
@@ -234,6 +272,12 @@ const addComment = asyncHandler(async (req, res) => {
 
 const editComment = asyncHandler(async function (req, res) {
   const { postId, commentId, comment } = req.body;
+  if (!isValidObjectId(postId)) {
+    throw new ApiError(400, "Invalid post ID");
+  }
+  if (!isValidObjectId(commentId)) {
+    throw new ApiError(400, "Invalid comment ID");
+  }
   const userId = req.user.userId;
 
   const updateComment = await CommentModel.findOneAndUpdate(
@@ -253,6 +297,9 @@ const getComments = asyncHandler(async (req, res) => {
   const postId = req.params.postId;
   if (!postId) {
     throw new ApiError(400, "Post ID is required");
+  }
+  if (!isValidObjectId(postId)) {
+    throw new ApiError(400, "Invalid post ID");
   }
 
   const post = await PostModel.findById(postId);
@@ -304,6 +351,10 @@ const getComments = asyncHandler(async (req, res) => {
 
   const comments = await CommentModel.aggregate(aggregation);
 
+  if (comments.length === 0) {
+    return res.json(new ApiResponse(200, "No comments found", []));
+  }
+
   res.json(
     new ApiResponse(200, "Comments fetched successfully", {
       comments,
@@ -347,6 +398,9 @@ const addReplyComment = asyncHandler(async (req, res) => {
 
 const editReplyComment = asyncHandler(async (req, res) => {
   const { replyId, comment } = req.body;
+  if (!isValidObjectId(replyId)) {
+    throw new ApiError(400, "Invalid reply ID");
+  }
   const userId = req.user.userId;
 
   if (!userId) {
@@ -372,6 +426,9 @@ const getReplyofComment = asyncHandler(async (req, res) => {
   const commentId = req.query.commentId;
   if (!commentId) {
     throw new ApiError(400, "Comment ID is required");
+  }
+  if (!isValidObjectId(commentId)) {
+    throw new ApiError(400, "Invalid comment ID");
   }
   const page = Math.max(1, parseInt(req.query.page) || 1);
   const limit = Math.max(1, parseInt(req.query.limit) || 10);
@@ -418,6 +475,9 @@ const getPostDetails = asyncHandler(async (req, res) => {
   const postId = req.params.postId;
   if (!postId) {
     throw new ApiError(400, "Post ID is required");
+  }
+  if (!isValidObjectId(postId)) {
+    throw new ApiError(400, "Invalid post ID");
   }
   const getPost = await PostModel.findById(postId);
   if (!getPost) {
@@ -478,6 +538,9 @@ const getPostLikedBy = asyncHandler(async (req, res) => {
   if (!postId) {
     throw new ApiError(400, "Post ID is required");
   }
+  if (!isValidObjectId(postId)) {
+    throw new ApiError(400, "Invalid post ID");
+  }
 
   const post = await PostModel.findById(postId);
   if (!post) {
@@ -501,6 +564,73 @@ const getPostLikedBy = asyncHandler(async (req, res) => {
   res.json(new ApiResponse(200, "Post liked by users", users));
 });
 
+const getShortsVideo = asyncHandler(async (req, res) => {
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.max(1, parseInt(req.query.limit) || 10);
+  const skip = (page - 1) * limit;
+
+  const aggregation = [
+    {
+      $match: { mediaType: "video" },
+    },
+    {
+      $lookup: {
+        from: "users",
+        localField: "userId",
+        foreignField: "userId",
+        as: "user",
+      },
+    },
+    {
+      $unwind: "$user",
+    },
+    {
+      $sort: { createdAt: -1 },
+    },
+    {
+      $facet: {
+        posts: [
+          { $skip: skip },
+          { $limit: limit },
+          {
+            $project: {
+              "user.name": 1,
+              "user.profile_image": 1,
+              "user.userId": 1,
+              title: 1,
+              description: 1,
+              type: 1,
+              media: 1,
+              likes: 1,
+              comment_count: { $size: "$comments" },
+            },
+          },
+        ],
+        totalCount: [
+          { $count: "count" },
+        ],
+      },
+    },
+  ];
+
+  const result = await PostModel.aggregate(aggregation);
+
+  const posts = result[0]?.posts || [];
+  const totalCount = result[0]?.totalCount[0]?.count || 0;
+  const totalPages = Math.ceil(totalCount / limit);
+
+  res.json(
+    new ApiResponse(200, posts.length ? "Short Videos fetched successfully" : "No Short Video found", {
+      posts,
+      total_page: totalPages,
+      current_page: page,
+      total_records: totalCount,
+      per_page: limit,
+    })
+  );
+});
+
+
 export {
   createPost,
   getPosts,
@@ -514,4 +644,5 @@ export {
   editReplyComment,
   getReplyofComment,
   updatePost,
+  getShortsVideo,
 };
