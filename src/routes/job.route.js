@@ -14,7 +14,7 @@ import {
   uploadResume,
   getResume,
   getJobDetails,
-} from "../controllers/jobs.controlller.js";
+} from "../controllers/jobs.controller.js";
 
 const router = Router();
 
