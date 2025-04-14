@@ -14,6 +14,7 @@ import {
   getReplyofComment,
   updatePost,
   getShortsVideo,
+  getHomeFeed,
 } from "../controllers/posts.controller.js";
 import { validateRequest } from "../middlewares/validation.middleware.js";
 import {
@@ -95,5 +96,6 @@ router.get("/get-reply", verifyJWT, getReplyofComment);
 router.get("/post-details/:postId", verifyJWT, getPostDetails);
 router.get("/get-post-likedby/:postId", verifyJWT, getPostLikedBy);
 router.get("/get-shorts",verifyJWT,getShortsVideo);
+router.get("/get-home-feed",verifyJWT,getHomeFeed);
 
 export default router;

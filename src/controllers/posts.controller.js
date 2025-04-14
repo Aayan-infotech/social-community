@@ -14,6 +14,8 @@ import {
 import fs, { stat } from "fs";
 import { isValidObjectId } from "../utils/isValidObjectId.js";
 import { url } from "inspector";
+import { Education } from "../models/education.model.js";
+import { Experience } from "../models/experience.model.js";
 
 const createPost = asyncHandler(async (req, res) => {
   const { title, description, type } = req.body;
@@ -151,13 +153,14 @@ const getPosts = asyncHandler(async function (req, res) {
     throw new ApiError(400, "Invalid User Id");
   }
 
-  // do this with aggregation
-  // const excludeUserId = req.user.userId;
   const totalPosts = await PostModel.find({
     userId: { $eq: userId },
   }).countDocuments();
 
   let aggregation = [];
+  aggregation.push({
+    $match: { userId: { $eq: userId } },
+  });
   aggregation.push({
     $lookup: {
       from: "users",
@@ -168,9 +171,6 @@ const getPosts = asyncHandler(async function (req, res) {
   });
   aggregation.push({
     $unwind: "$user",
-  });
-  aggregation.push({
-    $match: { userId: { $eq: userId } },
   });
   aggregation.push({
     $sort: { createdAt: -1 },
@@ -218,7 +218,7 @@ const getPosts = asyncHandler(async function (req, res) {
 
 const likeDisLikePost = asyncHandler(async (req, res) => {
   const { postId, like } = req.body;
-  if(!isValidObjectId(postId)){
+  if (!isValidObjectId(postId)) {
     throw new ApiError(400, "Invalid post ID");
   }
   const userId = req.user.userId;
@@ -606,9 +606,7 @@ const getShortsVideo = asyncHandler(async (req, res) => {
             },
           },
         ],
-        totalCount: [
-          { $count: "count" },
-        ],
+        totalCount: [{ $count: "count" }],
       },
     },
   ];
@@ -620,16 +618,248 @@ const getShortsVideo = asyncHandler(async (req, res) => {
   const totalPages = Math.ceil(totalCount / limit);
 
   res.json(
-    new ApiResponse(200, posts.length ? "Short Videos fetched successfully" : "No Short Video found", {
-      posts,
-      total_page: totalPages,
-      current_page: page,
-      total_records: totalCount,
-      per_page: limit,
-    })
+    new ApiResponse(
+      200,
+      posts.length
+        ? "Short Videos fetched successfully"
+        : "No Short Video found",
+      {
+        posts,
+        total_page: totalPages,
+        current_page: page,
+        total_records: totalCount,
+        per_page: limit,
+      }
+    )
   );
 });
 
+const getHomeFeed = asyncHandler(async (req, res) => {
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.max(1, parseInt(req.query.limit) || 10);
+  const skip = (page - 1) * limit;
+
+  const [education, experience] = await Promise.all([
+    Education.aggregate([
+      { $match: { userId: req.user.userId } },
+      {
+        $group: {
+          _id: null,
+          institutionNames: { $addToSet: "$institutionName" },
+          degrees: { $addToSet: "$degree" },
+          fieldsOfStudy: { $addToSet: "$fieldOfStudy" },
+          skills: { $addToSet: "$skills" },
+        },
+      },
+    ]),
+    Experience.aggregate([
+      { $match: { userId: req.user.userId } },
+      {
+        $group: {
+          _id: null,
+          companyNames: { $addToSet: "$companyName" },
+          locations: { $addToSet: "$location" },
+          skills: { $addToSet: "$skills" },
+        },
+      },
+    ]),
+  ]);
+
+  const uniqueInstitutionNames = education[0]?.institutionNames || [];
+  const uniqueDegrees = education[0]?.degrees || [];
+  const uniqueFieldsOfStudy = education[0]?.fieldsOfStudy || [];
+  const uniqueEducationSkills = education[0]?.skills || [];
+  const uniqueLocations = experience[0]?.locations || [];
+  const uniqueCompanyNames = experience[0]?.companyNames || [];
+  const uniqueExperienceSkills = experience[0]?.skills || [];
+
+
+  const aggregation = [
+    {
+      $match: { userId: { $ne: req.user.userId } },
+    },
+    {
+      $lookup: {
+        from: "users",
+        localField: "userId",
+        foreignField: "userId",
+        as: "user",
+      },
+    },
+    {
+      $unwind: "$user",
+    },
+    {
+      $lookup: {
+        from: "experiences",
+        localField: "userId",
+        foreignField: "userId",
+        as: "experience",
+      },
+    },
+    {
+      $lookup: {
+        from: "educations",
+        localField: "userId",
+        foreignField: "userId",
+        as: "education",
+      },
+    },
+    {
+      $match: {
+        $or: [
+          { "user.city": req.user.city },
+          { "user.country": req.user.country },
+          { "user.state": req.user.state },
+          {
+            $expr: {
+              $gt: [
+                {
+                  $size: {
+                    $setIntersection: [
+                      uniqueCompanyNames,
+                      "$experience.companyName",
+                    ],
+                  },
+                },
+                0,
+              ],
+            },
+          },
+          {
+            $expr: {
+              $gt: [
+                {
+                  $size: {
+                    $setIntersection: [
+                      uniqueInstitutionNames,
+                      "$education.institutionName",
+                    ],
+                  },
+                },
+                0,
+              ],
+            },
+          },
+          {
+            $expr: {
+              $gt: [
+                {
+                  $size: {
+                    $setIntersection: [uniqueDegrees, "$education.degree"],
+                  },
+                },
+                0,
+              ],
+            },
+          },
+          {
+            $expr: {
+              $gt: [
+                {
+                  $size: {
+                    $setIntersection: [
+                      uniqueFieldsOfStudy,
+                      "$education.fieldOfStudy",
+                    ],
+                  },
+                },
+                0,
+              ],
+            },
+          },
+          {
+            $expr: {
+              $gt: [
+                {
+                  $size: {
+                    $setIntersection: [uniqueLocations, "$experience.location"],
+                  },
+                },
+                0,
+              ],
+            },
+          },
+          {
+            $expr: {
+              $gt: [
+                {
+                  $size: {
+                    $setIntersection: [
+                      uniqueExperienceSkills,
+                      "$experience.skills",
+                    ],
+                  },
+                },
+                0,
+              ],
+            },
+          },
+          {
+            $expr: {
+              $gt: [
+                {
+                  $size: {
+                    $setIntersection: [
+                      uniqueEducationSkills,
+                      "$education.skills",
+                    ],
+                  },
+                },
+                0,
+              ],
+            },
+          },
+        ],
+      },
+    },
+    {
+      $sort: { createdAt: -1 },
+    },
+    {
+      $facet: {
+        posts: [
+          { $skip: skip },
+          { $limit: limit },
+          {
+            $project: {
+              "user.name": 1,
+              "user.profile_image": 1,
+              "user.userId": 1,
+              title: 1,
+              description: 1,
+              type: 1,
+              media: 1,
+              likes: 1,
+              comment_count: { $size: "$comments" },
+            },
+          },
+        ],
+        totalCount: [{ $count: "count" }],
+      },
+    },
+  ];
+
+  const result = await PostModel.aggregate(aggregation);
+
+  const posts = result[0]?.posts || [];
+  const totalCount = result[0]?.totalCount[0]?.count || 0;
+  const totalPages = Math.ceil(totalCount / limit);
+
+  res.json(
+    new ApiResponse(
+      200,
+      posts.length ? "Home Feed fetched successfully" : "No Home Feed found",
+      {
+        posts,
+        total_page: totalPages,
+        current_page: page,
+        total_records: totalCount,
+        per_page: limit,
+      }
+    )
+  );
+});
 
 export {
   createPost,
@@ -645,4 +875,5 @@ export {
   getReplyofComment,
   updatePost,
   getShortsVideo,
+  getHomeFeed,
 };
