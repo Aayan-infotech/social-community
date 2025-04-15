@@ -806,7 +806,7 @@ const addStory = asyncHandler(async (req, res) => {
           storyFile[0].path,
           "./public/temp"
         );
-        console.log("compressedVideo", compressedVideo);
+        // console.log("compressedVideo", compressedVideo);
         if (!compressedVideo.success) {
           // mediaUrl = uploadStatus.fileUrl;
           throw new ApiError(400, "Unable to upload video to server");
@@ -1018,7 +1018,7 @@ const getAllDeleteRequest = asyncHandler(async (req, res) => {
   });
 
   const deleteRequests = await DeleteAccountRequestModel.aggregate(aggregation);
-  console.log(deleteRequests);
+  // console.log(deleteRequests);
   const totalRequests = await DeleteAccountRequestModel.countDocuments({
     status: "pending",
   });

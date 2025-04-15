@@ -7,10 +7,12 @@ import {
   generateReferralCode,
   handleReferral,
   generateUniqueUserId,
+  getHierarchyLevel,
 } from "../utils/HelperFunctions.js";
 import { generateOTP, sendOTP } from "../services/smsService.js";
 import { sendEmail } from "../services/emailService.js";
 import { DeleteAccountRequestModel } from "../models/delete_account_request.model.js";
+import FamilyMember from "../models/familyMember.model.js";
 
 // const generateAccessAndRefreshTokens = async (userId) => {
 //   try {
@@ -140,6 +142,16 @@ const signup = asyncHandler(async (req, res) => {
 
   await user.save();
 
+  // Create the family tree for the user of the
+
+  const hierarchyLevel1 = getHierarchyLevel("self");
+  const addFamilyMember = await FamilyMember.create({
+    userId: userId,
+    relationship: "self",
+    relationWithUserId: userId,
+    hierarchyLevel: hierarchyLevel1,
+  });
+
   const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(
     user._id
   );
@@ -178,7 +190,6 @@ const loginUser = asyncHandler(async (req, res) => {
     $or: [{ email: userEmail }, { mobile }],
   });
 
-
   if (!user) {
     throw new ApiError(404, "User Doesn't Exist Or Invalid Email Or Mobile No");
   }
@@ -194,7 +205,6 @@ const loginUser = asyncHandler(async (req, res) => {
       "Your account is suspended. Please contact support for more information."
     );
   }
-
 
   const isValidPassord = await user.isPasswordCorrect(password);
 
@@ -399,7 +409,6 @@ const logoutUser = asyncHandler(async (req, res) => {
   if (!device_token) {
     throw new ApiError(400, "Device token is required");
   }
-
 
   let removeIndex = req.user.device_token.indexOf(device_token);
   if (removeIndex !== -1) {
