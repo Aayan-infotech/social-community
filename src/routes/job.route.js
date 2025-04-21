@@ -14,6 +14,7 @@ import {
   uploadResume,
   getResume,
   getJobDetails,
+  getApplicantList,
 } from "../controllers/jobs.controller.js";
 
 const router = Router();
@@ -47,5 +48,6 @@ router.post(
 );
 router.get("/get-resume", verifyJWT, getResume);
 router.get("/job-details/:jobId",verifyJWT,getJobDetails);
+router.get('/get-applicant-list',verifyJWT,getApplicantList);
 
 export default router;

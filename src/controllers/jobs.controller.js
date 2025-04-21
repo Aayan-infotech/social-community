@@ -59,6 +59,14 @@ export const getAllJobs = asyncHandler(async (req, res) => {
     $sort: { createdAt: -1 },
   });
   aggregation.push({
+    $lookup: {
+      from: "appliedjobs",
+      localField: "_id",
+      foreignField: "jobId",
+      as: "appliedJobs",
+    },
+  });
+  aggregation.push({
     $facet: {
       jobs: [
         { $skip: skip },
@@ -74,6 +82,7 @@ export const getAllJobs = asyncHandler(async (req, res) => {
             position: 1,
             salary: 1,
             jobImage: 1,
+            totalApplications: { $size: "$appliedJobs" },
           },
         },
       ],
@@ -192,10 +201,93 @@ export const getJobDetails = asyncHandler(async (req, res) => {
       as: "appliedJobs",
     },
   });
+  aggregation.push({
+    $project: {
+      "user.name": 1,
+      "user.profile_image": 1,
+      "user.userId": 1,
+      description: 1,
+      location: 1,
+      companyName: 1,
+      position: 1,
+      salary: 1,
+      jobImage: 1,
+      totalApplications: { $size: "$appliedJobs" },
+    },
+  });
 
   const result = await JobModel.aggregate(aggregation);
 
   return res.json(
     new ApiResponse(200, "Job details fetched successfully", result)
+  );
+});
+
+export const getApplicantList = asyncHandler(async (req, res) => {
+  // jobId is Required
+  if (!req.query.jobId) {
+    throw new ApiError(400, "Job ID is required");
+  }
+  const jobId = req.query.jobId;
+  if (!isValidObjectId(jobId)) {
+    throw new ApiError(400, "Invalid job ID");
+  }
+  const userId = req.user.userId;
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.max(1, parseInt(req.query.limit) || 10);
+  const skip = (page - 1) * limit;
+  const aggregation = [];
+
+  aggregation.push({
+    $match: { jobId: new mongoose.Types.ObjectId(jobId) },
+  });
+  aggregation.push({
+    $lookup: {
+      from: "resumes",
+      localField: "resumeId",
+      foreignField: "_id",
+      as: "resume",
+    },
+  });
+  aggregation.push({
+    $unwind: "$resume",
+  });
+  aggregation.push({
+    $project: {
+      userId: 1,
+      email: 1,
+      phone: 1,
+      currentCTC: 1,
+      expectedCTC: 1,
+      noticePeriod: 1,
+      resume: "$resume.resume",
+      appliedAt: "$createdAt",
+    },
+  });
+
+  aggregation.push({
+    $facet:{
+      applicants: [
+        { $skip: skip },
+        { $limit: limit },
+      ],
+      totalCount: [{ $count: "count" }],
+    }
+  });
+
+  const applicantList = await ApplyJobModel.aggregate(aggregation);
+  const applicants = applicantList[0]?.applicants || [];
+  const totalCount = applicantList[0]?.totalCount[0]?.count || 0;
+  const totalPages = Math.ceil(totalCount / limit);
+
+
+  res.json(
+    new ApiResponse(200, "Applicant list fetched successfully", {
+      applicants,
+      total_page: totalPages,
+      current_page: page,
+      total_records: totalCount,
+      per_page: limit,
+    })
   );
 });
