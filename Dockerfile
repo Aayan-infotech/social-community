@@ -1,18 +1,16 @@
-FROM node:20
+kFROM node:20
+
+RUN apt-get update && apt-get install -y ffmpeg
 
 WORKDIR /usr/src/app
 
-# Copy package.json and package-lock.json files to install dependencies
 COPY package*.json ./
 
-# Install dependencies
 RUN npm install --production
 
-# Copy the rest of the application files to the container
 COPY . .
 
-# Expose the port your app runs on
 EXPOSE 3030
 
-# Define the command to run your backend server
 CMD ["node", "index.js"]
+
