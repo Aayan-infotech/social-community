@@ -9,6 +9,7 @@ const jobSchema = new mongoose.Schema(
     userId: { type: String, ref: "User", required: true },
     salary:{type:String,default:null},
     jobImage:{ type: String, default: null },
+    isDeleted: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

@@ -5,15 +5,19 @@ import ResumeModel from "../models/resume.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
-import { saveCompressedImage, uploadImage } from "../utils/awsS3Utils.js";
+import {
+  saveCompressedImage,
+  uploadImage,
+  deleteObject,
+} from "../utils/awsS3Utils.js";
 import fs from "fs";
 import { isValidObjectId } from "../utils/isValidObjectId.js";
+import { profile } from "console";
 
 export const addJob = asyncHandler(async (req, res) => {
   const { description, location, companyName, position, salary } = req.body;
   const userId = req.user.userId;
 
-  console.log(description, location, companyName, position, salary, userId);
 
   let jobImage = null;
   if (req.files && req.files.jobImage) {
@@ -48,11 +52,11 @@ export const getAllJobs = asyncHandler(async (req, res) => {
   const aggregation = [];
   if (req.query.userId) {
     aggregation.push({
-      $match: { userId: req.query.userId },
+      $match: { userId: req.query.userId , isDeleted: false},
     });
   } else {
     aggregation.push({
-      $match: { userId: { $ne: req.user.userId } },
+      $match: { userId: { $ne: req.user.userId } , isDeleted: false},
     });
   }
   aggregation.push({
@@ -233,6 +237,12 @@ export const getApplicantList = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Invalid job ID");
   }
   const userId = req.user.userId;
+
+  const job = await JobModel.find({ _id: jobId, userId });
+  if (!job || job.length === 0) {
+    throw new ApiError(404, "Job not found or you are not authorized to view this job");
+  }
+
   const page = Math.max(1, parseInt(req.query.page) || 1);
   const limit = Math.max(1, parseInt(req.query.limit) || 10);
   const skip = (page - 1) * limit;
@@ -241,6 +251,158 @@ export const getApplicantList = asyncHandler(async (req, res) => {
   aggregation.push({
     $match: { jobId: new mongoose.Types.ObjectId(jobId) },
   });
+  aggregation.push({
+    $lookup:{
+      from: "users",
+      localField: "userId",
+      foreignField: "userId",
+      as: "user",
+    }
+  });
+  aggregation.push({
+    $unwind: "$user",
+  });
+  aggregation.push({
+    $project: {
+      userId: 1,
+      email: 1,
+      phone: 1,
+      currentCTC: 1,
+      expectedCTC: 1,
+      noticePeriod: 1,
+      appliedAt: "$createdAt",
+      user: {
+        name: "$user.name",
+        profile_image: {
+          $ifNull: [
+            "$user.profile_image",
+            `${req.protocol}://${req.hostname}:${process.env.PORT}/placeholder/person.png`,
+          ],
+        },
+        userId: "$user.userId",
+      },
+    },
+  });
+
+  aggregation.push({
+    $facet: {
+      applicants: [{ $skip: skip }, { $limit: limit }],
+      totalCount: [{ $count: "count" }],
+    },
+  });
+
+  const applicantList = await ApplyJobModel.aggregate(aggregation);
+  const applicants = applicantList[0]?.applicants || [];
+  const totalCount = applicantList[0]?.totalCount[0]?.count || 0;
+  const totalPages = Math.ceil(totalCount / limit);
+
+  res.json(
+    new ApiResponse(200, "Applicant list fetched successfully", {
+      applicants,
+      total_page: totalPages,
+      current_page: page,
+      total_records: totalCount,
+      per_page: limit,
+    })
+  );
+});
+
+export const editJob = asyncHandler(async (req, res) => {
+  const { jobId, description, location, companyName, position, salary } =
+    req.body;
+  const userId = req.user.userId;
+
+  if (!isValidObjectId(jobId)) {
+    throw new ApiError(400, "Invalid job ID");
+  }
+
+  const job = await JobModel.findById(jobId);
+  if (!job) {
+    throw new ApiError(404, "Job not found");
+  }
+
+  if (job.userId.toString() !== userId) {
+    throw new ApiError(403, "You are not authorized to edit this job");
+  }
+
+  let jobImage = job.jobImage;
+
+  if (req.files && req.files.jobImage) {
+    // Delete the old image from S3 if it exists
+    if (jobImage) {
+      await deleteObject(jobImage);
+    }
+    const file = req.files.jobImage[0];
+    const saveUpload = await saveCompressedImage(file, 600);
+    if (!saveUpload.success) {
+      throw new ApiError(400, "Image upload failed");
+    } else {
+      jobImage = saveUpload.thumbnailUrl;
+    }
+    fs.unlinkSync(file.path);
+  }
+
+  const updatedJob = await JobModel.findByIdAndUpdate(
+    jobId,
+    {
+      description,
+      location,
+      companyName,
+      position,
+      salary,
+      jobImage: jobImage || job.jobImage,
+    },
+    { new: true }
+  );
+
+  res.json(new ApiResponse(200, "Job updated successfully", updatedJob));
+});
+
+export const deleteJob = asyncHandler(async (req, res) => {
+  const jobId = req.params.jobId;
+  if (!isValidObjectId(jobId)) {
+    throw new ApiError(400, "Invalid job ID");
+  }
+
+  const job = await JobModel.findById(jobId);
+  if (!job) {
+    throw new ApiError(404, "Job not found");
+  }
+
+  // Delete the image from S3 if it exists
+  if (job.jobImage) {
+    await deleteObject(job.jobImage);
+  }
+
+  await JobModel.findByIdAndUpdate(jobId, { isDeleted: true });
+
+  res.json(new ApiResponse(200, "Job deleted successfully"));
+});
+
+
+export const getApplicantDetails = asyncHandler(async (req, res) => {
+  const applicationId = req.query.applicationId;
+  console.log(applicationId);
+  if (!isValidObjectId(applicationId)) {
+    throw new ApiError(400, "Invalid application ID");
+  }
+
+  const aggregation = [];
+  aggregation.push({
+    $match: { _id: new mongoose.Types.ObjectId(applicationId) },
+  });
+  aggregation.push({
+    $lookup: {
+      from: "users",
+      localField: "userId",
+      foreignField: "userId",
+      as: "user",
+    },
+  });
+  aggregation.push({
+    $unwind: "$user",
+  });
+
   aggregation.push({
     $lookup: {
       from: "resumes",
@@ -260,34 +422,25 @@ export const getApplicantList = asyncHandler(async (req, res) => {
       currentCTC: 1,
       expectedCTC: 1,
       noticePeriod: 1,
-      resume: "$resume.resume",
       appliedAt: "$createdAt",
+      user: {
+        name: "$user.name",
+        profile_image: {
+          $ifNull: [
+            "$user.profile_image",
+            `${req.protocol}://${req.hostname}:${process.env.PORT}/placeholder/person.png`,
+          ],
+        },
+        userId: "$user.userId",
+      },
+      resume: "$resume.resume",
     },
   });
 
-  aggregation.push({
-    $facet:{
-      applicants: [
-        { $skip: skip },
-        { $limit: limit },
-      ],
-      totalCount: [{ $count: "count" }],
-    }
-  });
+  const applicantDetails = await ApplyJobModel.aggregate(aggregation);
+  if (!applicantDetails) {
+    throw new ApiError(404, "Applicant not found");
+  }
 
-  const applicantList = await ApplyJobModel.aggregate(aggregation);
-  const applicants = applicantList[0]?.applicants || [];
-  const totalCount = applicantList[0]?.totalCount[0]?.count || 0;
-  const totalPages = Math.ceil(totalCount / limit);
-
-
-  res.json(
-    new ApiResponse(200, "Applicant list fetched successfully", {
-      applicants,
-      total_page: totalPages,
-      current_page: page,
-      total_records: totalCount,
-      per_page: limit,
-    })
-  );
+  res.json(new ApiResponse(200, "Applicant details fetched successfully", applicantDetails));
 });

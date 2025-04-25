@@ -638,6 +638,10 @@ const getHomeFeed = asyncHandler(async (req, res) => {
   const page = Math.max(1, parseInt(req.query.page) || 1);
   const limit = Math.max(1, parseInt(req.query.limit) || 10);
   const skip = (page - 1) * limit;
+  const type = req.query.type || "social";
+  if(type !== "social" && type !== "professional"){
+    throw new ApiError(400, "Invalid type. Type should be either social or professional");
+  }
 
   const [education, experience] = await Promise.all([
     Education.aggregate([
@@ -676,7 +680,7 @@ const getHomeFeed = asyncHandler(async (req, res) => {
 
   const aggregation = [
     {
-      $match: { userId: { $ne: req.user.userId } },
+      $match: { userId: { $ne: req.user.userId } , type: type },
     },
     {
       $lookup: {

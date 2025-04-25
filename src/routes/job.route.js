@@ -6,6 +6,7 @@ import errorHandler from "../middlewares/errorhandler.middleware.js";
 import {
   jobValidationSchema,
   applyJobSchema,
+  editJobValidationSchema,  
 } from "../validators/jobValidator.js";
 import {
   addJob,
@@ -15,6 +16,9 @@ import {
   getResume,
   getJobDetails,
   getApplicantList,
+  editJob,  
+  deleteJob,
+  getApplicantDetails,
 } from "../controllers/jobs.controller.js";
 
 const router = Router();
@@ -32,6 +36,13 @@ router.post(
   validateRequest(jobValidationSchema),
   addJob
 );
+router.put('/edit-job',verifyJWT,upload.fields([
+  {
+    name: "jobImage",
+    maxCount: 1,
+  },
+]),errorHandler,validateRequest(editJobValidationSchema),editJob);
+router.delete("/delete-job/:jobId", verifyJWT, deleteJob);
 router.get("/get-all-jobs", verifyJWT, getAllJobs);
 router.post("/apply-job", verifyJWT, validateRequest(applyJobSchema), applyJob);
 router.post(
@@ -49,5 +60,6 @@ router.post(
 router.get("/get-resume", verifyJWT, getResume);
 router.get("/job-details/:jobId",verifyJWT,getJobDetails);
 router.get('/get-applicant-list',verifyJWT,getApplicantList);
+router.get('/get-applicant-details',verifyJWT,getApplicantDetails);
 
 export default router;
