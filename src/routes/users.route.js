@@ -19,6 +19,7 @@ import {
   deleteAccountRequest,
   getAllDeleteRequest,
   updateDeleteRequest,
+  saveResources,
 } from "../controllers/users.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { validateRequest } from "../middlewares/validation.middleware.js";
@@ -30,6 +31,7 @@ import {
   educationSchema,
   addStorySchema,
   updateDeleteRequestSchema,
+  saveResourcesSchema,
 } from "../validators/userValidator.js";
 import errorHandler from "../middlewares/errorhandler.middleware.js";
 
@@ -102,6 +104,8 @@ router.post('/delete-account-request',verifyJWT,deleteAccountRequest);
 router.get("/get-all-users",verifyJWT,getAllUsers);
 router.get("/get-all-delete-request",verifyJWT,getAllDeleteRequest);
 router.put("/update-delete-request",verifyJWT,validateRequest(updateDeleteRequestSchema),updateDeleteRequest);
+router.post("/save-resource",verifyJWT,validateRequest(saveResourcesSchema),saveResources);
+// router.get("/get-resources",verifyJWT,getRE)
 
 
 export default router;

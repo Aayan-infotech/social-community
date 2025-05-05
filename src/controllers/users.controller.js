@@ -21,6 +21,7 @@ import { Education } from "../models/education.model.js";
 import { Story } from "../models/story.model.js";
 import { DeleteAccountRequestModel } from "../models/delete_account_request.model.js";
 import { isValidObjectId } from "./../utils/isValidObjectId.js";
+import saveResourceModel from "../models/saveResources.model.js";
 
 const getUserProfile = asyncHandler(async (req, res) => {
   const userId = req.query.user_id || req.user.userId;
@@ -1083,6 +1084,25 @@ const updateDeleteRequest = asyncHandler(async (req, res) => {
   }
 });
 
+const saveResources = asyncHandler(async (req, res) => {
+  const { type, resourceId } = req.body;
+
+  const userId = req.user.userId;
+
+  console.log("userId", userId);
+  console.log("type", type);
+  // console.log("resourceId", resourceId);
+  console.log("req.body", req.body);
+
+  const resource = await saveResourceModel.create({
+    userId,
+    type,
+    resourceId,
+  });
+
+  res.json(new ApiResponse(200, "Resource saved successfully", resource));
+});
+
 export {
   getUserProfile,
   updateUserProfile,
@@ -1102,4 +1122,5 @@ export {
   deleteAccountRequest,
   getAllDeleteRequest,
   updateDeleteRequest,
+  saveResources,
 };

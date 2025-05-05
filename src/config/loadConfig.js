@@ -89,6 +89,8 @@ const loadConfig = async () => {
     // Email configuration
     EMAIL_USER: process.env.EMAIL_USER,
     EMAIL_PASS: process.env.EMAIL_PASS,
+
+    FIREBASE_CONFIG: process.env.FIREBASE_CONFIG, 
   };
 };
 

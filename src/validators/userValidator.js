@@ -433,7 +433,21 @@ const updateDeleteRequestSchema = Joi.object({
       "any.only": "Status must be either 'approved' or 'rejected'.",
       "any.required": "Status is required.",
     }),
-})
+});
+
+const saveResourcesSchema = Joi.object({
+  type: Joi.string().valid("job", "post", "health_wellness", "event").required().messages({
+    "string.base": "Type must be a string.",
+    "string.empty": "Type is required.",
+    "any.only": "Type must be one of 'job', 'post', 'health_wellness', or 'event'.",
+    "any.required": "Type is required.",
+  }),
+  resourceId: Joi.string().required().messages({
+    "string.base": "Resource Id must be a string.",
+    "string.empty": "Resource Id is required.",
+    "any.required": "Resource Id is required.",
+  })
+});
 
 export {
   userValidationSchema,
@@ -449,4 +463,5 @@ export {
   educationSchema,
   addStorySchema,
   updateDeleteRequestSchema,
+  saveResourcesSchema,
 };

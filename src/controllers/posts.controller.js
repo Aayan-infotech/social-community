@@ -834,6 +834,7 @@ const getHomeFeed = asyncHandler(async (req, res) => {
               description: 1,
               type: 1,
               media: 1,
+              mediaType: 1,
               likes: 1,
               comment_count: { $size: "$comments" },
             },
