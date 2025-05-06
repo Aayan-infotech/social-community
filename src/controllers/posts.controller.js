@@ -680,7 +680,7 @@ const getHomeFeed = asyncHandler(async (req, res) => {
 
   const aggregation = [
     {
-      $match: { userId: { $ne: req.user.userId } , type: type },
+      $match: { type: type },
     },
     {
       $lookup: {
