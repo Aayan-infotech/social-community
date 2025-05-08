@@ -20,6 +20,11 @@ import {
   getAllDeleteRequest,
   updateDeleteRequest,
   saveResources,
+  addPages,
+  saveFAQ,
+  getPrivacyPolicy,
+  getTermsAndConditions,
+  getFAQ,
 } from "../controllers/users.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { validateRequest } from "../middlewares/validation.middleware.js";
@@ -32,6 +37,8 @@ import {
   addStorySchema,
   updateDeleteRequestSchema,
   saveResourcesSchema,
+  addPagesSchema,
+  saveFAQSchema,
 } from "../validators/userValidator.js";
 import errorHandler from "../middlewares/errorhandler.middleware.js";
 
@@ -106,6 +113,11 @@ router.get("/get-all-delete-request",verifyJWT,getAllDeleteRequest);
 router.put("/update-delete-request",verifyJWT,validateRequest(updateDeleteRequestSchema),updateDeleteRequest);
 router.post("/save-resource",verifyJWT,validateRequest(saveResourcesSchema),saveResources);
 // router.get("/get-resources",verifyJWT,getRE)
+router.post('/add-pages',verifyJWT,validateRequest(addPagesSchema),addPages);
+router.post('/FAQ',verifyJWT,validateRequest(saveFAQSchema),saveFAQ);
+router.get('/privacy-policy',verifyJWT,getPrivacyPolicy);
+router.get('/terms-and-conditions',verifyJWT,getTermsAndConditions);
+router.get('/FAQ',verifyJWT,getFAQ);
 
 
 export default router;

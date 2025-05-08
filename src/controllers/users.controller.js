@@ -22,6 +22,8 @@ import { Story } from "../models/story.model.js";
 import { DeleteAccountRequestModel } from "../models/delete_account_request.model.js";
 import { isValidObjectId } from "./../utils/isValidObjectId.js";
 import saveResourceModel from "../models/saveResources.model.js";
+import PageModel from "../models/pages.model.js";
+import FAQModel from "../models/FAQ.model.js";
 
 const getUserProfile = asyncHandler(async (req, res) => {
   const userId = req.query.user_id || req.user.userId;
@@ -1103,6 +1105,72 @@ const saveResources = asyncHandler(async (req, res) => {
   res.json(new ApiResponse(200, "Resource saved successfully", resource));
 });
 
+const addPages = asyncHandler(async (req, res) => {
+  const { title, url, description } = req.body;
+  const userId = req.user.userId;
+
+  if (!title || !url || !description) {
+    throw new ApiError(400, "Missing required fields");
+  }
+
+  const page = await PageModel.create({
+    title,
+    url,
+    description,
+  });
+
+  res.json(new ApiResponse(200, "Page added successfully", page));
+});
+
+const saveFAQ = asyncHandler(async (req, res) => {
+  const { question, answer } = req.body;
+
+  if (!question || !answer) {
+    throw new ApiError(400, "Missing required fields");
+  }
+
+  const faq = await FAQModel.create({
+    question,
+    answer,
+  });
+
+  res.json(new ApiResponse(200, "FAQ added successfully", faq));
+});
+
+const getPrivacyPolicy = asyncHandler(async (req, res) => {
+  const privacyPolicy = await PageModel.findOne({ title: "Privacy Policy" });
+  if (!privacyPolicy) {
+    throw new ApiError(404, "Privacy policy not found");
+  }
+  res.json(
+    new ApiResponse(200, "Privacy policy fetched successfully", privacyPolicy)
+  );
+});
+
+const getTermsAndConditions = asyncHandler(async (req, res) => {
+  const termsAndConditions = await PageModel.findOne({
+    url: "term_and_conditions",
+  });
+  if (!termsAndConditions) {
+    throw new ApiError(404, "Terms and conditions not found");
+  }
+  res.json(
+    new ApiResponse(
+      200,
+      "Terms and conditions fetched successfully",
+      termsAndConditions
+    )
+  );
+});
+
+const getFAQ = asyncHandler(async (req, res) => {
+  const faqs = await FAQModel.find({}).select('-_id -createdAt -__v -updatedAt').sort({ createdAt: 1 });
+  if (!faqs) {
+    throw new ApiError(404, "FAQs not found");
+  }
+  res.json(new ApiResponse(200, "FAQs fetched successfully", faqs));
+});
+
 export {
   getUserProfile,
   updateUserProfile,
@@ -1123,4 +1191,9 @@ export {
   getAllDeleteRequest,
   updateDeleteRequest,
   saveResources,
+  addPages,
+  saveFAQ,
+  getPrivacyPolicy,
+  getTermsAndConditions,
+  getFAQ,
 };

@@ -449,6 +449,39 @@ const saveResourcesSchema = Joi.object({
   })
 });
 
+const addPagesSchema = Joi.object({
+  title: Joi.string().min(1).max(150).required().messages({
+    "string.base": "Title must be a string.",
+    "string.empty": "Title is required.",
+    "string.min": "Title must be at least 1 characters.",
+    "string.max": "Title cannot exceed 150 characters.",
+    "any.required": "Title is required.",
+  }),
+  url: Joi.string().required().messages({
+    "string.base": "URL must be a string.",
+    "string.empty": "URL is required.",
+    "any.required": "URL is required.",
+  }),
+  description: Joi.string().required().messages({
+    "string.base": "Description must be a string.",
+    "string.empty": "Description is required.",
+    "any.required": "Description is required.",
+  }),
+});
+
+const saveFAQSchema = Joi.object({
+  question: Joi.string().required().messages({
+    "string.base": "Question must be a string.",
+    "string.empty": "Question is required.",
+    "any.required": "Question is required.",
+  }),
+  answer: Joi.string().required().messages({
+    "string.base": "Answer must be a string.",
+    "string.empty": "Answer is required.",
+    "any.required": "Answer is required.",
+  }),
+});
+
 export {
   userValidationSchema,
   loginValidationSchema,
@@ -464,4 +497,6 @@ export {
   addStorySchema,
   updateDeleteRequestSchema,
   saveResourcesSchema,
+  addPagesSchema,
+  saveFAQSchema,
 };
