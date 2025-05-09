@@ -438,9 +438,13 @@ export const getApplicantDetails = asyncHandler(async (req, res) => {
   });
 
   const applicantDetails = await ApplyJobModel.aggregate(aggregation);
-  if (!applicantDetails) {
+  if (!applicantDetails || applicantDetails.length === 0) {
     throw new ApiError(404, "Applicant not found");
   }
+  // return the first element of the array
+  const applicant = applicantDetails[0];
 
-  res.json(new ApiResponse(200, "Applicant details fetched successfully", applicantDetails));
+
+
+  res.json(new ApiResponse(200, "Applicant details fetched successfully", applicant));
 });
