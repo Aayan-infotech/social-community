@@ -443,8 +443,5 @@ export const getApplicantDetails = asyncHandler(async (req, res) => {
   }
   // return the first element of the array
   const applicant = applicantDetails[0];
-
-
-
   res.json(new ApiResponse(200, "Applicant details fetched successfully", applicant));
 });
