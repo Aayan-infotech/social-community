@@ -46,6 +46,7 @@ const uploadImage = async (file) => {
     };
   } catch (error) {
     fs.unlinkSync(file.path);
+    console.error("Error uploading file:", error);
     throw new ApiError(500, error.message);
   }
 };
