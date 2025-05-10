@@ -12,8 +12,6 @@ import {
 } from "../utils/awsS3Utils.js";
 import fs from "fs";
 import { isValidObjectId } from "../utils/isValidObjectId.js";
-import { profile } from "console";
-import { send } from "process";
 import { sendEmail } from "../services/emailService.js";
 import { User } from "../models/user.model.js";
 
@@ -275,6 +273,7 @@ export const getApplicantList = asyncHandler(async (req, res) => {
       currentCTC: 1,
       expectedCTC: 1,
       noticePeriod: 1,
+      status: 1,
       appliedAt: "$createdAt",
       user: {
         name: "$user.name",
@@ -470,11 +469,7 @@ export const updateApplicantStatus = asyncHandler(async (req, res) => {
 
   if (application.status !== "applied") {
     throw new ApiError(400, "Application already processed");
-  } else if (application.status === "shortlisted") {
-    throw new ApiError(400, "Application already shortlisted");
-  } else if (application.status === "rejected") {
-    throw new ApiError(400, "Application already rejected");
-  }
+  } 
   // get the details of the user
   const user = await User.find({ userId: application.userId }).select(
     "email name"
