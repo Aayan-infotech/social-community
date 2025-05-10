@@ -13,11 +13,13 @@ import {
 import fs from "fs";
 import { isValidObjectId } from "../utils/isValidObjectId.js";
 import { profile } from "console";
+import { send } from "process";
+import { sendEmail } from "../services/emailService.js";
+import { User } from "../models/user.model.js";
 
 export const addJob = asyncHandler(async (req, res) => {
   const { description, location, companyName, position, salary } = req.body;
   const userId = req.user.userId;
-
 
   let jobImage = null;
   if (req.files && req.files.jobImage) {
@@ -52,11 +54,11 @@ export const getAllJobs = asyncHandler(async (req, res) => {
   const aggregation = [];
   if (req.query.userId) {
     aggregation.push({
-      $match: { userId: req.query.userId , isDeleted: false},
+      $match: { userId: req.query.userId, isDeleted: false },
     });
   } else {
     aggregation.push({
-      $match: { userId: { $ne: req.user.userId } , isDeleted: false},
+      $match: { userId: { $ne: req.user.userId }, isDeleted: false },
     });
   }
   aggregation.push({
@@ -240,7 +242,10 @@ export const getApplicantList = asyncHandler(async (req, res) => {
 
   const job = await JobModel.find({ _id: jobId, userId });
   if (!job || job.length === 0) {
-    throw new ApiError(404, "Job not found or you are not authorized to view this job");
+    throw new ApiError(
+      404,
+      "Job not found or you are not authorized to view this job"
+    );
   }
 
   const page = Math.max(1, parseInt(req.query.page) || 1);
@@ -252,12 +257,12 @@ export const getApplicantList = asyncHandler(async (req, res) => {
     $match: { jobId: new mongoose.Types.ObjectId(jobId) },
   });
   aggregation.push({
-    $lookup:{
+    $lookup: {
       from: "users",
       localField: "userId",
       foreignField: "userId",
       as: "user",
-    }
+    },
   });
   aggregation.push({
     $unwind: "$user",
@@ -379,7 +384,6 @@ export const deleteJob = asyncHandler(async (req, res) => {
   res.json(new ApiResponse(200, "Job deleted successfully"));
 });
 
-
 export const getApplicantDetails = asyncHandler(async (req, res) => {
   const applicationId = req.query.applicationId;
   console.log(applicationId);
@@ -443,8 +447,84 @@ export const getApplicantDetails = asyncHandler(async (req, res) => {
   }
   // return the first element of the array
   const applicant = applicantDetails[0];
-  
 
-  
-  res.json(new ApiResponse(200, "Applicant details fetched successfully", applicant));
+  res.json(
+    new ApiResponse(200, "Applicant details fetched successfully", applicant)
+  );
+});
+
+export const updateApplicantStatus = asyncHandler(async (req, res) => {
+  const { applicationId, status } = req.body;
+  if (!isValidObjectId(applicationId)) {
+    throw new ApiError(400, "Invalid application ID");
+  }
+  if (!["shortlisted", "rejected"].includes(status)) {
+    throw new ApiError(400, "Invalid status");
+  }
+
+  // send mail to the user
+  const application = await ApplyJobModel.findById(applicationId);
+  if (!application) {
+    throw new ApiError(404, "Application not found");
+  }
+
+  if (application.status !== "applied") {
+    throw new ApiError(400, "Application already processed");
+  } else if (application.status === "shortlisted") {
+    throw new ApiError(400, "Application already shortlisted");
+  } else if (application.status === "rejected") {
+    throw new ApiError(400, "Application already rejected");
+  }
+  // get the details of the user
+  const user = await User.find({ userId: application.userId }).select(
+    "email name"
+  );
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
+
+  // console.log(user);
+  const userEmail = user[0].email;
+  const userName = user[0].name;
+
+  if (status === "shortlisted") {
+    // send mail to the user
+    const html = fs.readFileSync(
+      "./src/emails/InterviewInvitation.html",
+      "utf-8"
+    );
+    const subject = "Shortlisted for the interview";
+    const pattern = new RegExp(`{{name}}`, "g");
+    const updatedHtml = html.replace(pattern, userName);
+    sendEmail(userEmail, subject, updatedHtml);
+  } else {
+    // send mail to the user
+    const html = fs.readFileSync(
+      "./src/emails/rejectedApplication.html",
+      "utf-8"
+    );
+    const subject = "Job Application Rejected";
+    const pattern = new RegExp(`{{name}}`, "g");
+    const updatedHtml = html.replace(pattern, userName);
+
+    sendEmail(userEmail, subject, updatedHtml);
+  }
+
+  const updatedApplication = await ApplyJobModel.findByIdAndUpdate(
+    applicationId,
+    { status },
+    { new: true }
+  );
+
+  if (!updatedApplication) {
+    throw new ApiError(404, "Application not found");
+  }
+
+  res.json(
+    new ApiResponse(
+      200,
+      "Application status updated successfully",
+      updatedApplication
+    )
+  );
 });

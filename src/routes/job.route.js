@@ -19,6 +19,7 @@ import {
   editJob,  
   deleteJob,
   getApplicantDetails,
+  updateApplicantStatus
 } from "../controllers/jobs.controller.js";
 
 const router = Router();
@@ -61,5 +62,6 @@ router.get("/get-resume", verifyJWT, getResume);
 router.get("/job-details/:jobId",verifyJWT,getJobDetails);
 router.get('/get-applicant-list',verifyJWT,getApplicantList);
 router.get('/get-applicant-details',verifyJWT,getApplicantDetails);
+router.put('/update-applicant-status',verifyJWT,updateApplicantStatus);
 
 export default router;

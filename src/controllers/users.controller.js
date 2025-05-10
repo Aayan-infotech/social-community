@@ -1164,7 +1164,9 @@ const getTermsAndConditions = asyncHandler(async (req, res) => {
 });
 
 const getFAQ = asyncHandler(async (req, res) => {
-  const faqs = await FAQModel.find({}).select('-_id -createdAt -__v -updatedAt').sort({ createdAt: 1 });
+  const faqs = await FAQModel.find({})
+    .select("-_id -createdAt -__v -updatedAt")
+    .sort({ createdAt: 1 });
   if (!faqs) {
     throw new ApiError(404, "FAQs not found");
   }

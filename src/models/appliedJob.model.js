@@ -9,7 +9,7 @@ const appliedJobSchema = new mongoose.Schema({
     currentCTC: { type: String, default: null },
     expectedCTC: { type: String, default: null },
     noticePeriod: { type: String, default: null },
-    status: { type: String, enum: ["applied", "interviewed", "hired"], default: "applied" },
+    status: { type: String, enum: ["applied", "shortlisted", "rejected"], default: "applied" },
 }, { timestamps: true });
 
 const ApplyJobModel = mongoose.model("AppliedJob", appliedJobSchema);
