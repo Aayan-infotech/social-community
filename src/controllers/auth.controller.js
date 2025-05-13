@@ -206,6 +206,11 @@ const loginUser = asyncHandler(async (req, res) => {
     );
   }
 
+  // check if the user is verified
+  if(!user.isEmailVerified && !user.isMobileVerified) {
+    throw new ApiError(400, "Email and Mobile number is not verified");
+  }
+
   const isValidPassord = await user.isPasswordCorrect(password);
 
   if (!isValidPassord) {
@@ -334,6 +339,8 @@ const verifyOtp = asyncHandler(async (req, res) => {
 
   user.otp = null;
   user.otpExpire = null;
+  user.isEmailVerified = true;
+  user.isMobileVerified = true;
   await user.save();
 
   return res

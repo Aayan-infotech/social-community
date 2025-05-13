@@ -1173,6 +1173,118 @@ const getFAQ = asyncHandler(async (req, res) => {
   res.json(new ApiResponse(200, "FAQs fetched successfully", faqs));
 });
 
+const updateMatrimonialProfile = asyncHandler(async (req, res) => {
+  const {
+    matrimonialAboutMe,
+    maritalStatus,
+    dob,
+    address,
+    nativePlace,
+    birthPlace,
+    height,
+    weight,
+    religion,
+    caste,
+  } = req.body;
+
+
+  const user = await User.findByIdAndUpdate(
+    req.user._id,
+    {
+      $set: {
+        matrimonialAboutMe,
+        maritalStatus,
+        dob,
+        address,
+        nativePlace,
+        birthPlace,
+        height,
+        weight,
+        religion,
+        caste,
+      },
+    },
+    { new: true }
+  ).select(
+    "-password -refreshToken -previous_passwords -_id -__v -referrals -referredBy -otpExpire -otp"
+  );
+
+  res.json(
+    new ApiResponse(200, "Matrimonial profile updated successfully", user)
+  );
+});
+
+const getMatrimonialProfile = asyncHandler(async (req,res) =>{
+const userId = req.query.user_id || req.user.userId;
+
+  const aggregation = [];
+  aggregation.push({ $match: { userId } });
+ 
+  aggregation.push({
+    $lookup: {
+      from: "friends",
+      localField: "userId",
+      foreignField: "userId",
+      as: "friendsData",
+    },
+  });
+  aggregation.push({
+    $lookup: {
+      from: "posts",
+      localField: "userId",
+      foreignField: "userId",
+      as: "postsData",
+    },
+  });
+  aggregation.push({
+    $addFields: {
+      profile_image: {
+        $ifNull: [
+          "$profile_image",
+          `${req.protocol}://${req.hostname}:${process.env.PORT}/placeholder/person.png`,
+        ],
+      },
+      friendsCount: { $size: { $ifNull: ["$friendsData.friends", []] } },
+      postsCount: { $size: "$postsData" },
+    },
+  });
+  aggregation.push({
+    $project: {
+      _id: 0,
+      userId: 1,
+      name: 1,
+      email: 1,
+      mobile: 1,
+      city: 1,
+      gender: 1,
+      state: 1,
+      country: 1,
+      matrimonialAboutMe: 1,
+      maritalStatus: 1,
+      dob: 1,
+      address: 1,
+      nativePlace: 1,
+      birthPlace: 1,
+      height: 1,
+      weight: 1,
+      complexion: 1,
+      religion: 1,
+      caste: 1,
+      profile_image: 1,
+      friendsCount: 1,
+      postsCount: 1,
+    },
+  });
+
+  const user = await User.aggregate(aggregation);
+
+  if (!user.length) {
+    throw new ApiError(404, "User not found");
+  }
+
+  res.json(new ApiResponse(200, "User Matrimonial Profile fetched successfully", user[0]));
+});
+
 export {
   getUserProfile,
   updateUserProfile,
@@ -1198,4 +1310,6 @@ export {
   getPrivacyPolicy,
   getTermsAndConditions,
   getFAQ,
+  updateMatrimonialProfile,
+  getMatrimonialProfile,
 };

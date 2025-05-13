@@ -25,6 +25,8 @@ import {
   getPrivacyPolicy,
   getTermsAndConditions,
   getFAQ,
+  updateMatrimonialProfile,
+  getMatrimonialProfile,
 } from "../controllers/users.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { validateRequest } from "../middlewares/validation.middleware.js";
@@ -39,6 +41,7 @@ import {
   saveResourcesSchema,
   addPagesSchema,
   saveFAQSchema,
+  updateMatrimonialProfileSchema,
 } from "../validators/userValidator.js";
 import errorHandler from "../middlewares/errorhandler.middleware.js";
 
@@ -118,6 +121,9 @@ router.post('/FAQ',verifyJWT,validateRequest(saveFAQSchema),saveFAQ);
 router.get('/privacy-policy',verifyJWT,getPrivacyPolicy);
 router.get('/terms-and-conditions',verifyJWT,getTermsAndConditions);
 router.get('/FAQ',verifyJWT,getFAQ);
+// Users Matrimonial Profile
+router.put('/update-matrimonial-profile',verifyJWT,validateRequest(updateMatrimonialProfileSchema),updateMatrimonialProfile);
+router.get('/get-matrimonial-profile',verifyJWT,getMatrimonialProfile);
 
 
 export default router;

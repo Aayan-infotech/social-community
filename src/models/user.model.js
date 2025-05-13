@@ -131,6 +131,51 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    matrimonialAboutMe:{
+      type: String,
+      default: null,
+    },
+    maritalStatus: {
+      type: String,
+      enum: ["single", "married", "divorced", "widowed"],
+      default: null,
+    },
+    dob: {
+      type: Date,
+      default: null,
+    },
+    address: {
+      type: String,
+      default: null,
+    },
+    nativePlace: {
+      type: String,
+      default: null,
+    },
+    birthPlace: {
+      type: String,
+      default: null,
+    },
+    height: {
+      type: String,
+      default: null,
+    },
+    weight: {
+      type: String,
+      default: null,
+    },
+    complexion: {
+      type: String,
+      default: null,
+    },
+    religion: {
+      type: String,
+      default: null,
+    },
+    caste: {
+      type: String,
+      default: null,
+    },
   },
   {
     timestamps: true,

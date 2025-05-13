@@ -482,6 +482,43 @@ const saveFAQSchema = Joi.object({
   }),
 });
 
+const updateMatrimonialProfileSchema = Joi.object({
+  matrimonialAboutMe: Joi.string().optional().allow("").messages({
+    "string.base": "Matrimonial About Me must be a string.",
+    "string.empty": "Matrimonial About Me is required.",
+  }),
+  maritalStatus: Joi.string().optional().allow("").messages({
+    "string.base": "Marital Status must be a string.",
+  }),
+  dob: Joi.date().optional().allow("").messages({
+    "date.base": "Date of Birth must be a valid date.",
+  }),
+  address: Joi.string().optional().allow("").messages({
+    "string.base": "Address must be a string.",
+  }),
+  nativePlace: Joi.string().optional().allow("").messages({
+    "string.base": "Native Place must be a string.",
+  }),
+  birthPlace: Joi.string().optional().allow("").messages({
+    "string.base": "Birth Place must be a string.",
+  }),
+  complexion: Joi.string().optional().allow("").messages({
+    "string.base": "Complexion must be a string.",
+  }),
+  height: Joi.string().optional().allow("").messages({
+    "string.base": "Height must be a string.",
+  }),
+  weight: Joi.string().optional().allow("").messages({
+    "string.base": "Weight must be a string.",
+  }),
+  religion: Joi.string().optional().allow("").messages({
+    "string.base": "Religion must be a string.",
+  }),
+  caste: Joi.string().optional().allow("").messages({
+    "string.base": "Caste must be a string.",
+  }),
+});
+
 export {
   userValidationSchema,
   loginValidationSchema,
@@ -499,4 +536,5 @@ export {
   saveResourcesSchema,
   addPagesSchema,
   saveFAQSchema,
+  updateMatrimonialProfileSchema,
 };
