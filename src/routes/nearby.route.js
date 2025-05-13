@@ -1,7 +1,10 @@
 import { Router } from "express";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 import { validateRequest } from "../middlewares/validation.middleware.js";
-import { upsertBussinessCategorySchema , addBusinessSchema } from "../validators/nearbyBussinessValidator.js";
+import {
+  upsertBussinessCategorySchema,
+  addBusinessSchema,
+} from "../validators/nearbyBussinessValidator.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import errorHandler from "../middlewares/errorhandler.middleware.js";
 import {
@@ -9,6 +12,8 @@ import {
   getBusinessCategory,
   addBusiness,
   getBusiness,
+  updateBusinessStatus,
+  getNearByBusiness,
 } from "../controllers/nearby.controller.js";
 const router = Router();
 
@@ -39,7 +44,8 @@ router.post(
   errorHandler,
   addBusiness
 );
-
-router.get('/get-business', verifyJWT, getBusiness);
+router.get("/get-business", verifyJWT, getBusiness);
+router.put("/update-business-status", verifyJWT, updateBusinessStatus);
+router.get("/get-nearby-business-marker", verifyJWT, getNearByBusiness);
 
 export default router;
