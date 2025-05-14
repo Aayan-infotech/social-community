@@ -6,17 +6,18 @@ import jobRoutes from './job.route.js';
 import familyRoutes from './family.route.js';
 import healthWellnessRoutes from './health_wellness.route.js';
 import nearbyRoutes from './nearby.route.js';
-
+import marketPlacesRoutes from './marketplace.route.js';
 
 const router = express.Router();
 
 router.use('/auth', authRoutes);
-router.use('/users',usersRoutes);
-router.use('/posts',postsRoutes);
-router.use('/jobs',jobRoutes);
+router.use('/users', usersRoutes);
+router.use('/posts', postsRoutes);
+router.use('/jobs', jobRoutes);
 router.use('/family', familyRoutes);
 router.use('/health-wellness', healthWellnessRoutes);
-router.use('/nearby',nearbyRoutes);
+router.use('/nearby', nearbyRoutes);
+router.use('/marketplace', marketPlacesRoutes);
 
 
 export default router;

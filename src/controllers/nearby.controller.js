@@ -54,7 +54,7 @@ const getBusinessCategory = asyncHandler(async (req, res) => {
   const {search} = req.query;
 
   const businessCategory = await BusinessCategory.find({
-    category_name: { $regex: search, $options: "i" },
+    category_name: { $regex: search ? search : "", $options: "i" },
   }).select("-__v -userId");
   if (!businessCategory) {
     throw new ApiError(404, "No business category found");

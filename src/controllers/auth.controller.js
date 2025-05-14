@@ -13,6 +13,7 @@ import { generateOTP, sendOTP } from "../services/smsService.js";
 import { sendEmail } from "../services/emailService.js";
 import { DeleteAccountRequestModel } from "../models/delete_account_request.model.js";
 import FamilyMember from "../models/familyMember.model.js";
+import fs from "fs";
 
 // const generateAccessAndRefreshTokens = async (userId) => {
 //   try {
@@ -111,10 +112,19 @@ const signup = asyncHandler(async (req, res) => {
   //   mobile OTP send code
   //   const send = await sendOTP(mobile, otp);
 
-  // get the html
-  const html = `<div style='background:red;color:white'>Your OTP is ${otp}.</div>`;
-  // send otp to email address
-  const send = await sendEmail(email, "OTP Verification", html);
+  const html = fs.readFileSync("./src/emails/otpTemplate.html", "utf-8");
+  const subject = "OTP Verification";
+  const otpHTML = new RegExp(`{{OTP}}`, "g");
+  const updatedHtml = html.replace(otpHTML, otp);
+
+  const namehtml = new RegExp(`{{name}}`, "g");
+  const updatedHtml1 = updatedHtml.replace(namehtml, name);
+
+  const year = new RegExp(`{{year}}`, "g");
+  const updatedHtml2 = updatedHtml1.replace(year, new Date().getFullYear());
+
+  const send = await sendEmail(userEmail, subject, updatedHtml2);
+  
   if (!send.success) {
     // throw new ApiError(500, "Failed to send OTP to mobile number");
     throw new ApiError(500, "Failed to send OTP to Email");
@@ -207,7 +217,7 @@ const loginUser = asyncHandler(async (req, res) => {
   }
 
   // check if the user is verified
-  if(!user.isEmailVerified && !user.isMobileVerified) {
+  if (!user.isEmailVerified && !user.isMobileVerified) {
     throw new ApiError(400, "Email and Mobile number is not verified");
   }
 
@@ -284,10 +294,18 @@ const forgotPassword = asyncHandler(async (req, res) => {
   //   mobile OTP send code
   //   const send = await sendOTP(mobile, otp);
 
-  //   get the html
-  const html = `<div style='background:red;color:white'>Your OTP is ${otp}.</div>`;
-  // send otp to email address
-  const send = await sendEmail(email, "OTP Verification", html);
+  const html = fs.readFileSync("./src/emails/otpTemplate.html", "utf-8");
+  const subject = "OTP Verification";
+  const otpHTML = new RegExp(`{{OTP}}`, "g");
+  const updatedHtml = html.replace(otpHTML, otp);
+
+  const namehtml = new RegExp(`{{name}}`, "g");
+  const updatedHtml1 = updatedHtml.replace(namehtml, user.name);
+
+  const year = new RegExp(`{{year}}`, "g");
+  const updatedHtml2 = updatedHtml1.replace(year, new Date().getFullYear());
+
+  const send = await sendEmail(user.email, subject, updatedHtml2);
   if (!send.success) {
     // throw new ApiError(500, "Failed to send OTP to mobile number");
     throw new ApiError(500, "Failed to send OTP to Email");
@@ -365,12 +383,20 @@ const resendOTP = asyncHandler(async (req, res) => {
   user.otp = otp;
   user.otpExpire = new Date(Date.now() + 10 * 60 * 1000);
   await user.save();
-  //   mobile OTP send code
-  //   const send = await sendOTP(mobile, otp);
-  // get the html
-  const html = `<div style='background:red;color:white'>Your OTP is ${otp}.</div>`;
 
-  const send = await sendEmail(user.email, "OTP Verification", html);
+  const html = fs.readFileSync("./src/emails/otpTemplate.html", "utf-8");
+  const subject = "OTP Verification";
+  const otpHTML = new RegExp(`{{OTP}}`, "g");
+  const updatedHtml = html.replace(otpHTML, otp);
+
+  const namehtml = new RegExp(`{{name}}`, "g");
+  const updatedHtml1 = updatedHtml.replace(namehtml, user.name);
+
+  const year = new RegExp(`{{year}}`, "g");
+  const updatedHtml2 = updatedHtml1.replace(year, new Date().getFullYear());
+
+  const send = await sendEmail(user.email, subject, updatedHtml2);
+
   if (!send.success) {
     throw new ApiError(500, "Failed to send OTP to Email");
   }
