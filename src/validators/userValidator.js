@@ -1,26 +1,41 @@
 import Joi from "joi";
 
 const userValidationSchema = Joi.object({
-  name: Joi.string().min(1).max(50).required().messages({
-    "string.base": "Name must be a string.",
-    "string.empty": "Name is required.",
-    "string.min": "Name must be at least 1 characters.",
-    "string.max": "Name cannot exceed 50 characters.",
-    "any.required": "Name is required.",
-  }),
-  email: Joi.string().email().required().messages({
-    "string.base": "Email must be a string.",
-    "string.email": "Email must be valid.",
-    "any.required": "Email is required.",
-  }),
+  name: Joi.string()
+    .trim()
+    .pattern(/^[a-zA-Z\s]+$/)
+    .min(1)
+    .max(50)
+    .required()
+    .messages({
+      "string.base": "Name must be a string.",
+      "string.empty": "Name is required.",
+      "string.min": "Name must be at least 1 character.",
+      "string.max": "Name cannot exceed 50 characters.",
+      "string.pattern.base":
+        "Name can only contain letters and spaces. Numbers and special characters are not allowed.",
+      "any.required": "Name is required.",
+    }),
+  email: Joi.string()
+    .trim()
+    .email({ tlds: { allow: false } })
+    .pattern(/^[^\W_][\w.-]*@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/)
+    .required()
+    .messages({
+      "string.base": "Email must be a string.",
+      "string.empty": "Email is required.",
+      "string.email": "Email must be valid.",
+      "string.pattern.base": "Email format is invalid. It should not start with special characters.",
+      "any.required": "Email is required.",
+    }),
   mobile: Joi.string()
-    .pattern(/^\+[1-9][0-9]{0,3}[1-9][0-9]{9}$/)
+    .pattern(/^\+[1-9][0-9]{0,3}[1-9][0-9]{8,15}$/)
     .required()
     .messages({
       "string.base": "Mobile number must be a string.",
       "string.empty": "Mobile number is required.",
       "string.pattern.base":
-        "Mobile number must include a valid country code and be in the format: +<country code><10-digit number>.",
+        "Mobile number must include a valid country code and be in the format: +<country code><8-15 digit number>.",
       "any.required": "Mobile number is required.",
     }),
   country: Joi.string().required().messages({
@@ -56,8 +71,8 @@ const userValidationSchema = Joi.object({
     .messages({
       "string.base": "Password must be a string.",
       "string.empty": "Password is required.",
-      "string.min": "Password must be at least 8 characters.",
-      "string.max": "Password cannot exceed 15 characters.",
+      "string.min": "Password must be at least 8 characters.Password must include at least one lowercase letter, one uppercase letter, one number, and one special character (@$!%*?&#).",
+      "string.max": "Password cannot exceed 15 characters.Password must include at least one lowercase letter, one uppercase letter, one number, and one special character (@$!%*?&#).",
       "string.pattern.base":
         "Password must include at least one lowercase letter, one uppercase letter, one number, and one special character (@$!%*?&#).",
       "any.required": "Password is required.",
@@ -407,15 +422,13 @@ const addStorySchema = Joi.object({
     "any.required": "Media Type is required.",
   }),
 
-  
-  description: Joi.string()
-    .when("mediaType", {
-      is: "text",
-      then: Joi.required().messages({
-        "any.required": "Description is required when mediaType is 'text'.",
-      }),
-      otherwise: Joi.optional(),
+  description: Joi.string().when("mediaType", {
+    is: "text",
+    then: Joi.required().messages({
+      "any.required": "Description is required when mediaType is 'text'.",
     }),
+    otherwise: Joi.optional(),
+  }),
 });
 
 const updateDeleteRequestSchema = Joi.object({
@@ -424,29 +437,30 @@ const updateDeleteRequestSchema = Joi.object({
     "string.empty": "Request Id is required.",
     "any.required": "Request Id is required.",
   }),
-  status: Joi.string()
-    .valid("approved", "rejected")
-    .required()
-    .messages({
-      "string.base": "Status must be a string.",
-      "string.empty": "Status is required.",
-      "any.only": "Status must be either 'approved' or 'rejected'.",
-      "any.required": "Status is required.",
-    }),
+  status: Joi.string().valid("approved", "rejected").required().messages({
+    "string.base": "Status must be a string.",
+    "string.empty": "Status is required.",
+    "any.only": "Status must be either 'approved' or 'rejected'.",
+    "any.required": "Status is required.",
+  }),
 });
 
 const saveResourcesSchema = Joi.object({
-  type: Joi.string().valid("job", "post", "health_wellness", "event").required().messages({
-    "string.base": "Type must be a string.",
-    "string.empty": "Type is required.",
-    "any.only": "Type must be one of 'job', 'post', 'health_wellness', or 'event'.",
-    "any.required": "Type is required.",
-  }),
+  type: Joi.string()
+    .valid("job", "post", "health_wellness", "event")
+    .required()
+    .messages({
+      "string.base": "Type must be a string.",
+      "string.empty": "Type is required.",
+      "any.only":
+        "Type must be one of 'job', 'post', 'health_wellness', or 'event'.",
+      "any.required": "Type is required.",
+    }),
   resourceId: Joi.string().required().messages({
     "string.base": "Resource Id must be a string.",
     "string.empty": "Resource Id is required.",
     "any.required": "Resource Id is required.",
-  })
+  }),
 });
 
 const addPagesSchema = Joi.object({

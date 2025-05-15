@@ -388,6 +388,92 @@ const addAddress = asyncHandler(async (req,res) =>{
   );
 });
 
+const getAddress = asyncHandler(async (req,res) =>{
+  const userId = req.user.userId;
+
+  const addressList = await DeliveryAddress.find({userId});
+  if (!addressList) {
+    throw new ApiError(404, "No address found");
+  }
+  res.json(
+    new ApiResponse(200, "Address list fetched successfully", addressList)
+  );
+});
+
+
+const updateAddress = asyncHandler(async (req,res) =>{
+  const { id , name , mobile , alternate_mobile , pincode, city, state ,country , address } = req.body;
+  const userId = req.user.userId;
+
+  if (!isValidObjectId(id)) {
+    throw new ApiError(400, "Invalid address ID");
+  }
+
+  const addressData = {
+    name,
+    mobile,
+    alternate_mobile,
+    pincode,
+    city,
+    state,
+    country,
+    address,
+    userId
+  };
+
+  const updatedAddress = await DeliveryAddress.findByIdAndUpdate(id,addressData,{new:true});
+  if (!updatedAddress) {
+    throw new ApiError(500, "Failed to update address");
+  }
+
+  res.json(
+    new ApiResponse(200, "Address updated successfully", updatedAddress)
+  );
+});
+
+const removeAddress = asyncHandler(async (req,res) =>{
+  const { addressId } = req.params;
+
+  if (!isValidObjectId(addressId)) {
+    throw new ApiError(400, "Invalid address ID");
+  }
+
+  const address = await DeliveryAddress.findByIdAndDelete(addressId);
+  if (!address) {
+    throw new ApiError(404, "Address not found");
+  }
+  res.json(
+    new ApiResponse(200, "Address deleted successfully")
+  );
+});
+
+const addToCart = asyncHandler(async (req,res) =>{
+  const { product_id , quantity } = req.body;
+  const userId = req.user.userId;
+
+  if (!isValidObjectId(product_id)) {
+    throw new ApiError(400, "Invalid product ID");
+  }
+
+  const product = await Product.findById(product_id);
+  if (!product) {
+    throw new ApiError(404, "Product not found");
+  }
+
+  const cartData = {
+    userId,
+    product_id,
+    quantity
+  };
+
+  // Add to cart logic here
+
+
+  res.json(
+    new ApiResponse(200, "Product added to cart successfully")
+  );
+});
+
 
 export {
   upsertCategory,
@@ -400,4 +486,8 @@ export {
   getProductDetails,
   removeProduct,
   addAddress,
+  getAddress,
+  updateAddress,
+  removeAddress,
+  addToCart
 };
