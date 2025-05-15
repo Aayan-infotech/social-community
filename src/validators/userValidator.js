@@ -29,13 +29,13 @@ const userValidationSchema = Joi.object({
       "any.required": "Email is required.",
     }),
   mobile: Joi.string()
-    .pattern(/^\+[1-9][0-9]{0,3}[1-9][0-9]{8,15}$/)
+    .pattern(/^\+[1-9][0-9]{0,5}[1-9][0-9]{1,20}$/)
     .required()
     .messages({
       "string.base": "Mobile number must be a string.",
       "string.empty": "Mobile number is required.",
       "string.pattern.base":
-        "Mobile number must include a valid country code and be in the format: +<country code><8-15 digit number>.",
+        "Mobile number must include a valid country code and be in the format: +<country code><number>.",
       "any.required": "Mobile number is required.",
     }),
   country: Joi.string().required().messages({
