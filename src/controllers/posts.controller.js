@@ -649,9 +649,7 @@ const getHomeFeed = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Invalid filter. Filter should be either global, local or trending");
   }
 
-  // if the filter is local then get the userId from the request from the same city, state and country
-  //  if the filter is trending then return the posts that has the most likes and comments
-  // if the filter is global then return all the posts
+
 
   const [education, experience] = await Promise.all([
     Education.aggregate([
@@ -694,6 +692,14 @@ const getHomeFeed = asyncHandler(async (req, res) => {
   const aggregation = [
     {
       $match: { type: type },
+    },
+      {
+      $lookup: {
+        from: "users",
+        localField: "userId",
+        foreignField: "userId",
+        as: "user",
+      },
     },
     {
       $unwind: "$user",
@@ -850,7 +856,10 @@ const getHomeFeed = asyncHandler(async (req, res) => {
     },
   ];
 
+  console.log(aggregation);
+
   const result = await PostModel.aggregate(aggregation);
+  console.log(result);
 
   const posts = result[0]?.posts || [];
   const totalCount = result[0]?.totalCount[0]?.count || 0;
