@@ -27,6 +27,7 @@ import {
   getFAQ,
   updateMatrimonialProfile,
   getMatrimonialProfile,
+  getAllInfoPages,
 } from "../controllers/users.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { validateRequest } from "../middlewares/validation.middleware.js";
@@ -124,6 +125,9 @@ router.get('/FAQ',verifyJWT,getFAQ);
 // Users Matrimonial Profile
 router.put('/update-matrimonial-profile',verifyJWT,validateRequest(updateMatrimonialProfileSchema),updateMatrimonialProfile);
 router.get('/get-matrimonial-profile',verifyJWT,getMatrimonialProfile);
+
+// Info Pages
+router.get('/info-pages',verifyJWT,getAllInfoPages);
 
 
 export default router;

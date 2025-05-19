@@ -26,7 +26,7 @@ const createPost = asyncHandler(async (req, res) => {
   if (req.files && req.files.media) {
     const file = req.files.media[0];
     // for (const file of req.files.media) {
-    // console.log(file);
+
     if (file.mimetype !== "video/mp4") {
       const saveUpload = await saveCompressedImage(file, 600);
       if (!saveUpload.success) {
@@ -639,17 +639,21 @@ const getHomeFeed = asyncHandler(async (req, res) => {
   const limit = Math.max(1, parseInt(req.query.limit) || 10);
   const skip = (page - 1) * limit;
   const type = req.query.type || "social";
-  if(type !== "social" && type !== "professional"){
-    throw new ApiError(400, "Invalid type. Type should be either social or professional");
+  if (type !== "social" && type !== "professional") {
+    throw new ApiError(
+      400,
+      "Invalid type. Type should be either social or professional"
+    );
   }
 
   // add filter global , local and trending
   const filter = req.query.filter || "global";
   if (filter !== "global" && filter !== "local" && filter !== "trending") {
-    throw new ApiError(400, "Invalid filter. Filter should be either global, local or trending");
+    throw new ApiError(
+      400,
+      "Invalid filter. Filter should be either global, local or trending"
+    );
   }
-
-
 
   const [education, experience] = await Promise.all([
     Education.aggregate([
@@ -685,182 +689,191 @@ const getHomeFeed = asyncHandler(async (req, res) => {
   const uniqueCompanyNames = experience[0]?.companyNames || [];
   const uniqueExperienceSkills = experience[0]?.skills || [];
 
+  const optionalFilters = [];
+  if (filter === "local") {
+    optionalFilters.push({ "user.city": req.user.city });
+  } else if (filter === "global" || filter === "trending") {
+    optionalFilters.push({});
+  }
 
+  optionalFilters.push({
+    $expr: {
+      $gt: [
+        {
+          $size: {
+            $setIntersection: [uniqueCompanyNames, "$experience.companyName"],
+          },
+        },
+        0,
+      ],
+    },
+  });
+  optionalFilters.push({
+    $expr: {
+      $gt: [
+        {
+          $size: {
+            $setIntersection: [
+              uniqueInstitutionNames,
+              "$education.institutionName",
+            ],
+          },
+        },
+        0,
+      ],
+    },
+  });
+  optionalFilters.push({
+    $expr: {
+      $gt: [
+        {
+          $size: {
+            $setIntersection: [uniqueDegrees, "$education.degree"],
+          },
+        },
+        0,
+      ],
+    },
+  });
+  optionalFilters.push({
+    $expr: {
+      $gt: [
+        {
+          $size: {
+            $setIntersection: [uniqueFieldsOfStudy, "$education.fieldOfStudy"],
+          },
+        },
+        0,
+      ],
+    },
+  });
+  optionalFilters.push({
+    $expr: {
+      $gt: [
+        {
+          $size: {
+            $setIntersection: [uniqueLocations, "$experience.location"],
+          },
+        },
+        0,
+      ],
+    },
+  });
+  optionalFilters.push({
+    $expr: {
+      $gt: [
+        {
+          $size: {
+            $setIntersection: [uniqueCompanyNames, "$experience.companyName"],
+          },
+        },
+        0,
+      ],
+    },
+  });
+  optionalFilters.push({
+    $expr: {
+      $gt: [
+        {
+          $size: {
+            $setIntersection: [uniqueExperienceSkills, "$experience.skills"],
+          },
+        },
+        0,
+      ],
+    },
+  });
+  optionalFilters.push({
+    $expr: {
+      $gt: [
+        {
+          $size: {
+            $setIntersection: [uniqueEducationSkills, "$education.skills"],
+          },
+        },
+        0,
+      ],
+    },
+  });
 
+  const aggregation = [];
+  aggregation.push({
+    $match: { type: type },
+  });
 
+  aggregation.push({
+    $lookup: {
+      from: "users",
+      localField: "userId",
+      foreignField: "userId",
+      as: "user",
+    },
+  });
+  aggregation.push({
+    $unwind: {
+      path: "$user",
+    },
+  });
 
-  const aggregation = [
-    {
-      $match: { type: type },
+  aggregation.push({
+    $lookup: {
+      from: "experiences",
+      localField: "userId",
+      foreignField: "userId",
+      as: "experience",
     },
-      {
-      $lookup: {
-        from: "users",
-        localField: "userId",
-        foreignField: "userId",
-        as: "user",
-      },
+  });
+
+  aggregation.push({
+    $lookup: {
+      from: "educations",
+      localField: "userId",
+      foreignField: "userId",
+      as: "education",
     },
-    {
-      $unwind: "$user",
+  });
+
+  aggregation.push({
+    $match: {
+      $or: optionalFilters,
     },
-    {
-      $lookup: {
-        from: "experiences",
-        localField: "userId",
-        foreignField: "userId",
-        as: "experience",
-      },
-    },
-    {
-      $lookup: {
-        from: "educations",
-        localField: "userId",
-        foreignField: "userId",
-        as: "education",
-      },
-    },
-    {
-      $match: {
-        $or: [
-          { "user.city": req.user.city },
-          { "user.country": req.user.country },
-          { "user.state": req.user.state },
-          {
-            $expr: {
-              $gt: [
-                {
-                  $size: {
-                    $setIntersection: [
-                      uniqueCompanyNames,
-                      "$experience.companyName",
-                    ],
-                  },
-                },
-                0,
-              ],
-            },
-          },
-          {
-            $expr: {
-              $gt: [
-                {
-                  $size: {
-                    $setIntersection: [
-                      uniqueInstitutionNames,
-                      "$education.institutionName",
-                    ],
-                  },
-                },
-                0,
-              ],
-            },
-          },
-          {
-            $expr: {
-              $gt: [
-                {
-                  $size: {
-                    $setIntersection: [uniqueDegrees, "$education.degree"],
-                  },
-                },
-                0,
-              ],
-            },
-          },
-          {
-            $expr: {
-              $gt: [
-                {
-                  $size: {
-                    $setIntersection: [
-                      uniqueFieldsOfStudy,
-                      "$education.fieldOfStudy",
-                    ],
-                  },
-                },
-                0,
-              ],
-            },
-          },
-          {
-            $expr: {
-              $gt: [
-                {
-                  $size: {
-                    $setIntersection: [uniqueLocations, "$experience.location"],
-                  },
-                },
-                0,
-              ],
-            },
-          },
-          {
-            $expr: {
-              $gt: [
-                {
-                  $size: {
-                    $setIntersection: [
-                      uniqueExperienceSkills,
-                      "$experience.skills",
-                    ],
-                  },
-                },
-                0,
-              ],
-            },
-          },
-          {
-            $expr: {
-              $gt: [
-                {
-                  $size: {
-                    $setIntersection: [
-                      uniqueEducationSkills,
-                      "$education.skills",
-                    ],
-                  },
-                },
-                0,
-              ],
-            },
-          },
-        ],
-      },
-    },
-    {
+  });
+
+  if (filter === "trending") {
+    aggregation.push({
+      $sort: { likes: -1 },
+    });
+  } else {
+    aggregation.push({
       $sort: { createdAt: -1 },
-    },
-    {
-      $facet: {
-        posts: [
-          { $skip: skip },
-          { $limit: limit },
-          {
-            $project: {
-              "user.name": 1,
-              "user.profile_image": 1,
-              "user.userId": 1,
-              title: 1,
-              description: 1,
-              type: 1,
-              media: 1,
-              mediaType: 1,
-              likes: 1,
-              comment_count: { $size: "$comments" },
-            },
-          },
-        ],
-        totalCount: [{ $count: "count" }],
-      },
-    },
-  ];
+    });
+  }
 
-  console.log(aggregation);
+  aggregation.push({
+    $facet: {
+      posts: [
+        { $skip: skip },
+        { $limit: limit },
+        {
+          $project: {
+            "user.name": 1,
+            "user.profile_image": 1,
+            "user.userId": 1,
+            title: 1,
+            description: 1,
+            type: 1,
+            media: 1,
+            mediaType: 1,
+            likes: 1,
+            comment_count: { $size: "$comments" },
+          },
+        },
+      ],
+      totalCount: [{ $count: "count" }],
+    },
+  });
 
   const result = await PostModel.aggregate(aggregation);
-  console.log(result);
-
   const posts = result[0]?.posts || [];
   const totalCount = result[0]?.totalCount[0]?.count || 0;
   const totalPages = Math.ceil(totalCount / limit);

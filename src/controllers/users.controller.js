@@ -1285,6 +1285,13 @@ const userId = req.query.user_id || req.user.userId;
   res.json(new ApiResponse(200, "User Matrimonial Profile fetched successfully", user[0]));
 });
 
+
+
+const getAllInfoPages = asyncHandler(async (req, res) => {
+  const pages = await PageModel.find({});
+  res.json(new ApiResponse(200, "Info pages fetched successfully", pages));
+});
+
 export {
   getUserProfile,
   updateUserProfile,
@@ -1312,4 +1319,5 @@ export {
   getFAQ,
   updateMatrimonialProfile,
   getMatrimonialProfile,
+  getAllInfoPages,
 };
