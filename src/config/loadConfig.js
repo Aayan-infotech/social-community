@@ -47,6 +47,10 @@ const loadConfig = async () => {
             EMAIL_USER: secrets.EMAIL_USER,
             EMAIL_PASS: secrets.EMAIL_PASS,
 
+            // Stripe configuration
+            STRIPE_PUBLIC_KEY: secrets.STRIPE_PUBLIC_KEY,
+            STRIPE_SECRET_KEY: secrets.STRIPE_SECRET_KEY,
+
 
             // Firebase configuration
             FIREBASE_CONFIG: secrets.FIREBASE_CONFIG,
@@ -89,6 +93,10 @@ const loadConfig = async () => {
     // Email configuration
     EMAIL_USER: process.env.EMAIL_USER,
     EMAIL_PASS: process.env.EMAIL_PASS,
+
+    // Stripe configuration
+    STRIPE_PUBLIC_KEY: process.env.STRIPE_PUBLIC_KEY,
+    STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
 
     FIREBASE_CONFIG: process.env.FIREBASE_CONFIG, 
   };

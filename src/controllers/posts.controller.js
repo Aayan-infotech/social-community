@@ -643,6 +643,16 @@ const getHomeFeed = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Invalid type. Type should be either social or professional");
   }
 
+  // add filter global , local and trending
+  const filter = req.query.filter || "global";
+  if (filter !== "global" && filter !== "local" && filter !== "trending") {
+    throw new ApiError(400, "Invalid filter. Filter should be either global, local or trending");
+  }
+
+  // if the filter is local then get the userId from the request from the same city, state and country
+  //  if the filter is trending then return the posts that has the most likes and comments
+  // if the filter is global then return all the posts
+
   const [education, experience] = await Promise.all([
     Education.aggregate([
       { $match: { userId: req.user.userId } },
@@ -678,17 +688,12 @@ const getHomeFeed = asyncHandler(async (req, res) => {
   const uniqueExperienceSkills = experience[0]?.skills || [];
 
 
+
+
+
   const aggregation = [
     {
       $match: { type: type },
-    },
-    {
-      $lookup: {
-        from: "users",
-        localField: "userId",
-        foreignField: "userId",
-        as: "user",
-      },
     },
     {
       $unwind: "$user",

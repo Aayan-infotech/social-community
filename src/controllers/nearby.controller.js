@@ -6,36 +6,52 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { deleteObject, uploadImage } from "../utils/awsS3Utils.js";
 import { isValidObjectId } from "../utils/isValidObjectId.js";
 import Business from "../models/business.model.js";
+import { UserDefinedMessageInstance } from "twilio/lib/rest/api/v2010/account/call/userDefinedMessage.js";
 
 const upsertBussinessCategory = asyncHandler(async (req, res) => {
   const { id, category_name } = req.body;
   const userId = req.user.userId;
 
   let category_image = "";
+
+  let existingCategory = null;
+  if (id) {
+    if (!isValidObjectId(id)) {
+      throw new ApiError(400, "Invalid category ID");
+    }
+
+    existingCategory = await BusinessCategory.findById(id);
+    if (!existingCategory) {
+      throw new ApiError(404, "Business category not found");
+    }
+  }
+
   if (req.files && req.files.category_image) {
-    const businessCategory = await BusinessCategory.findById(id);
-    if (businessCategory && businessCategory.category_image) {
-      const deleteImage = await deleteObject(businessCategory.category_image);
-      if (!deleteImage) {
+    if (existingCategory && existingCategory.category_image) {
+      const deleted = await deleteObject(existingCategory.category_image);
+      if (!deleted) {
         throw new ApiError(500, "Failed to delete old image");
       }
     }
 
     const file = req.files.category_image[0];
-    const saveUpload = await uploadImage(file);
-    if (!saveUpload.success) {
+    const uploaded = await uploadImage(file);
+    if (!uploaded.success) {
       throw new ApiError(500, "Failed to upload image");
     }
-    category_image = saveUpload?.fileUrl;
+
+    category_image = uploaded.fileUrl;
+  } else {
+    category_image = existingCategory?.category_image || "";
   }
 
-  let updateData = {
+  const updateData = {
     category_name,
     category_image,
     userId,
   };
 
-  const businessCategory = await BusinessCategory.findByIdAndUpdate(
+  const updatedCategory = await BusinessCategory.findByIdAndUpdate(
     id || new mongoose.Types.ObjectId(),
     { $set: updateData },
     { new: true, upsert: true }
@@ -44,14 +60,16 @@ const upsertBussinessCategory = asyncHandler(async (req, res) => {
   res.json(
     new ApiResponse(
       200,
-      "Business category updated successfully",
-      businessCategory
+      id
+        ? "Business category updated successfully"
+        : "Business category created successfully",
+      updatedCategory
     )
   );
 });
 
 const getBusinessCategory = asyncHandler(async (req, res) => {
-  const {search} = req.query;
+  const { search } = req.query;
 
   const businessCategory = await BusinessCategory.find({
     category_name: { $regex: search ? search : "", $options: "i" },
@@ -132,6 +150,98 @@ const getBusiness = asyncHandler(async (req, res) => {
   res.json(new ApiResponse(200, "Business fetched successfully", business));
 });
 
+const getAllBussinesses = asyncHandler(async (req, res) => {
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.max(1, parseInt(req.query.limit) || 10);
+  const skip = (page - 1) * limit;
+  const { search } = req.query;
+
+  const aggregation = [];
+
+  if (search) {
+    aggregation.push({
+      $match: {
+        businessName: { $regex: search, $options: "i" },
+      },
+    });
+  }
+
+  aggregation.push({
+    $lookup: {
+      from: "businesscategories",
+      localField: "categoryId",
+      foreignField: "_id",
+      as: "category",
+    },
+  });
+  aggregation.push({
+    $unwind: {
+      path: "$category",
+      preserveNullAndEmptyArrays: true,
+    },
+  });
+  aggregation.push({
+    $lookup: {
+      from: "users",
+      localField: "userId",
+      foreignField: "userId",
+      as: "user",
+    },
+  });
+  aggregation.push({
+    $unwind: {
+      path: "$user",
+      preserveNullAndEmptyArrays: true,
+    },
+  });
+
+
+  aggregation.push({
+    $facet: {
+      totalCount: [{ $count: "count" }],
+      businesses: [
+        { $skip: skip },
+        { $limit: limit },
+        {
+          $project: {
+            _id: 1,
+            businessName: 1,
+            address: 1,
+            latitude: 1,
+            longitude: 1,
+            description: 1,
+            status: 1,
+            businessImage: 1,
+            categoryId: 1,
+            category_name: "$category.category_name",
+            userName : "$user.name",
+          },
+        },
+      ],
+    },
+  });
+
+  const result = await Business.aggregate(aggregation);
+
+  const businesses = result[0]?.businesses || [];
+  const totalCount = result[0]?.totalCount[0]?.count || 0;
+  const totalPages = Math.ceil(totalCount / limit);
+
+  res.json(
+    new ApiResponse(
+      200,
+      businesses.length ? "Home Feed fetched successfully" : "No Home Feed found",
+      {
+        businesses,
+        total_page: totalPages,
+        current_page: page,
+        total_records: totalCount,
+        per_page: limit,
+      }
+    )
+  );
+});
+
 const updateBusinessStatus = asyncHandler(async (req, res) => {
   const { businessId, status } = req.body;
   if (!isValidObjectId(businessId)) {
@@ -179,6 +289,22 @@ const getNearByBusiness = asyncHandler(async (req, res) => {
   );
 });
 
+const deleteBussinessCategory = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  if (!isValidObjectId(id)) {
+    throw new ApiError(400, "Invalid Bussiness Category Id");
+  }
+
+  const deleted = await BusinessCategory.findByIdAndDelete(id);
+  if (!deleted) {
+    throw new ApiError(404, "Business category not found");
+  }
+
+  res.json(
+    new ApiResponse(200, "Business category deleted successfully", deleted)
+  );
+});
+
 export {
   upsertBussinessCategory,
   getBusinessCategory,
@@ -186,4 +312,6 @@ export {
   getBusiness,
   updateBusinessStatus,
   getNearByBusiness,
+  deleteBussinessCategory,
+  getAllBussinesses,
 };

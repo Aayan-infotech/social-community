@@ -147,10 +147,62 @@ const addAddressSchema = joi.object({
   }),
 });
 
+const updateAddressSchema = joi.object({
+  id: joi.string().required().messages({
+    "string.empty": "Address ID is required",
+    "any.required": "Address ID is required",
+  }),
+  name: joi.string().required().messages({
+    "string.empty": "Name is required",
+    "any.required": "Name is required",
+  }),
+  mobile: joi.string().required().messages({
+    "string.empty": "Mobile number is required",
+    "any.required": "Mobile number is required",
+  }),
+  alternate_mobile: joi.string().allow("").messages({
+    "string.empty": "Alternate mobile number is required",
+    "any.required": "Alternate mobile number is required",
+  }),
+  address: joi.string().required().messages({
+    "string.empty": "Address is required",
+    "any.required": "Address is required",
+  }),
+  city: joi.string().required().messages({
+    "string.empty": "City is required",
+    "any.required": "City is required",
+  }),
+  state: joi.string().required().messages({
+    "string.empty": "State is required",
+    "any.required": "State is required",
+  }),
+  country: joi.string().required().messages({
+    "string.empty": "Country is required",
+    "any.required": "Country is required",
+  }),
+  pincode: joi.string().required().messages({
+    "string.empty": "Pincode is required",
+    "any.required": "Pincode is required",
+  }),
+});
+
+const addToCartSchema = joi.object({
+  productId: joi.string().required().messages({
+    "string.empty": "Product ID is required",
+    "any.required": "Product ID is required",
+  }),
+  quantity: joi.string().required().messages({
+    "string.empty": "Quantity is required",
+    "any.required": "Quantity is required",
+  }),
+});
+
 export {
   upsertCategorySchema,
   upsertSubcategorySchema,
   addProductSchema,
   updateProductSchema,
   addAddressSchema,
+  updateAddressSchema,
+  addToCartSchema,
 };

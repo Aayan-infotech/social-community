@@ -14,6 +14,7 @@ import { sendEmail } from "../services/emailService.js";
 import { DeleteAccountRequestModel } from "../models/delete_account_request.model.js";
 import FamilyMember from "../models/familyMember.model.js";
 import fs from "fs";
+import { createCustomer } from "../services/stripeService.js";
 
 // const generateAccessAndRefreshTokens = async (userId) => {
 //   try {
@@ -130,6 +131,19 @@ const signup = asyncHandler(async (req, res) => {
     throw new ApiError(500, "Failed to send OTP to Email");
   }
 
+
+
+  // Add customer to stripe 
+  const stripeCustomer = await createCustomer(userEmail, name);
+
+  if (!stripeCustomer) {
+    throw new ApiError(500, "Failed to create customer in Stripe");
+  }
+
+  const stripeCustomerId = stripeCustomer.id;
+
+
+
   const user = new User({
     userId,
     name,
@@ -140,6 +154,7 @@ const signup = asyncHandler(async (req, res) => {
     city,
     gender,
     referralCode: referralCode,
+    stripeCustomerId,
     password,
     referrals: [],
     otp,

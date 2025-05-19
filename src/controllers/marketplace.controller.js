@@ -9,14 +9,28 @@ import MarketPlaceCategory from "../models/marketPlaceCategory.model.js";
 import MarketPlaceSubCategory from "../models/marketplaceSubCategory.model.js";
 import DeliveryAddress from "../models/deliveryAddress.model.js";
 import Product from "../models/product.model.js";
+import Cart from "../models/addtocart.model.js";
+import { addCardToCustomer } from "../services/stripeService.js";
 
 const upsertCategory = asyncHandler(async (req, res) => {
   const { id, category_name } = req.body;
   const userId = req.user.userId;
 
   let category_image = "";
+
+  let existingCategory = null;
+  if (id) {
+    if (!isValidObjectId(id)) {
+      throw new ApiError(400, "Invalid category ID");
+    }
+    existingCategory = await MarketPlaceCategory.findById(id);
+    if (!existingCategory) {
+      throw new ApiError(404, "Business category not found");
+    }
+  }
+
   if (req.files && req.files.category_image) {
-    const businessCategory = await BusinessCategory.findById(id);
+    const businessCategory = await MarketPlaceCategory.findById(id);
     if (businessCategory && businessCategory.category_image) {
       const deleteImage = await deleteObject(businessCategory.category_image);
       if (!deleteImage) {
@@ -30,6 +44,8 @@ const upsertCategory = asyncHandler(async (req, res) => {
       throw new ApiError(500, "Failed to upload image");
     }
     category_image = saveUpload?.fileUrl;
+  } else {
+    category_image = existingCategory?.category_image || "";
   }
 
   let updateData = {
@@ -45,6 +61,26 @@ const upsertCategory = asyncHandler(async (req, res) => {
   );
 
   res.json(new ApiResponse(200, "Category updated successfully", mCategory));
+});
+
+const deleteMarketplaceCategory = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  if (!isValidObjectId(id)) {
+    throw new ApiError(400, "Invalid category ID");
+  }
+  const category = await MarketPlaceCategory.findByIdAndDelete(id);
+  if (!category) {
+    throw new ApiError(404, "Category not found");
+  }
+  const subCategory = await MarketPlaceSubCategory.deleteMany({
+    category_id: id,
+  });
+  if (!subCategory) {
+    throw new ApiError(404, "Subcategory not found");
+  }
+  res.json(
+    new ApiResponse(200, "Category and subcategory deleted successfully")
+  );
 });
 
 const getCategory = asyncHandler(async (req, res) => {
@@ -70,6 +106,18 @@ const upsertSubcategory = asyncHandler(async (req, res) => {
   }
 
   let subcategory_image = "";
+
+  let existingSubCategory = null;
+  if (id) {
+    if (!isValidObjectId(id)) {
+      throw new ApiError(400, "Invalid subcategory ID");
+    }
+    existingSubCategory = await MarketPlaceSubCategory.findById(id);
+    if (!existingSubCategory) {
+      throw new ApiError(404, "Subcategory not found");
+    }
+  }
+
   if (req.files && req.files.subcategory_image) {
     const businessCategory = await BusinessCategory.findById(id);
     if (businessCategory && businessCategory.subcategory_image) {
@@ -87,6 +135,8 @@ const upsertSubcategory = asyncHandler(async (req, res) => {
       throw new ApiError(500, "Failed to upload image");
     }
     subcategory_image = saveUpload?.fileUrl;
+  }else{
+    subcategory_image = existingSubCategory?.subcategory_image || "";
   }
 
   let updateData = {
@@ -263,8 +313,6 @@ const getProductList = asyncHandler(async (req, res) => {
   const skip = (page - 1) * limit;
   const userId = req.query.userId || req.user.userId;
 
-
-
   const aggregation = [];
 
   aggregation.push({
@@ -303,8 +351,6 @@ const getProductList = asyncHandler(async (req, res) => {
     },
   });
 
-
-
   aggregation.push({
     $project: {
       _id: 1,
@@ -328,14 +374,16 @@ const getProductList = asyncHandler(async (req, res) => {
   );
 });
 
-const getProductDetails = asyncHandler(async (req,res) =>{
-  const {product_id} = req.params;
+const getProductDetails = asyncHandler(async (req, res) => {
+  const { product_id } = req.params;
 
   if (!isValidObjectId(product_id)) {
     throw new ApiError(400, "Invalid product ID");
   }
 
-  const product = await Product.findById(product_id).populate("category_id").populate("subcategory_id");
+  const product = await Product.findById(product_id)
+    .populate("category_id")
+    .populate("subcategory_id");
   if (!product) {
     throw new ApiError(404, "Product not found");
   }
@@ -344,8 +392,8 @@ const getProductDetails = asyncHandler(async (req,res) =>{
   );
 });
 
-const removeProduct = asyncHandler(async (req,res) =>{
-  const {product_id} = req.params;
+const removeProduct = asyncHandler(async (req, res) => {
+  const { product_id } = req.params;
 
   if (!isValidObjectId(product_id)) {
     throw new ApiError(400, "Invalid product ID");
@@ -355,15 +403,21 @@ const removeProduct = asyncHandler(async (req,res) =>{
   if (!product) {
     throw new ApiError(404, "Product not found");
   }
-  res.json(
-    new ApiResponse(200, "Product deleted successfully")
-  );
+  res.json(new ApiResponse(200, "Product deleted successfully"));
 });
 
-
 // Delivery Address Management
-const addAddress = asyncHandler(async (req,res) =>{
-  const { name , mobile , alternate_mobile , pincode, city, state ,country , address } = req.body;
+const addAddress = asyncHandler(async (req, res) => {
+  const {
+    name,
+    mobile,
+    alternate_mobile,
+    pincode,
+    city,
+    state,
+    country,
+    address,
+  } = req.body;
   const userId = req.user.userId;
 
   const addressData = {
@@ -375,7 +429,7 @@ const addAddress = asyncHandler(async (req,res) =>{
     state,
     country,
     address,
-    userId
+    userId,
   };
 
   const newAddress = await DeliveryAddress.create(addressData);
@@ -383,15 +437,13 @@ const addAddress = asyncHandler(async (req,res) =>{
     throw new ApiError(500, "Failed to add address");
   }
 
-  res.json(
-    new ApiResponse(200, "Address added successfully", newAddress)
-  );
+  res.json(new ApiResponse(200, "Address added successfully", newAddress));
 });
 
-const getAddress = asyncHandler(async (req,res) =>{
+const getAddress = asyncHandler(async (req, res) => {
   const userId = req.user.userId;
 
-  const addressList = await DeliveryAddress.find({userId});
+  const addressList = await DeliveryAddress.find({ userId });
   if (!addressList) {
     throw new ApiError(404, "No address found");
   }
@@ -400,9 +452,18 @@ const getAddress = asyncHandler(async (req,res) =>{
   );
 });
 
-
-const updateAddress = asyncHandler(async (req,res) =>{
-  const { id , name , mobile , alternate_mobile , pincode, city, state ,country , address } = req.body;
+const updateAddress = asyncHandler(async (req, res) => {
+  const {
+    id,
+    name,
+    mobile,
+    alternate_mobile,
+    pincode,
+    city,
+    state,
+    country,
+    address,
+  } = req.body;
   const userId = req.user.userId;
 
   if (!isValidObjectId(id)) {
@@ -418,10 +479,14 @@ const updateAddress = asyncHandler(async (req,res) =>{
     state,
     country,
     address,
-    userId
+    userId,
   };
 
-  const updatedAddress = await DeliveryAddress.findByIdAndUpdate(id,addressData,{new:true});
+  const updatedAddress = await DeliveryAddress.findByIdAndUpdate(
+    id,
+    addressData,
+    { new: true }
+  );
   if (!updatedAddress) {
     throw new ApiError(500, "Failed to update address");
   }
@@ -431,7 +496,7 @@ const updateAddress = asyncHandler(async (req,res) =>{
   );
 });
 
-const removeAddress = asyncHandler(async (req,res) =>{
+const removeAddress = asyncHandler(async (req, res) => {
   const { addressId } = req.params;
 
   if (!isValidObjectId(addressId)) {
@@ -442,38 +507,108 @@ const removeAddress = asyncHandler(async (req,res) =>{
   if (!address) {
     throw new ApiError(404, "Address not found");
   }
-  res.json(
-    new ApiResponse(200, "Address deleted successfully")
-  );
+  res.json(new ApiResponse(200, "Address deleted successfully"));
 });
 
-const addToCart = asyncHandler(async (req,res) =>{
-  const { product_id , quantity } = req.body;
+const addToCart = asyncHandler(async (req, res) => {
+  const { productId, quantity } = req.body;
   const userId = req.user.userId;
 
-  if (!isValidObjectId(product_id)) {
+  if (!isValidObjectId(productId)) {
     throw new ApiError(400, "Invalid product ID");
   }
 
-  const product = await Product.findById(product_id);
+  const product = await Product.findById(productId);
   if (!product) {
     throw new ApiError(404, "Product not found");
   }
 
   const cartData = {
     userId,
-    product_id,
-    quantity
+    productId,
+    quantity,
   };
 
   // Add to cart logic here
+  const addToCart = await Cart.create(cartData);
+  if (!addToCart) {
+    throw new ApiError(500, "Failed to add product to cart");
+  }
 
+  res.json(new ApiResponse(200, "Product added to cart successfully"));
+});
 
+const updateProductQuantity = asyncHandler(async (req, res) => {
+  const { productId, quantity } = req.body;
+  const userId = req.user.userId;
+
+  if (!isValidObjectId(productId)) {
+    throw new ApiError(400, "Invalid product ID");
+  }
+
+  const cartItem = await Cart.findOne({ userId, productId });
+  if (!cartItem) {
+    throw new ApiError(404, "Product not found in cart");
+  }
+
+  cartItem.quantity = quantity;
+  await cartItem.save();
+
+  res.json(new ApiResponse(200, "Product quantity updated successfully"));
+});
+
+const getAllCustomers = asyncHandler(async (req, res) => {
+  const customers = await getAllCustomersList();
+  if (!customers) {
+    throw new ApiError(404, "No customers found");
+  }
   res.json(
-    new ApiResponse(200, "Product added to cart successfully")
+    new ApiResponse(200, "Customer list fetched successfully", customers)
   );
 });
 
+const addCard = asyncHandler(async (req, res) => {
+  const { source } = req.body;
+  if (!source) {
+    throw new ApiError(400, "Source not provided");
+  }
+  const customerId = req.user.stripeCustomerId;
+  if (!customerId) {
+    throw new ApiError(400, "Customer ID not found");
+  }
+  const response = await addCardToCustomer(customerId, {
+    source: source,
+  });
+  console.log("response", response);
+
+  throw new ApiError(500, "Not Implemented Yet");
+});
+
+const getSubCategories = asyncHandler(async (req, res) => {
+  const { search } = req.query;
+
+  const subCategory = await MarketPlaceSubCategory.find({
+    subcategory_name: { $regex: search ? search : "", $options: "i" },
+  }).select("-__v -userId");
+  if (!subCategory) {
+    throw new ApiError(404, "No business category found");
+  }
+  res.json(
+    new ApiResponse(200, "Business category fetched successfully", subCategory)
+  );
+});
+
+const deleteMarketplaceSubCategory = asyncHandler(async (req,res) =>{
+  const { id } = req.params;
+  if (!isValidObjectId(id)) {
+    throw new ApiError(400, "Invalid Subcategory ID");
+  }
+  const subcategory = await MarketPlaceSubCategory.findByIdAndDelete(id);
+  if (!subcategory) {
+    throw new ApiError(404, "Subcategory not found");
+  }
+  res.json(new ApiResponse(200, "Subcategory deleted successfully"));
+});
 
 export {
   upsertCategory,
@@ -489,5 +624,11 @@ export {
   getAddress,
   updateAddress,
   removeAddress,
-  addToCart
+  addToCart,
+  updateProductQuantity,
+  getAllCustomers,
+  addCard,
+  deleteMarketplaceCategory,
+  getSubCategories,
+  deleteMarketplaceSubCategory
 };
