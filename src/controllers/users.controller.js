@@ -924,7 +924,9 @@ const searchSkills = asyncHandler(async (req, res) => {
 
   const skills = await Skill.find({
     name: { $regex: skill, $options: "i" },
-  }).select("name");
+  })
+    .select("name")
+    .limit(10);
 
   res.json(new ApiResponse(200, "Skills fetched successfully", skills));
 });
@@ -1032,6 +1034,16 @@ const getStories = asyncHandler(async (req, res) => {
     },
     {
       $unwind: "$userInfo",
+    },
+    {
+      $addFields: {
+        priority: {
+          $cond: [{ $eq: ["$_id", userId] }, 0, 1],
+        },
+      },
+    },
+    {
+      $sort: { priority: 1 },
     },
     {
       $project: {
