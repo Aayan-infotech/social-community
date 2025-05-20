@@ -30,7 +30,8 @@ import {
   getAllInfoPages,
   getResources,
   updateProfessionalImage,
-  getProfessionalProfile
+  getProfessionalProfile,
+  searchSkills, 
 } from "../controllers/users.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { validateRequest } from "../middlewares/validation.middleware.js";
@@ -80,6 +81,7 @@ router.post(
 );
 
 router.get('/get-professional-profile',verifyJWT,getProfessionalProfile);
+router.get("/search-skills",verifyJWT,searchSkills);
 
 router.post(
   "/friend-request",

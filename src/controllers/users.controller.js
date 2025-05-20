@@ -24,14 +24,13 @@ import { isValidObjectId } from "./../utils/isValidObjectId.js";
 import saveResourceModel from "../models/saveResources.model.js";
 import PageModel from "../models/pages.model.js";
 import FAQModel from "../models/FAQ.model.js";
+import Skill from "../models/skills.model.js";
 
 const getUserProfile = asyncHandler(async (req, res) => {
   const userId = req.query.user_id || req.user.userId;
 
   const aggregation = [];
   aggregation.push({ $match: { userId } });
-  
- 
 
   aggregation.push({
     $lookup: {
@@ -138,7 +137,6 @@ const updateUserProfile = asyncHandler(async (req, res) => {
   res.json(new ApiResponse(200, "User profile updated successfully", user));
 });
 
-
 const updateProfessionalImage = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user._id);
   if (!user) {
@@ -147,7 +145,7 @@ const updateProfessionalImage = asyncHandler(async (req, res) => {
 
   let professional_image = user?.professional_image
     ? user?.professional_image
-    : '';
+    : "";
 
   if (req.files && req.files.professional_image) {
     // Delete the previous profile image from AWS
@@ -186,7 +184,7 @@ const updateProfessionalImage = asyncHandler(async (req, res) => {
   );
 });
 
-const getProfessionalProfile = asyncHandler(async (req,res) =>{
+const getProfessionalProfile = asyncHandler(async (req, res) => {
   const userId = req.query.user_id || req.user.userId;
 
   const aggregation = [];
@@ -846,6 +844,17 @@ const upsertExperience = asyncHandler(async (req, res) => {
     userId,
   };
 
+  // Insert the skill if the skill is not in the Skill table
+  if (skills && skills.length) {
+    for (const skill of skills) {
+      const skillExists = await Skill.findOne({ name: skill });
+      if (!skillExists) {
+        const newSkill = new Skill({ name: skill });
+        await newSkill.save();
+      }
+    }
+  }
+
   if (isCurrentWorking) {
     updateData.endDate = null;
   } else {
@@ -888,6 +897,16 @@ const upsertEducation = asyncHandler(async (req, res) => {
     userId,
   };
 
+  if (skills && skills.length) {
+    for (const skill of skills) {
+      const skillExists = await Skill.findOne({ name: skill });
+      if (!skillExists) {
+        const newSkill = new Skill({ name: skill });
+        await newSkill.save();
+      }
+    }
+  }
+
   const education = await Education.findByIdAndUpdate(
     id || new mongoose.Types.ObjectId(),
     { $set: updateData },
@@ -895,6 +914,19 @@ const upsertEducation = asyncHandler(async (req, res) => {
   );
 
   res.json(new ApiResponse(200, "Education updated successfully", education));
+});
+
+const searchSkills = asyncHandler(async (req, res) => {
+  const { skill } = req.query;
+  if (!skill) {
+    throw new ApiError(400, "Skill is required");
+  }
+
+  const skills = await Skill.find({
+    name: { $regex: skill, $options: "i" },
+  }).select("name");
+
+  res.json(new ApiResponse(200, "Skills fetched successfully", skills));
 });
 
 const addStory = asyncHandler(async (req, res) => {
@@ -1315,7 +1347,6 @@ const updateMatrimonialProfile = asyncHandler(async (req, res) => {
     caste,
   } = req.body;
 
-
   const user = await User.findByIdAndUpdate(
     req.user._id,
     {
@@ -1342,12 +1373,12 @@ const updateMatrimonialProfile = asyncHandler(async (req, res) => {
   );
 });
 
-const getMatrimonialProfile = asyncHandler(async (req,res) =>{
-const userId = req.query.user_id || req.user.userId;
+const getMatrimonialProfile = asyncHandler(async (req, res) => {
+  const userId = req.query.user_id || req.user.userId;
 
   const aggregation = [];
   aggregation.push({ $match: { userId } });
- 
+
   aggregation.push({
     $lookup: {
       from: "friends",
@@ -1410,10 +1441,14 @@ const userId = req.query.user_id || req.user.userId;
     throw new ApiError(404, "User not found");
   }
 
-  res.json(new ApiResponse(200, "User Matrimonial Profile fetched successfully", user[0]));
+  res.json(
+    new ApiResponse(
+      200,
+      "User Matrimonial Profile fetched successfully",
+      user[0]
+    )
+  );
 });
-
-
 
 const getAllInfoPages = asyncHandler(async (req, res) => {
   const pages = await PageModel.find({});
@@ -1451,4 +1486,5 @@ export {
   getResources,
   updateProfessionalImage,
   getProfessionalProfile,
+  searchSkills,
 };
