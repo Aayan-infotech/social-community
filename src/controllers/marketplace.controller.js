@@ -10,7 +10,7 @@ import MarketPlaceSubCategory from "../models/marketplaceSubCategory.model.js";
 import DeliveryAddress from "../models/deliveryAddress.model.js";
 import Product from "../models/product.model.js";
 import Cart from "../models/addtocart.model.js";
-import { addCardToCustomer } from "../services/stripeService.js";
+import { addCardToCustomer,completeKYC } from "../services/stripeService.js";
 
 const upsertCategory = asyncHandler(async (req, res) => {
   const { id, category_name } = req.body;
@@ -610,6 +610,24 @@ const deleteMarketplaceSubCategory = asyncHandler(async (req,res) =>{
   res.json(new ApiResponse(200, "Subcategory deleted successfully"));
 });
 
+const doKYC = asyncHandler(async (req, res) => {
+  // const { email } = req.body;
+  // if (!email) {
+  //   throw new ApiError(400, "Email not provided");
+  // }
+  // const account = await createConnectAccount(email);
+  // if (!account) {
+  //   throw new ApiError(500, "Failed to create connect account");
+  // }
+  const accountLink = await completeKYC('acct_1RQSAyQa7a3kXIcM');
+  if (!accountLink) {
+    throw new ApiError(500, "Failed to create account link");
+  }
+  res.json(
+    new ApiResponse(200, "KYC process initiated successfully", accountLink)
+  );
+});
+
 export {
   upsertCategory,
   getCategory,
@@ -630,5 +648,6 @@ export {
   addCard,
   deleteMarketplaceCategory,
   getSubCategories,
-  deleteMarketplaceSubCategory
+  deleteMarketplaceSubCategory,
+  doKYC,
 };

@@ -28,6 +28,9 @@ import {
   updateMatrimonialProfile,
   getMatrimonialProfile,
   getAllInfoPages,
+  getResources,
+  updateProfessionalImage,
+  getProfessionalProfile
 } from "../controllers/users.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { validateRequest } from "../middlewares/validation.middleware.js";
@@ -62,6 +65,21 @@ router.post(
   errorHandler,
   updateUserProfile
 );
+
+router.post(
+  "/update-professional-image",
+  verifyJWT,
+  upload.fields([
+    {
+      name: "professional_image",
+      maxCount: 1,
+    },
+  ]),
+  errorHandler,
+  updateProfessionalImage
+);
+
+router.get('/get-professional-profile',verifyJWT,getProfessionalProfile);
 
 router.post(
   "/friend-request",
@@ -107,27 +125,41 @@ router.post(
   addStory
 );
 
-router.get('/get-stories',verifyJWT,getStories);
+router.get("/get-stories", verifyJWT, getStories);
 
-router.post('/delete-account-request',verifyJWT,deleteAccountRequest);
+router.post("/delete-account-request", verifyJWT, deleteAccountRequest);
 
 // web apis
-router.get("/get-all-users",verifyJWT,getAllUsers);
-router.get("/get-all-delete-request",verifyJWT,getAllDeleteRequest);
-router.put("/update-delete-request",verifyJWT,validateRequest(updateDeleteRequestSchema),updateDeleteRequest);
-router.post("/save-resource",verifyJWT,validateRequest(saveResourcesSchema),saveResources);
-// router.get("/get-resources",verifyJWT,getRE)
-router.post('/add-pages',verifyJWT,validateRequest(addPagesSchema),addPages);
-router.post('/FAQ',verifyJWT,validateRequest(saveFAQSchema),saveFAQ);
-router.get('/privacy-policy',verifyJWT,getPrivacyPolicy);
-router.get('/terms-and-conditions',verifyJWT,getTermsAndConditions);
-router.get('/FAQ',verifyJWT,getFAQ);
+router.get("/get-all-users", verifyJWT, getAllUsers);
+router.get("/get-all-delete-request", verifyJWT, getAllDeleteRequest);
+router.put(
+  "/update-delete-request",
+  verifyJWT,
+  validateRequest(updateDeleteRequestSchema),
+  updateDeleteRequest
+);
+router.post(
+  "/save-resource",
+  verifyJWT,
+  validateRequest(saveResourcesSchema),
+  saveResources
+);
+router.get("/get-resources", verifyJWT, getResources);
+router.post("/add-pages", verifyJWT, validateRequest(addPagesSchema), addPages);
+router.post("/FAQ", verifyJWT, validateRequest(saveFAQSchema), saveFAQ);
+router.get("/privacy-policy", verifyJWT, getPrivacyPolicy);
+router.get("/terms-and-conditions", verifyJWT, getTermsAndConditions);
+router.get("/FAQ", verifyJWT, getFAQ);
 // Users Matrimonial Profile
-router.put('/update-matrimonial-profile',verifyJWT,validateRequest(updateMatrimonialProfileSchema),updateMatrimonialProfile);
-router.get('/get-matrimonial-profile',verifyJWT,getMatrimonialProfile);
+router.put(
+  "/update-matrimonial-profile",
+  verifyJWT,
+  validateRequest(updateMatrimonialProfileSchema),
+  updateMatrimonialProfile
+);
+router.get("/get-matrimonial-profile", verifyJWT, getMatrimonialProfile);
 
 // Info Pages
-router.get('/info-pages',verifyJWT,getAllInfoPages);
-
+router.get("/info-pages", verifyJWT, getAllInfoPages);
 
 export default router;

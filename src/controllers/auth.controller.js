@@ -14,7 +14,10 @@ import { sendEmail } from "../services/emailService.js";
 import { DeleteAccountRequestModel } from "../models/delete_account_request.model.js";
 import FamilyMember from "../models/familyMember.model.js";
 import fs from "fs";
-import { createCustomer } from "../services/stripeService.js";
+import {
+  createCustomer,
+  createConnectAccount,
+} from "../services/stripeService.js";
 
 // const generateAccessAndRefreshTokens = async (userId) => {
 //   try {
@@ -125,16 +128,15 @@ const signup = asyncHandler(async (req, res) => {
   const updatedHtml2 = updatedHtml1.replace(year, new Date().getFullYear());
 
   const send = await sendEmail(userEmail, subject, updatedHtml2);
-  
+
   if (!send.success) {
     // throw new ApiError(500, "Failed to send OTP to mobile number");
     throw new ApiError(500, "Failed to send OTP to Email");
   }
 
-
-
-  // Add customer to stripe 
+  // Add customer to stripe
   const stripeCustomer = await createCustomer(userEmail, name);
+  console.log("stripeCustomer", stripeCustomer);
 
   if (!stripeCustomer) {
     throw new ApiError(500, "Failed to create customer in Stripe");
@@ -142,7 +144,13 @@ const signup = asyncHandler(async (req, res) => {
 
   const stripeCustomerId = stripeCustomer.id;
 
-
+  // Create a Connect Account in stripe
+  const stripeAccount = await createConnectAccount(userEmail);
+  if (!stripeAccount) {
+    throw new ApiError(500, "Failed to create connect account in Stripe");
+  }
+  console.log("stripeAccount", stripeAccount);
+  const stripeAccountId = stripeAccount.id;
 
   const user = new User({
     userId,

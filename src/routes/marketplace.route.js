@@ -33,7 +33,9 @@ import {
   deleteMarketplaceCategory,
   getSubCategories,
   deleteMarketplaceSubCategory,
+  doKYC,
 } from "../controllers/marketplace.controller.js";
+import { completeKYC } from "../services/stripeService.js";
 
 
 const router = Router();
@@ -110,4 +112,7 @@ router.put("/update-address", verifyJWT, validateRequest(updateAddressSchema), e
 router.delete("/delete-address/:addressId", verifyJWT, removeAddress);
 
 router.get('/add-card', verifyJWT,addCard);
+
+
+router.get('/complete-kyc',verifyJWT,doKYC);
 export default router;

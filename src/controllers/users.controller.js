@@ -30,22 +30,8 @@ const getUserProfile = asyncHandler(async (req, res) => {
 
   const aggregation = [];
   aggregation.push({ $match: { userId } });
-  aggregation.push({
-    $lookup: {
-      from: "educations",
-      localField: "userId",
-      foreignField: "userId",
-      as: "education",
-    },
-  });
-  aggregation.push({
-    $lookup: {
-      from: "experiences",
-      localField: "userId",
-      foreignField: "userId",
-      as: "experience",
-    },
-  });
+  
+ 
 
   aggregation.push({
     $lookup: {
@@ -87,13 +73,10 @@ const getUserProfile = asyncHandler(async (req, res) => {
       bio: 1,
       state: 1,
       country: 1,
-      aboutMe: 1,
       referralCode: 1,
       profile_image: 1,
-      experience: 1,
       friendsCount: 1,
       postsCount: 1,
-      education: 1,
     },
   });
 
@@ -153,6 +136,135 @@ const updateUserProfile = asyncHandler(async (req, res) => {
   );
 
   res.json(new ApiResponse(200, "User profile updated successfully", user));
+});
+
+
+const updateProfessionalImage = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.user._id);
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
+
+  let professional_image = user?.professional_image
+    ? user?.professional_image
+    : '';
+
+  if (req.files && req.files.professional_image) {
+    // Delete the previous profile image from AWS
+    if (req.user.professional_image) {
+      await deleteObject(req.user.professional_image);
+    }
+
+    // Upload the new profile image to AWS S3
+    const updateStatus = await saveCompressedImage(
+      req.files.professional_image[0],
+      200
+    );
+    // console.log("updateStatus", updateStatus);
+    if (updateStatus.success) {
+      professional_image = updateStatus.thumbnailUrl;
+    }
+
+    // remove the oringinal file from the server
+    fs.unlinkSync(req.files.professional_image[0].path);
+  }
+
+  const updatedUser = await User.findByIdAndUpdate(
+    req.user._id,
+    { $set: { professional_image } },
+    { new: true }
+  ).select(
+    "-password -refreshToken -previous_passwords -_id -__v -referrals -referredBy -otpExpire -otp"
+  );
+
+  res.json(
+    new ApiResponse(200, "Professional image updated successfully", {
+      professional_image: updatedUser?.professional_image,
+      name: updatedUser?.name,
+      userId: updatedUser?.userId,
+    })
+  );
+});
+
+const getProfessionalProfile = asyncHandler(async (req,res) =>{
+  const userId = req.query.user_id || req.user.userId;
+
+  const aggregation = [];
+  aggregation.push({ $match: { userId } });
+  aggregation.push({
+    $lookup: {
+      from: "educations",
+      localField: "userId",
+      foreignField: "userId",
+      as: "education",
+    },
+  });
+  aggregation.push({
+    $lookup: {
+      from: "experiences",
+      localField: "userId",
+      foreignField: "userId",
+      as: "experience",
+    },
+  });
+
+  aggregation.push({
+    $lookup: {
+      from: "friends",
+      localField: "userId",
+      foreignField: "userId",
+      as: "friendsData",
+    },
+  });
+  aggregation.push({
+    $lookup: {
+      from: "posts",
+      localField: "userId",
+      foreignField: "userId",
+      as: "postsData",
+    },
+  });
+  aggregation.push({
+    $addFields: {
+      professional_image: {
+        $ifNull: [
+          "$professional_image",
+          `${req.protocol}://${req.hostname}:${process.env.PORT}/placeholder/person.png`,
+        ],
+      },
+      friendsCount: { $size: { $ifNull: ["$friendsData.friends", []] } },
+      postsCount: { $size: "$postsData" },
+    },
+  });
+  aggregation.push({
+    $project: {
+      _id: 0,
+      userId: 1,
+      name: 1,
+      email: 1,
+      mobile: 1,
+      city: 1,
+      gender: 1,
+      bio: 1,
+      state: 1,
+      country: 1,
+      aboutMe: 1,
+      referralCode: 1,
+      professional_image: 1,
+      experience: 1,
+      friendsCount: 1,
+      postsCount: 1,
+      education: 1,
+    },
+  });
+
+  const user = await User.aggregate(aggregation);
+
+  if (!user.length) {
+    throw new ApiError(404, "User not found");
+  }
+
+  res.json(new ApiResponse(200, "User profile fetched successfully", user[0]));
 });
 
 // Friends
@@ -1105,6 +1217,22 @@ const saveResources = asyncHandler(async (req, res) => {
   res.json(new ApiResponse(200, "Resource saved successfully", resource));
 });
 
+const getResources = asyncHandler(async (req, res) => {
+  const { type } = req.body;
+  const userId = req.user.userId;
+
+  const resources = await saveResourceModel
+    .find({ userId, type })
+    .populate("resourceId")
+    .select("-_id -__v -createdAt -updatedAt");
+
+  if (!resources) {
+    throw new ApiError(404, "Resources not found");
+  }
+
+  res.json(new ApiResponse(200, "Resources fetched successfully", resources));
+});
+
 const addPages = asyncHandler(async (req, res) => {
   const { title, url, description } = req.body;
   const userId = req.user.userId;
@@ -1320,4 +1448,7 @@ export {
   updateMatrimonialProfile,
   getMatrimonialProfile,
   getAllInfoPages,
+  getResources,
+  updateProfessionalImage,
+  getProfessionalProfile,
 };
