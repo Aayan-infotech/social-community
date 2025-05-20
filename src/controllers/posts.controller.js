@@ -796,10 +796,17 @@ const getHomeFeed = asyncHandler(async (req, res) => {
     },
   });
 
+  // add isLiked boolean field that logged in user liked the post or not
+
+
   const aggregation = [];
   aggregation.push({
     $match: { type: type },
   });
+
+
+
+
 
   aggregation.push({
     $lookup: {
@@ -850,6 +857,21 @@ const getHomeFeed = asyncHandler(async (req, res) => {
   }
 
   aggregation.push({
+    $addFields: {
+      isLiked: {
+        $gt: [
+          {
+            $size: {
+              $setIntersection: [[req.user.userId], "$likedBy"],
+            },
+          },
+          0,
+        ],
+      },
+    },
+  });
+
+  aggregation.push({
     $facet: {
       posts: [
         { $skip: skip },
@@ -865,6 +887,7 @@ const getHomeFeed = asyncHandler(async (req, res) => {
             media: 1,
             mediaType: 1,
             likes: 1,
+            isLiked: 1,
             comment_count: { $size: "$comments" },
           },
         },
