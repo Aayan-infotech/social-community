@@ -10,6 +10,7 @@ import {
   saveCompressedImage,
   uploadVideo,
   compressVideo,
+  deleteObject,
 } from "../utils/awsS3Utils.js";
 import fs, { stat } from "fs";
 import { isValidObjectId } from "../utils/isValidObjectId.js";
@@ -916,6 +917,39 @@ const getHomeFeed = asyncHandler(async (req, res) => {
   );
 });
 
+
+const deletePost = asyncHandler(async (req, res) => {
+  const postId = req.params.postId;
+  if (!postId) {
+    throw new ApiError(400, "Post ID is required");
+  }
+  if (!isValidObjectId(postId)) {
+    throw new ApiError(400, "Invalid post ID");
+  }
+
+  const post = await PostModel.findById(postId);
+  // delete post images and videos from s3
+  if (!post) {
+    throw new ApiError(404, "Post not found");
+  }
+  if(post.media) {
+    const media = post.media;
+    if (Array.isArray(media)) {
+      for (const file of media) {
+        const fileName = file.split("/").pop();
+        await deleteObject(fileName);
+      }
+    } else {
+      const fileName = media.split("/").pop();
+      await deleteObject(fileName);
+    }
+  }
+
+  await PostModel.deleteOne({ _id: postId });
+
+  res.json(new ApiResponse(200, "Post deleted successfully"));
+});
+
 export {
   createPost,
   getPosts,
@@ -931,4 +965,5 @@ export {
   updatePost,
   getShortsVideo,
   getHomeFeed,
+  deletePost,
 };

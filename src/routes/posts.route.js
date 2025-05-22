@@ -15,6 +15,7 @@ import {
   updatePost,
   getShortsVideo,
   getHomeFeed,
+  deletePost,
 } from "../controllers/posts.controller.js";
 import { validateRequest } from "../middlewares/validation.middleware.js";
 import {
@@ -58,6 +59,7 @@ router.put(
   errorHandler,
   updatePost
 );
+router.delete("/delete-post/:postId", verifyJWT, deletePost);
 
 router.get("/get-posts", verifyJWT, getPosts);
 router.put(
