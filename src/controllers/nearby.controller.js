@@ -278,7 +278,6 @@ const getNearByBusiness = asyncHandler(async (req, res) => {
     },
   }).select("-__v -userId -location -createdAt -updatedAt");
 
-  console.log("business", businesses);
 
   if (businesses.length === 0) {
     throw new ApiError(404, "No business found");

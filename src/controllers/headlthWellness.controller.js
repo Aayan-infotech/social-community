@@ -38,7 +38,6 @@ export const addResources = asyncHandler(async (req, res) => {
 
 export const upsertResource = asyncHandler(async (req, res) => {
   const { id, title, description, location } = req.body;
-  //   console.log(id, title, description, location);
 
   if (id && !isValidObjectId(id)) {
     throw new ApiError(400, "Invalid resource ID format");

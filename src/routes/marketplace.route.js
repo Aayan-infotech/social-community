@@ -11,6 +11,7 @@ import {
   addAddressSchema,
   updateAddressSchema,
   addToCartSchema,
+  orderPlaceSchema,
 } from "../validators/marketplaceValidator.js";
 import {
   upsertCategory,
@@ -34,9 +35,13 @@ import {
   getSubCategories,
   deleteMarketplaceSubCategory,
   doKYC,
+  getCards,
+  getCartProducts,
+  getMarketplaceProducts,
+  orderPlace,
+  paymentSheetFn,
+  confirmPaymentFn,
 } from "../controllers/marketplace.controller.js";
-import { completeKYC } from "../services/stripeService.js";
-
 
 const router = Router();
 
@@ -54,7 +59,12 @@ router.post(
   upsertCategory
 );
 
-router.delete('/delete-marketplace-category/:id', verifyJWT, errorHandler, deleteMarketplaceCategory);
+router.delete(
+  "/delete-marketplace-category/:id",
+  verifyJWT,
+  errorHandler,
+  deleteMarketplaceCategory
+);
 
 router.get("/get-category", verifyJWT, getCategory);
 router.post(
@@ -70,9 +80,14 @@ router.post(
   errorHandler,
   upsertSubcategory
 );
-router.get('/get-subcategories',verifyJWT,getSubCategories);
+router.get("/get-subcategories", verifyJWT, getSubCategories);
 router.get("/get-subcategory/:category_id", verifyJWT, getSubCategory);
-router.delete('/delete-subcategory/:id',verifyJWT,errorHandler,deleteMarketplaceSubCategory);
+router.delete(
+  "/delete-subcategory/:id",
+  verifyJWT,
+  errorHandler,
+  deleteMarketplaceSubCategory
+);
 router.post(
   "/add-product",
   verifyJWT,
@@ -99,20 +114,50 @@ router.put(
   errorHandler,
   updateProduct
 );
-router.get("/product-list", verifyJWT, getProductList);
+router.get("/my-products", verifyJWT, getProductList);
+router.get('/products', verifyJWT, getMarketplaceProducts);
 router.get("/product-details/:product_id", verifyJWT, getProductDetails);
 router.delete("/remove-product/:product_id", verifyJWT, removeProduct);
-router.post('/add-to-cart',verifyJWT,validateRequest(addToCartSchema),errorHandler,addToCart);
-router.put('/update-quantity',verifyJWT,validateRequest(addToCartSchema),errorHandler,updateProductQuantity);
+router.post(
+  "/add-to-cart",
+  verifyJWT,
+  validateRequest(addToCartSchema),
+  errorHandler,
+  addToCart
+);
+router.put(
+  "/update-quantity",
+  verifyJWT,
+  validateRequest(addToCartSchema),
+  errorHandler,
+  updateProductQuantity
+);
+router.get("/get-cart", verifyJWT, getCartProducts);
 
 // delivery address routes
-router.post('/add-address',verifyJWT,validateRequest(addAddressSchema),errorHandler,addAddress);
-router.get('/get-address',verifyJWT,getAddress);
-router.put("/update-address", verifyJWT, validateRequest(updateAddressSchema), errorHandler, updateAddress);
+router.post(
+  "/add-address",
+  verifyJWT,
+  validateRequest(addAddressSchema),
+  errorHandler,
+  addAddress
+);
+router.get("/get-address", verifyJWT, getAddress);
+router.put(
+  "/update-address",
+  verifyJWT,
+  validateRequest(updateAddressSchema),
+  errorHandler,
+  updateAddress
+);
 router.delete("/delete-address/:addressId", verifyJWT, removeAddress);
 
-router.get('/add-card', verifyJWT,addCard);
+router.post("/add-card", verifyJWT, addCard);
+router.get("/card-list", verifyJWT, getCards);
 
+router.get("/complete-kyc", verifyJWT, doKYC);
+router.post('/order-place',verifyJWT,validateRequest(orderPlaceSchema),errorHandler,orderPlace);
+router.post('/payment-sheet',verifyJWT,validateRequest(orderPlaceSchema),errorHandler,paymentSheetFn);
+router.get("/confirm-payment",verifyJWT,confirmPaymentFn);
 
-router.get('/complete-kyc',verifyJWT,doKYC);
 export default router;

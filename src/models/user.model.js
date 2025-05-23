@@ -188,6 +188,10 @@ const userSchema = new mongoose.Schema(
     professional_image:{
       type: String,
       default: null,
+    },
+    stripeAccountId:{
+      type: String,
+      default: null,
     }
   },
   {

@@ -47,12 +47,15 @@ const addProductSchema = joi.object({
     "string.empty": "Subcategory ID is required",
     "any.required": "Subcategory ID is required",
   }),
-  product_discount: joi.string().required().messages({
-    "string.empty": "Product discount is required",
+  product_discount: joi.number().min(0).max(100).required().messages({
+    "number.base": "Product discount must be a number",
+    "number.min": "Product discount must be at least 0",
+    "number.max": "Product discount must be at most 100",
     "any.required": "Product discount is required",
   }),
-  product_price: joi.string().required().messages({
-    "string.empty": "Product price is required",
+  product_price: joi.number().min(0).required().messages({
+    "number.base": "Product price must be a number",
+    "number.min": "Product price must be at least 0",
     "any.required": "Product price is required",
   }),
   product_quantity: joi.string().required().messages({
@@ -86,12 +89,15 @@ const updateProductSchema = joi.object({
     "string.empty": "Subcategory ID is required",
     "any.required": "Subcategory ID is required",
   }),
-  product_discount: joi.string().required().messages({
-    "string.empty": "Product discount is required",
+  product_discount: joi.number().min(0).max(100).required().messages({
+    "number.base": "Product discount must be a number",
+    "number.min": "Product discount must be at least 0",
+    "number.max": "Product discount must be at most 100",
     "any.required": "Product discount is required",
   }),
-  product_price: joi.string().required().messages({
-    "string.empty": "Product price is required",
+  product_price: joi.number().min(0).required().messages({
+    "number.base": "Product price must be a number",
+    "number.min": "Product price must be at least 0",
     "any.required": "Product price is required",
   }),
   product_quantity: joi.string().required().messages({
@@ -197,6 +203,21 @@ const addToCartSchema = joi.object({
   }),
 });
 
+const orderPlaceSchema = joi.object({
+  address_id: joi.string().required().messages({
+    "string.empty": "Address ID is required",
+    "any.required": "Address ID is required",
+  }),
+  product_ids: joi.array().required().messages({
+    "array.empty": "Product IDs are required",
+    "any.required": "Product IDs are required",
+  }),
+  order_amount: joi.string().required().messages({
+    "string.empty": "Order amount is required",
+    "any.required": "Order amount is required",
+  }),
+});
+
 export {
   upsertCategorySchema,
   upsertSubcategorySchema,
@@ -205,4 +226,5 @@ export {
   addAddressSchema,
   updateAddressSchema,
   addToCartSchema,
+  orderPlaceSchema,
 };

@@ -15,19 +15,6 @@ const createCustomer = async (email, name) => {
   }
 };
 
-// Add Card to Customer
-const addCardToCustomer = async (customerId, token) => {
-  try {
-    const source = await stripeClient.customers.createSource(customerId, {
-      source: token, // This is a token from frontend via Stripe.js or mobile SDK
-    });
-    return source;
-  } catch (error) {
-    console.error("Error adding card to customer:", error);
-    throw new ApiError(500, "Failed to add card to customer", error.message);
-  }
-};
-
 const createConnectAccount = async (email) => {
   try {
     const account = await stripeClient.accounts.create({
@@ -54,14 +41,13 @@ const completeKYC = async (accountId) => {
       return_url: process.env.RETURN_URL,
       type: "account_onboarding",
     });
-    console.log("Account link created:", accountLink);
+    
     return accountLink;
   } catch (error) {
     console.error("Error creating account link:", error);
     throw new ApiError(500, "Failed to create account link", error.message);
   }
 };
-
 
 const createPaymentIntent = async (customerId, amount, currency = "usd") => {
   try {
@@ -98,6 +84,112 @@ const transferToConnectedAccount = async (amount, connectedAccountId) => {
   }
 };
 
+const paymentMethod = async (customerId) => {
+  try {
+    const paymentMethods = await stripeClient.paymentMethods.list({
+      customer: customerId,
+      type: "card",
+    });
+    return paymentMethods;
+  } catch (error) {
+    console.error("Error retrieving payment methods:", error);
+    throw new ApiError(
+      500,
+      "Failed to retrieve payment methods",
+      error.message
+    );
+  }
+};
+
+const paymentSheet = async (customerId, amount, currency, AccountId) => {
+  try {
+    const ephemeralKey = await stripeClient.ephemeralKeys.create(
+      { customer: customerId },
+      { apiVersion: "2020-08-27" }
+    );
+
+    const paymentIntent = await stripeClient.paymentIntents.create({
+      amount: amount * 100,
+      currency: currency,
+      customer: customerId,
+      automatic_payment_methods: {
+        enabled: true,
+      },
+      application_fee_amount: 123,
+      transfer_data: {
+        destination: AccountId,
+      },
+    });
+
+    return {
+      paymentIntent: paymentIntent.client_secret,
+      ephemeralKey: ephemeralKey.secret,
+      customer: customerId,
+      publishableKey: process.env.STRIPE_PUBLIC_KEY,
+    };
+  } catch (error) {
+    console.error("Error creating payment sheet:", error);
+  }
+};
+
+const confirmPayment = async (paymentIntentId) => {
+  try {
+    const paymentIntent = await stripeClient.paymentIntents.confirm(
+      paymentIntentId,
+      {
+        payment_method: "pm_card_visa",
+        return_url: process.env.RETURN_URL,
+      }
+    );
+    return paymentIntent;
+  } catch (error) {
+    console.error("Error confirming payment:", error);
+  }
+};
+
+// Add Card to Customer
+const addCardToCustomer = async (customerId, token) => {
+  try {
+    const source = await stripeClient.customers.createSource(customerId, {
+      source: token,
+    });
+    return source;
+  } catch (error) {
+    console.error("Error adding card to customer:", error);
+    throw new ApiError(500, "Failed to add card to customer", error.message);
+  }
+};
+
+const createCardToken = async (cardNumber, expMonth, expYear, cvc) => {
+  try {
+    const token = await stripeClient.tokens.create({
+      card: {
+        number: cardNumber,
+        exp_month: expMonth,
+        exp_year: expYear,
+        cvc: cvc,
+      },
+    });
+    return token;
+  } catch (error) {
+    console.error("Error creating card token:", error);
+    throw new Error("Failed to create card token");
+  }
+};
+
+const getCardList = async (customerId) => {
+  try {
+    const cards = await stripeClient.customers.listSources(customerId, {
+      object: "card",
+    });
+    return cards;
+  } catch (error) {
+    console.error("Error retrieving card list:", error);
+    throw new ApiError(500, "Failed to retrieve card list", error.message);
+  }
+};
+
+
 export {
   createCustomer,
   addCardToCustomer,
@@ -105,4 +197,9 @@ export {
   completeKYC,
   createPaymentIntent,
   transferToConnectedAccount,
+  createCardToken,
+  getCardList,
+  paymentMethod,
+  paymentSheet,
+  confirmPayment,
 };

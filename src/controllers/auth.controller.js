@@ -136,7 +136,6 @@ const signup = asyncHandler(async (req, res) => {
 
   // Add customer to stripe
   const stripeCustomer = await createCustomer(userEmail, name);
-  console.log("stripeCustomer", stripeCustomer);
 
   if (!stripeCustomer) {
     throw new ApiError(500, "Failed to create customer in Stripe");
@@ -149,7 +148,6 @@ const signup = asyncHandler(async (req, res) => {
   if (!stripeAccount) {
     throw new ApiError(500, "Failed to create connect account in Stripe");
   }
-  console.log("stripeAccount", stripeAccount);
   const stripeAccountId = stripeAccount.id;
 
   const user = new User({
@@ -163,6 +161,7 @@ const signup = asyncHandler(async (req, res) => {
     gender,
     referralCode: referralCode,
     stripeCustomerId,
+    stripeAccountId,
     password,
     referrals: [],
     otp,
@@ -191,7 +190,7 @@ const signup = asyncHandler(async (req, res) => {
 
   // check if user is created
   const createdUser = await User.findById(user._id).select(
-    "-password -refreshToken"
+    "name email mobile country state address dob"
   );
 
   if (!createdUser) {
@@ -256,7 +255,7 @@ const loginUser = asyncHandler(async (req, res) => {
   );
 
   const loggedInUser = await User.findById(user._id).select(
-    "-password -refreshToken -previous_passwords"
+    "name email mobile country state address dob role"
   );
 
   // cookies

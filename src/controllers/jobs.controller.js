@@ -385,7 +385,6 @@ export const deleteJob = asyncHandler(async (req, res) => {
 
 export const getApplicantDetails = asyncHandler(async (req, res) => {
   const applicationId = req.query.applicationId;
-  console.log(applicationId);
   if (!isValidObjectId(applicationId)) {
     throw new ApiError(400, "Invalid application ID");
   }
@@ -478,7 +477,6 @@ export const updateApplicantStatus = asyncHandler(async (req, res) => {
     throw new ApiError(404, "User not found");
   }
 
-  // console.log(user);
   const userEmail = user[0].email;
   const userName = user[0].name;
 

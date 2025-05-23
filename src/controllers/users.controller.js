@@ -108,7 +108,7 @@ const updateUserProfile = asyncHandler(async (req, res) => {
       req.files.profile_image[0],
       200
     );
-    // console.log("updateStatus", updateStatus);
+
     if (updateStatus.success) {
       profile_image = updateStatus.thumbnailUrl;
     }
@@ -158,7 +158,7 @@ const updateProfessionalImage = asyncHandler(async (req, res) => {
       req.files.professional_image[0],
       200
     );
-    // console.log("updateStatus", updateStatus);
+
     if (updateStatus.success) {
       professional_image = updateStatus.thumbnailUrl;
     }
@@ -784,7 +784,6 @@ const updateUserAboutMe = asyncHandler(async (req, res) => {
 //   } = req.body;
 //   const userId = req.user.userId;
 
-//   console.log(req.body);
 //   // upsert the experience in the DB
 
 //   const experience = await Experience.findByIdAndUpdate(
@@ -955,9 +954,8 @@ const addStory = asyncHandler(async (req, res) => {
           storyFile[0].path,
           "./public/temp"
         );
-        // console.log("compressedVideo", compressedVideo);
+
         if (!compressedVideo.success) {
-          // mediaUrl = uploadStatus.fileUrl;
           throw new ApiError(400, "Unable to upload video to server");
         }
 
@@ -1244,13 +1242,7 @@ const updateDeleteRequest = asyncHandler(async (req, res) => {
 
 const saveResources = asyncHandler(async (req, res) => {
   const { type, resourceId } = req.body;
-
   const userId = req.user.userId;
-
-  console.log("userId", userId);
-  console.log("type", type);
-  // console.log("resourceId", resourceId);
-  console.log("req.body", req.body);
 
   const resource = await saveResourceModel.create({
     userId,

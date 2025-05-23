@@ -10,7 +10,15 @@ import MarketPlaceSubCategory from "../models/marketplaceSubCategory.model.js";
 import DeliveryAddress from "../models/deliveryAddress.model.js";
 import Product from "../models/product.model.js";
 import Cart from "../models/addtocart.model.js";
-import { addCardToCustomer,completeKYC } from "../services/stripeService.js";
+import {
+  addCardToCustomer,
+  completeKYC,
+  getCardList,
+  createPaymentIntent,
+  paymentSheet,
+  confirmPayment,
+} from "../services/stripeService.js";
+import Card from "../models/userCard.model.js";
 
 const upsertCategory = asyncHandler(async (req, res) => {
   const { id, category_name } = req.body;
@@ -135,7 +143,7 @@ const upsertSubcategory = asyncHandler(async (req, res) => {
       throw new ApiError(500, "Failed to upload image");
     }
     subcategory_image = saveUpload?.fileUrl;
-  }else{
+  } else {
     subcategory_image = existingSubCategory?.subcategory_image || "";
   }
 
@@ -352,25 +360,140 @@ const getProductList = asyncHandler(async (req, res) => {
   });
 
   aggregation.push({
-    $project: {
-      _id: 1,
-      product_name: 1,
-      product_image: 1,
-      product_price: 1,
-      product_discount: 1,
-      product_description: 1,
-      product_quantity: 1,
-      category_name: "$category.category_name",
-      subcategory_name: "$subcategory.subcategory_name",
+    $facet: {
+      products: [
+        { $skip: skip },
+        { $limit: limit },
+        {
+          $project: {
+            _id: 1,
+            product_name: 1,
+            product_image: 1,
+            product_price: 1,
+            product_discount: 1,
+            product_description: 1,
+            product_quantity: 1,
+            category_name: "$category.category_name",
+            subcategory_name: "$subcategory.subcategory_name",
+          },
+        },
+      ],
+      totalCount: [{ $count: "count" }],
     },
   });
 
   const productList = await Product.aggregate(aggregation);
-  if (!productList) {
-    throw new ApiError(404, "No product found");
-  }
+  const products = productList[0]?.products || [];
+  const totalCount = productList[0]?.totalCount[0]?.count || 0;
+  const totalPages = Math.ceil(totalCount / limit);
+
   res.json(
-    new ApiResponse(200, "Product list fetched successfully", productList)
+    new ApiResponse(
+      200,
+      products.length > 0
+        ? "Products fetched successfully"
+        : "No products found",
+      products.length > 0
+        ? {
+            products,
+            total_page: totalPages,
+            current_page: page,
+            total_records: totalCount,
+            per_page: limit,
+          }
+        : null
+    )
+  );
+});
+
+const getMarketplaceProducts = asyncHandler(async (req, res) => {
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.max(1, parseInt(req.query.limit) || 10);
+  const skip = (page - 1) * limit;
+
+  const { category_id, subcategory_id } = req.query;
+
+  if (category_id && !isValidObjectId(category_id)) {
+    throw new ApiError(400, "Invalid category ID");
+  }
+  if (subcategory_id && !isValidObjectId(subcategory_id)) {
+    throw new ApiError(400, "Invalid subcategory ID");
+  }
+
+  const aggregation = [];
+  // get the category or subcategory id from the query
+
+  if (category_id && subcategory_id) {
+    aggregation.push({
+      $match: {
+        $and: [
+          {
+            category_id: category_id
+              ? new mongoose.Types.ObjectId(category_id)
+              : null,
+          },
+          {
+            subcategory_id: subcategory_id
+              ? new mongoose.Types.ObjectId(subcategory_id)
+              : null,
+          },
+        ],
+      },
+    });
+  } else if (category_id) {
+    aggregation.push({
+      $match: {
+        category_id: category_id
+          ? new mongoose.Types.ObjectId(category_id)
+          : null,
+      },
+    });
+  }
+
+  aggregation.push({
+    $facet: {
+      products: [
+        { $skip: skip },
+        { $limit: limit },
+        {
+          $project: {
+            _id: 1,
+            product_name: 1,
+            product_image: 1,
+            product_price: 1,
+            product_discount: 1,
+            product_description: 1,
+            category_id: 1,
+            subcategory_id: 1,
+          },
+        },
+      ],
+      totalCount: [{ $count: "count" }],
+    },
+  });
+
+  const productList = await Product.aggregate(aggregation);
+
+  const products = productList[0]?.products || [];
+  const totalCount = productList[0]?.totalCount[0]?.count || 0;
+  const totalPages = Math.ceil(totalCount / limit);
+
+  res.json(
+    new ApiResponse(
+      200,
+      products?.length > 0
+        ? "Products fetched successfully"
+        : "No products found",
+      products?.length > 0
+        ? {
+            products,
+            total_page: totalPages,
+            current_page: page,
+            total_records: totalCount,
+            per_page: limit,
+          }
+        : null
+    )
   );
 });
 
@@ -568,20 +691,43 @@ const getAllCustomers = asyncHandler(async (req, res) => {
 });
 
 const addCard = asyncHandler(async (req, res) => {
-  const { source } = req.body;
-  if (!source) {
-    throw new ApiError(400, "Source not provided");
+  const { cardToken } = req.body;
+  if (!cardToken) {
+    throw new ApiError(400, "Card token not provided");
   }
+
   const customerId = req.user.stripeCustomerId;
   if (!customerId) {
     throw new ApiError(400, "Customer ID not found");
   }
-  const response = await addCardToCustomer(customerId, {
-    source: source,
-  });
-  console.log("response", response);
+  const response = await addCardToCustomer(customerId, cardToken);
 
-  throw new ApiError(500, "Not Implemented Yet");
+  const cardData = {
+    userId: req.user.userId,
+    cardId: response.id,
+    brand: response.brand,
+    last4: response.last4,
+    expMonth: response.exp_month,
+    expYear: response.exp_year,
+  };
+
+  const card = await Card.create(cardData);
+  if (!card) {
+    throw new ApiError(500, "Failed to add card");
+  }
+  res.json(new ApiResponse(200, "Card added successfully", card));
+});
+
+const getCards = asyncHandler(async (req, res) => {
+  const customerId = req.user.stripeCustomerId;
+  if (!customerId) {
+    throw new ApiError(400, "Customer ID not found");
+  }
+  const cards = await getCardList(customerId);
+  if (!cards) {
+    throw new ApiError(404, "No cards found");
+  }
+  res.json(new ApiResponse(200, "Card list fetched successfully", cards));
 });
 
 const getSubCategories = asyncHandler(async (req, res) => {
@@ -598,7 +744,7 @@ const getSubCategories = asyncHandler(async (req, res) => {
   );
 });
 
-const deleteMarketplaceSubCategory = asyncHandler(async (req,res) =>{
+const deleteMarketplaceSubCategory = asyncHandler(async (req, res) => {
   const { id } = req.params;
   if (!isValidObjectId(id)) {
     throw new ApiError(400, "Invalid Subcategory ID");
@@ -611,20 +757,197 @@ const deleteMarketplaceSubCategory = asyncHandler(async (req,res) =>{
 });
 
 const doKYC = asyncHandler(async (req, res) => {
-  // const { email } = req.body;
-  // if (!email) {
-  //   throw new ApiError(400, "Email not provided");
-  // }
-  // const account = await createConnectAccount(email);
-  // if (!account) {
-  //   throw new ApiError(500, "Failed to create connect account");
-  // }
-  const accountLink = await completeKYC('acct_1RQSAyQa7a3kXIcM');
+  const { stripeAccountId } = req.user;
+  if (!stripeAccountId) {
+    throw new ApiError(400, "Stripe account ID not found");
+  }
+  const accountLink = await completeKYC(stripeAccountId);
   if (!accountLink) {
     throw new ApiError(500, "Failed to create account link");
   }
   res.json(
     new ApiResponse(200, "KYC process initiated successfully", accountLink)
+  );
+});
+
+const getCartProducts = asyncHandler(async (req, res) => {
+  const userId = req.user.userId;
+
+  // const cartProducts = await Cart.find({ userId });
+  const aggregation = [];
+
+  aggregation.push({
+    $match: {
+      userId: userId,
+    },
+  });
+
+  aggregation.push({
+    $lookup: {
+      from: "products",
+      localField: "productId",
+      foreignField: "_id",
+      as: "product",
+    },
+  });
+
+  aggregation.push({
+    $unwind: {
+      path: "$product",
+      preserveNullAndEmptyArrays: true,
+    },
+  });
+
+  aggregation.push({
+    $lookup: {
+      from: "users",
+      localField: "userId",
+      foreignField: "userId",
+      as: "buyer",
+    },
+  });
+
+  aggregation.push({
+    $unwind: {
+      path: "$buyer",
+      preserveNullAndEmptyArrays: true,
+    },
+  });
+
+  aggregation.push({
+    $project: {
+      _id: 1,
+      productId: 1,
+      quantity: 1,
+      "product.product_name": 1,
+      "product.product_price": 1,
+      "buyer.name": 1,
+      "buyer.email": 1,
+    },
+  });
+
+  const cartProducts = await Cart.aggregate(aggregation);
+
+  if (!cartProducts.length === 0) {
+    throw new ApiError(404, "No products found in cart");
+  }
+  res.json(
+    new ApiResponse(200, "Cart products fetched successfully", cartProducts)
+  );
+});
+
+const orderPlace = asyncHandler(async (req, res) => {
+  const { product_ids, address_id, payment_method, order_amount } = req.body;
+  const userId = req.user.userId;
+
+  if (!Array.isArray(product_ids) || product_ids.length === 0) {
+    throw new ApiError(400, "Invalid product IDs");
+  }
+  if (!isValidObjectId(address_id)) {
+    throw new ApiError(400, "Invalid address ID");
+  }
+
+  const product = await Product.findById(product_ids[0]);
+  if (!product) {
+    throw new ApiError(404, "Product not found");
+  }
+
+  const address = await DeliveryAddress.findById(address_id);
+  if (!address) {
+    throw new ApiError(404, "Address not found");
+  }
+
+  const paymentIntent = await createPaymentIntent(
+    req.user.stripeCustomerId,
+    order_amount,
+    "usd"
+  );
+
+  if (!paymentIntent) {
+    throw new ApiError(500, "Failed to create payment intent");
+  }
+
+  const confirm = await confirmPayment(paymentIntent.id);
+ 
+  // Order placement logic here
+
+  res.json(new ApiResponse(200, "Order placed successfully", paymentIntent));
+});
+
+const paymentSheetFn = asyncHandler(async (req, res) => {
+  const { product_ids, address_id, order_amount } = req.body;
+  const userId = req.user.userId;
+
+  if (!Array.isArray(product_ids) || product_ids.length === 0) {
+    throw new ApiError(400, "Invalid product IDs");
+  }
+  if (!isValidObjectId(address_id)) {
+    throw new ApiError(400, "Invalid address ID");
+  }
+
+  const aggregation = [];
+
+  aggregation.push({
+    $match: {
+      _id: new mongoose.Types.ObjectId(product_ids[0]),
+    },
+  });
+
+  aggregation.push({
+    $lookup: {
+      from: "users",
+      localField: "userId",
+      foreignField: "userId",
+      as: "user",
+    },
+  });
+  aggregation.push({
+    $unwind: {
+      path: "$user",
+      preserveNullAndEmptyArrays: true,
+    },
+  });
+
+  const product = await Product.aggregate(aggregation);
+  if (product.length === 0) {
+    throw new ApiError(404, "Product not found");
+  }
+
+
+
+  const address = await DeliveryAddress.findById(address_id);
+  if (!address) {
+    throw new ApiError(404, "Address not found");
+  }
+
+  const AccountId = product[0].user.stripeAccountId;
+
+  const paySheet = await paymentSheet(
+    req.user.stripeCustomerId,
+    order_amount,
+    "usd",
+    AccountId,
+  );
+
+
+  throw new ApiError(400, "Payment sheet not created");
+  // Order placement logic here
+  // res.json(new ApiResponse(200, "Order placed successfully", paySheet));
+});
+
+const confirmPaymentFn = asyncHandler(async (req, res) => {
+  const { paymentIntentId } = req.body;
+  if (!paymentIntentId) {
+    throw new ApiError(400, "Payment intent ID not provided");
+  }
+
+  const paymentIntent = await confirmPayment(paymentIntentId);
+  if (!paymentIntent) {
+    throw new ApiError(500, "Failed to confirm payment");
+  }
+
+  res.json(
+    new ApiResponse(200, "Payment confirmed successfully", paymentIntent)
   );
 });
 
@@ -650,4 +973,10 @@ export {
   getSubCategories,
   deleteMarketplaceSubCategory,
   doKYC,
+  getCards,
+  getCartProducts,
+  getMarketplaceProducts,
+  orderPlace,
+  paymentSheetFn,
+  confirmPaymentFn,
 };
