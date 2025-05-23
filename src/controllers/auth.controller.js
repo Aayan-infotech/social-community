@@ -189,9 +189,7 @@ const signup = asyncHandler(async (req, res) => {
   );
 
   // check if user is created
-  const createdUser = await User.findById(user._id).select(
-    "name email mobile country state address dob"
-  );
+  const createdUser = await User.findById(user._id)
 
   if (!createdUser) {
     throw new ApiError(500, "Something went wrong while registering");
@@ -254,9 +252,7 @@ const loginUser = asyncHandler(async (req, res) => {
     user._id
   );
 
-  const loggedInUser = await User.findById(user._id).select(
-    "name email mobile country state address dob role"
-  );
+  const loggedInUser = await User.findById(user._id)
 
   // cookies
   const options = {
