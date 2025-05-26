@@ -33,7 +33,7 @@ router.post("/resend-otp", resendOTP);
 router.post("/set-password",validateRequest(setPasswordValidationSchema),setPassword);
 router.post("/logout",verifyJWT,logoutUser);
 router.post("/change-password",verifyJWT,validateRequest(changePasswordSchema),changePassword);
-router.get("/refresh-token",refreshAccessToken);
+router.post("/refresh-token",refreshAccessToken);
 router.post('/save-device-details',verifyJWT,validateRequest(saveDeviceDetailsSchema),saveDeviceDetails);
 
 export default router;
