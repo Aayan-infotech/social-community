@@ -182,6 +182,23 @@ const getPosts = asyncHandler(async function (req, res) {
   aggregation.push({
     $limit: limit,
   });
+
+  // isLiked boolean field that logged in user liked the post or not
+  aggregation.push({
+    $addFields: {
+      isLiked: {
+        $gt: [
+          {
+            $size: {
+              $setIntersection: [[req.user.userId], "$likedBy"],
+            },
+          },
+          0,
+        ],
+      },
+    },
+  });
+
   aggregation.push({
     $project: {
       "user.name": 1,
@@ -193,6 +210,7 @@ const getPosts = asyncHandler(async function (req, res) {
       media: 1,
       mediaType: 1,
       likes: 1,
+      isLiked: 1,
       // likedBy: 1,
       // comments: 1,
       // createdAt: 1,
@@ -505,9 +523,28 @@ const getPostDetails = asyncHandler(async (req, res) => {
       comment_count: { $size: "$comments" },
     },
   });
+
+    // isLiked boolean field that logged in user liked the post or not
+  aggregation.push({
+    $addFields: {
+      isLiked: {
+        $gt: [
+          {
+            $size: {
+              $setIntersection: [[req.user.userId], "$likedBy"],
+            },
+          },
+          0,
+        ],
+      },
+    },
+  });
+
   aggregation.push({
     $unset: ["likedBy", "comments"],
   });
+
+
   aggregation.push({
     $project: {
       "user.name": 1,
@@ -518,6 +555,7 @@ const getPostDetails = asyncHandler(async (req, res) => {
       type: 1,
       media: 1,
       likes: 1,
+      isLiked: 1,
       comment_count: 1,
       createdAt: 1,
       "user.profile_image": {
@@ -799,15 +837,10 @@ const getHomeFeed = asyncHandler(async (req, res) => {
 
   // add isLiked boolean field that logged in user liked the post or not
 
-
   const aggregation = [];
   aggregation.push({
     $match: { type: type },
   });
-
-
-
-
 
   aggregation.push({
     $lookup: {
@@ -917,7 +950,6 @@ const getHomeFeed = asyncHandler(async (req, res) => {
   );
 });
 
-
 const deletePost = asyncHandler(async (req, res) => {
   const postId = req.params.postId;
   if (!postId) {
@@ -932,7 +964,7 @@ const deletePost = asyncHandler(async (req, res) => {
   if (!post) {
     throw new ApiError(404, "Post not found");
   }
-  if(post.media) {
+  if (post.media) {
     const media = post.media;
     if (Array.isArray(media)) {
       for (const file of media) {
