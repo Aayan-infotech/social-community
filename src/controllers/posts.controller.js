@@ -17,6 +17,7 @@ import { isValidObjectId } from "../utils/isValidObjectId.js";
 import { url } from "inspector";
 import { Education } from "../models/education.model.js";
 import { Experience } from "../models/experience.model.js";
+import mongoose from "mongoose";
 
 const createPost = asyncHandler(async (req, res) => {
   const { title, description, type } = req.body;
@@ -443,21 +444,29 @@ const editReplyComment = asyncHandler(async (req, res) => {
 
 const getReplyofComment = asyncHandler(async (req, res) => {
   const commentId = req.query.commentId;
+
   if (!commentId) {
     throw new ApiError(400, "Comment ID is required");
   }
   if (!isValidObjectId(commentId)) {
     throw new ApiError(400, "Invalid comment ID");
   }
+
+  const comment = await CommentModel.findById(commentId);
+  if (!comment) {
+    throw new ApiError(404, "Comment not found");
+  }
+
   const page = Math.max(1, parseInt(req.query.page) || 1);
   const limit = Math.max(1, parseInt(req.query.limit) || 10);
   const skip = (page - 1) * limit;
 
-  const aggregation = [];
-  aggregation.push({
-    $match: { commentId: commentId },
-  });
+  const totalComments = await ReplyModel.countDocuments({ commentId });
 
+  let aggregation = [];
+  aggregation.push({
+    $match: { commentId :  new mongoose.Types.ObjectId(commentId) },
+  });
   aggregation.push({
     $lookup: {
       from: "users",
@@ -471,7 +480,10 @@ const getReplyofComment = asyncHandler(async (req, res) => {
   });
 
   aggregation.push({
-    skip: skip,
+    $sort: { createdAt: -1 },
+  });
+  aggregation.push({
+    $skip: skip,
   });
   aggregation.push({
     $limit: limit,
@@ -487,7 +499,22 @@ const getReplyofComment = asyncHandler(async (req, res) => {
     },
   });
 
-  const replyComments = await ReplyModel.aggregate(aggregation);
+  const comments = await ReplyModel.aggregate(aggregation);
+
+  if (comments.length === 0) {
+    return res.json(new ApiResponse(200, "No comments found", []));
+  }
+
+  res.json(
+    new ApiResponse(200, "Comments fetched successfully", {
+      comments,
+      total_page: Math.ceil(totalComments / limit),
+      current_page: page,
+      total_records: totalComments,
+      per_page: limit,
+    })
+  );
+
 });
 
 const getPostDetails = asyncHandler(async (req, res) => {
