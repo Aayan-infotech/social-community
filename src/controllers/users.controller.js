@@ -1085,13 +1085,13 @@ const getAllUsers = asyncHandler(async (req, res) => {
   const skip = (page - 1) * limit;
 
   // add the pagination to the query
-  const users = await User.find()
+  const users = await User.find({role: "user"})
     .select(
-      "name userId email mobile profile_image gender city state country aboutMe referralCode"
+      "name userId email mobile profile_image gender city state country aboutMe referralCode isDeleted"
     )
     .skip(skip)
     .limit(limit);
-  const totalUsers = await User.countDocuments({});
+  const totalUsers = await User.countDocuments({role: "user"});
   const totalPages = Math.ceil(totalUsers / limit);
   const currentPage = page;
   const totalRecords = totalUsers;
