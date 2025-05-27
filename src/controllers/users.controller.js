@@ -999,7 +999,13 @@ const getStories = asyncHandler(async (req, res) => {
   const userId = req.user.userId;
   const friendList = await FriendsModel.findOne({ userId }).select("friends");
   const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-  const userIdsToFetch = [userId, ...friendList.friends];
+  let userIdsToFetch = [];
+  if (!friendList) {
+    userIdsToFetch = [userId];
+  } else {
+    userIdsToFetch = [userId, ...friendList.friends];
+  }
+
   const stories = await Story.aggregate([
     {
       $match: {
@@ -1060,10 +1066,7 @@ const getStories = asyncHandler(async (req, res) => {
     createdAt: { $gte: twentyFourHoursAgo },
   }).sort({ createdAt: -1 });
 
-  // console.log(myStories.length);
-  // if (!stories.length && !myStories.length) {
-  //   return res.json(new ApiResponse(404, "No stories found"));
-  // }
+
 
   if (myStories.length === 0) {
     stories.unshift({
@@ -1086,13 +1089,13 @@ const getAllUsers = asyncHandler(async (req, res) => {
   const skip = (page - 1) * limit;
 
   // add the pagination to the query
-  const users = await User.find({role: "user"})
+  const users = await User.find({ role: "user" })
     .select(
       "name userId email mobile profile_image gender city state country aboutMe referralCode isDeleted"
     )
     .skip(skip)
     .limit(limit);
-  const totalUsers = await User.countDocuments({role: "user"});
+  const totalUsers = await User.countDocuments({ role: "user" });
   const totalPages = Math.ceil(totalUsers / limit);
   const currentPage = page;
   const totalRecords = totalUsers;
