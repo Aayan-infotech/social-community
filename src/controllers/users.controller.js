@@ -1096,9 +1096,7 @@ const getAllUsers = asyncHandler(async (req, res) => {
   const currentPage = page;
   const totalRecords = totalUsers;
   const perPage = limit;
-  if (!users.length) {
-    throw new ApiError(404, "No users found");
-  }
+
   res.json(
     new ApiResponse(200, "Fetched all users successfully", {
       users,
