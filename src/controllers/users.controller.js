@@ -459,6 +459,7 @@ const getFriendSuggestionList = asyncHandler(async (req, res) => {
 
   const baseMatchPipeline = [
     { $match: { city: user?.city } },
+    { $match: { role: "user" } },
     { $match: { userId: { $ne: userId } } },
     { $match: { userId: { $nin: friends } } },
   ];
