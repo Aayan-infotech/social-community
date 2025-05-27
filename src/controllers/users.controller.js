@@ -304,18 +304,20 @@ const friendRequest = asyncHandler(async (req, res) => {
 
   const data = await friendRequest.save();
 
-  // Send push notification to the friend
-  await sendPushNotification(
-    friendExists?.device_token,
-    "Friend Request",
-    "You have received a friend request from " + user?.name,
-    userId,
-    friendId,
-    {
-      type: "friend_request",
-      friendDetails: JSON.stringify(friendExists),
-    }
-  );
+  if (friendExists?.device_token?.length > 0) {
+    // Send push notification to the friend
+    await sendPushNotification(
+      friendExists?.device_token,
+      "Friend Request",
+      "You have received a friend request from " + user?.name,
+      userId,
+      friendId,
+      {
+        type: "friend_request",
+        friendDetails: JSON.stringify(friendExists),
+      }
+    );
+  }
 
   res.json(new ApiResponse(200, "Friend request added successfully", data));
 });
@@ -363,18 +365,21 @@ const acceptRejectFriendRequest = asyncHandler(async (req, res) => {
       { new: true, upsert: true }
     );
 
+    if (friendExists?.device_token?.length > 0) {
+      // send push notification to the friend
+      await sendPushNotification(
+        friendExists?.device_token,
+        "Friend Request Accepted",
+        user?.name + " has accepted your friend request",
+        userId,
+        friendId,
+        {
+          type: "friend_request_accepted",
+          friendDetails: JSON.stringify(friendExists),
+        }
+      );
+    }
     // send push notification in the accepted case
-    await sendPushNotification(
-      friendExists?.device_token,
-      "Friend Request Accepted",
-      user?.name + " has accepted your friend request",
-      userId,
-      friendId,
-      {
-        type: "friend_request_accepted",
-        friendDetails: user,
-      }
-    );
   }
 
   // update the status of the friend request
@@ -1065,8 +1070,6 @@ const getStories = asyncHandler(async (req, res) => {
     userId,
     createdAt: { $gte: twentyFourHoursAgo },
   }).sort({ createdAt: -1 });
-
-
 
   if (myStories.length === 0) {
     stories.unshift({
