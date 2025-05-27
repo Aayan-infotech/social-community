@@ -1054,6 +1054,27 @@ const getStories = asyncHandler(async (req, res) => {
     },
   ]);
 
+  const myStories = await Story.find({
+    userId,
+    createdAt: { $gte: twentyFourHoursAgo },
+  }).sort({ createdAt: -1 });
+
+  // console.log(myStories.length);
+  // if (!stories.length && !myStories.length) {
+  //   return res.json(new ApiResponse(404, "No stories found"));
+  // }
+
+  if (myStories.length === 0) {
+    stories.unshift({
+      stories: [],
+      userId,
+      name: req.user.name,
+      profile_image:
+        req.user.profile_image ||
+        `${req.protocol}://${req.hostname}:${process.env.PORT}/placeholder/person.png`,
+    });
+  }
+
   res.json(new ApiResponse(200, "Get the Stories Successfully", stories));
 });
 

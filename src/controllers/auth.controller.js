@@ -102,7 +102,8 @@ const signup = asyncHandler(async (req, res) => {
 
   const userId = await generateUniqueUserId();
   const referralCode = await generateReferralCode(name);
-  const otp = generateOTP();
+  // const otp = generateOTP();
+  const otp = 1234;
 
   let referredByUser = null;
   if (referralBy) {
@@ -116,23 +117,23 @@ const signup = asyncHandler(async (req, res) => {
   //   mobile OTP send code
   //   const send = await sendOTP(mobile, otp);
 
-  const html = fs.readFileSync("./src/emails/otpTemplate.html", "utf-8");
-  const subject = "OTP Verification";
-  const otpHTML = new RegExp(`{{OTP}}`, "g");
-  const updatedHtml = html.replace(otpHTML, otp);
+  // const html = fs.readFileSync("./src/emails/otpTemplate.html", "utf-8");
+  // const subject = "OTP Verification";
+  // const otpHTML = new RegExp(`{{OTP}}`, "g");
+  // const updatedHtml = html.replace(otpHTML, otp);
 
-  const namehtml = new RegExp(`{{name}}`, "g");
-  const updatedHtml1 = updatedHtml.replace(namehtml, name);
+  // const namehtml = new RegExp(`{{name}}`, "g");
+  // const updatedHtml1 = updatedHtml.replace(namehtml, name);
 
-  const year = new RegExp(`{{year}}`, "g");
-  const updatedHtml2 = updatedHtml1.replace(year, new Date().getFullYear());
+  // const year = new RegExp(`{{year}}`, "g");
+  // const updatedHtml2 = updatedHtml1.replace(year, new Date().getFullYear());
 
-  const send = await sendEmail(userEmail, subject, updatedHtml2);
+  // const send = await sendEmail(userEmail, subject, updatedHtml2);
 
-  if (!send.success) {
-    // throw new ApiError(500, "Failed to send OTP to mobile number");
-    throw new ApiError(500, "Failed to send OTP to Email");
-  }
+  // if (!send.success) {
+  //   // throw new ApiError(500, "Failed to send OTP to mobile number");
+  //   throw new ApiError(500, "Failed to send OTP to Email");
+  // }
 
   // Add customer to stripe
   const stripeCustomer = await createCustomer(userEmail, name);
