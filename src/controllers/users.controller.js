@@ -41,6 +41,12 @@ const getUserProfile = asyncHandler(async (req, res) => {
     },
   });
   aggregation.push({
+    $unwind: {
+      path: "$friendsData",
+      preserveNullAndEmptyArrays: true,
+    },
+  });
+  aggregation.push({
     $lookup: {
       from: "posts",
       localField: "userId",
