@@ -1619,6 +1619,7 @@ const searchAllUsers = asyncHandler(async (req, res) => {
   const page = Math.max(1, parseInt(req.query.page) || 1);
   const limit = Math.max(1, parseInt(req.query.limit) || 10);
   const skip = (page - 1) * limit;
+  const userId = req.user.userId;
   const { search } = req.query;
   if (!search) {
     throw new ApiError(400, "Search query is required");
@@ -1638,6 +1639,45 @@ const searchAllUsers = asyncHandler(async (req, res) => {
       role: "user",
     },
   });
+
+  // added a key that will hasFriend boolean value to check if the user has friend request sent to them
+  aggregation.push({
+    $lookup: {
+      from: "friends",
+      localField: "userId",
+      foreignField: "userId",
+      as: "friends_data",
+    },
+  });
+
+  aggregation.push({
+    $addFields: {
+      hasFriend: {
+        $gt: [{ $size: "$friends_data" }, 0],
+      },
+    },
+  });
+
+  aggregation.push({
+    $lookup: {
+      from: "friendrequests",
+      let: { senderId: userId, receiverId: "$userId" },
+      pipeline: [
+        {
+          $match: {
+            $expr: {
+              $and: [
+                { $eq: ["$senderId", "$$senderId"] },
+                { $eq: ["$receiverId", "$$receiverId"] },
+              ],
+            },
+          },
+        },
+      ],
+      as: "friend_request_sended",
+    },
+  });
+
   aggregation.push({
     $facet: {
       users: [
@@ -1658,6 +1698,14 @@ const searchAllUsers = asyncHandler(async (req, res) => {
                 "$profile_image",
                 `${req.protocol}://${req.hostname}:${process.env.PORT}/placeholder/person.png`,
               ],
+            },
+            hasFriend: 1,
+            friend_request_sended: {
+              $cond: {
+                if: { $gt: [{ $size: "$friend_request_sended" }, 0] },
+                then: true,
+                else: false,
+              },
             },
           },
         },
