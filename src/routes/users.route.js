@@ -32,6 +32,7 @@ import {
   updateProfessionalImage,
   getProfessionalProfile,
   searchSkills, 
+  searchAllUsers,
 } from "../controllers/users.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { validateRequest } from "../middlewares/validation.middleware.js";
@@ -163,5 +164,6 @@ router.get("/get-matrimonial-profile", verifyJWT, getMatrimonialProfile);
 
 // Info Pages
 router.get("/info-pages", verifyJWT, getAllInfoPages);
+router.get("/search",verifyJWT,searchAllUsers);
 
 export default router;

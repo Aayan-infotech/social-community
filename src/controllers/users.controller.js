@@ -407,50 +407,174 @@ const acceptRejectFriendRequest = asyncHandler(async (req, res) => {
 });
 
 const getFriendRequestList = asyncHandler(async (req, res) => {
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.max(1, parseInt(req.query.limit) || 10);
+  const skip = (page - 1) * limit;
   const user = await User.findById(req.user._id);
   if (!user) {
     throw new ApiError(404, "User not found");
   }
+
   const userId = user.userId;
-  const friendRequests = await FriendRequestModel.find({
-    receiverId: userId,
-    status: "pending",
-  }).select("senderId");
 
-  const senderIds = friendRequests.map((request) => request.senderId);
+  const aggregation = [];
+  aggregation.push({
+    $match: {
+      receiverId: userId,
+      status: "pending",
+    },
+  });
 
-  if (!senderIds.length) {
-    throw new ApiError(404, "No friend requests found");
-  }
+  aggregation.push({
+    $lookup: {
+      from: "users",
+      localField: "senderId",
+      foreignField: "userId",
+      as: "senderDetails",
+    },
+  });
 
-  // Fetch details of those users who sent the friend request
-  const senders = await User.find({
-    userId: { $in: senderIds },
-  }).select(
-    "-password -refreshToken -previous_passwords -_id -__v -referrals -referredBy -otpExpire -otp"
-  );
+  aggregation.push({
+    $unwind: "$senderDetails",
+  });
+
+  aggregation.push({
+    $replaceRoot: {
+      newRoot: "$senderDetails",
+    },
+  });
+
+  aggregation.push({
+    $facet: {
+      friendRequests: [
+        { $skip: skip },
+        { $limit: limit },
+        {
+          $project: {
+            _id: 0,
+            userId: 1,
+            name: 1,
+            email: 1,
+            mobile: 1,
+            country: 1,
+            state: 1,
+            city: 1,
+            gender: 1,
+            profile_image: {
+              $ifNull: [
+                "$senderDetails.profile_image",
+                `${req.protocol}://${req.hostname}:${process.env.PORT}/placeholder/person.png`,
+              ],
+            },
+          },
+        },
+      ],
+      totalCount: [{ $count: "count" }],
+    },
+  });
+
+  const result = await FriendRequestModel.aggregate(aggregation);
+
+  const friendRequests = result[0]?.friendRequests || [];
+  const totalCount = result[0]?.totalCount[0]?.count || 0;
+  const totalPages = Math.ceil(totalCount / limit);
 
   res.json(
-    new ApiResponse(200, "Friend requests fetched successfully", senders)
+    new ApiResponse(
+      200,
+      friendRequests.length > 0
+        ? "Friend requests fetched successfully"
+        : "No friend requests found",
+      friendRequests.length > 0
+        ? {
+            friendRequests,
+            total_page: totalPages,
+            current_page: page,
+            total_records: totalCount,
+            per_page: limit,
+          }
+        : null
+    )
   );
 });
 
 const getFriendList = asyncHandler(async (req, res) => {
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.max(1, parseInt(req.query.limit) || 10);
+  const skip = (page - 1) * limit;
+
   const user = await User.findById(req.user._id);
   if (!user) {
     throw new ApiError(404, "User not found");
   }
-  const userId = user?.userId;
-  const friendList = await FriendsModel.findOne({ userId });
-  if (!friendList) {
-    throw new ApiError(404, "Friend list not found");
+
+  const userId = user.userId;
+
+  const friendListDoc = await FriendsModel.findOne({ userId });
+
+  if (!friendListDoc || !friendListDoc.friends.length) {
+    throw new ApiError(404, "Friend list not found or empty");
   }
-  const friends = await User.find({
-    userId: { $in: friendList.friends },
-  }).select(
-    "-password -refreshToken -previous_passwords -_id -__v -referrals -referredBy -otpExpire -otp"
+
+  const aggregation = [
+    {
+      $match: {
+        userId: { $in: friendListDoc.friends },
+      },
+    },
+    {
+      $facet: {
+        friends: [
+          { $skip: skip },
+          { $limit: limit },
+          {
+            $project: {
+              _id: 0,
+              userId: 1,
+              name: 1,
+              email: 1,
+              mobile: 1,
+              country: 1,
+              state: 1,
+              city: 1,
+              gender: 1,
+              profile_image: {
+                $ifNull: [
+                  "$profile_image",
+                  `${req.protocol}://${req.hostname}:${process.env.PORT}/placeholder/person.png`,
+                ],
+              },
+            },
+          },
+        ],
+        totalCount: [{ $count: "count" }],
+      },
+    },
+  ];
+
+  const result = await User.aggregate(aggregation);
+
+  const friends = result[0]?.friends || [];
+  const totalCount = result[0]?.totalCount[0]?.count || 0;
+  const totalPages = Math.ceil(totalCount / limit);
+
+  res.json(
+    new ApiResponse(
+      200,
+      friends.length > 0
+        ? "Friend list fetched successfully"
+        : "No friends found",
+      friends.length > 0
+        ? {
+            friends,
+            total_page: totalPages,
+            current_page: page,
+            total_records: totalCount,
+            per_page: limit,
+          }
+        : null
+    )
   );
-  res.json(new ApiResponse(200, "Friend list fetched successfully", friends));
 });
 
 const getFriendSuggestionList = asyncHandler(async (req, res) => {
@@ -1491,6 +1615,80 @@ const getAllInfoPages = asyncHandler(async (req, res) => {
   res.json(new ApiResponse(200, "Info pages fetched successfully", pages));
 });
 
+const searchAllUsers = asyncHandler(async (req, res) => {
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.max(1, parseInt(req.query.limit) || 10);
+  const skip = (page - 1) * limit;
+  const { search } = req.query;
+  if (!search) {
+    throw new ApiError(400, "Search query is required");
+  }
+
+  const aggregation = [];
+  aggregation.push({
+    $match: {
+      $or: [
+        { name: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } },
+        { mobile: { $regex: search, $options: "i" } },
+        { city: { $regex: search, $options: "i" } },
+        { state: { $regex: search, $options: "i" } },
+        { country: { $regex: search, $options: "i" } },
+      ],
+      role: "user",
+    },
+  });
+  aggregation.push({
+    $facet: {
+      users: [
+        { $skip: skip },
+        { $limit: limit },
+        {
+          $project: {
+            _id: 0,
+            userId: 1,
+            name: 1,
+            email: 1,
+            mobile: 1,
+            country: 1,
+            state: 1,
+            city: 1,
+            profile_image: {
+              $ifNull: [
+                "$profile_image",
+                `${req.protocol}://${req.hostname}:${process.env.PORT}/placeholder/person.png`,
+              ],
+            },
+          },
+        },
+      ],
+      totalCount: [{ $count: "count" }],
+    },
+  });
+
+  const result = await User.aggregate(aggregation);
+
+  const users = result[0]?.users || [];
+  const totalCount = result[0]?.totalCount[0]?.count || 0;
+  const totalPages = Math.ceil(totalCount / limit);
+
+  res.json(
+    new ApiResponse(
+      200,
+      users.length > 0 ? "Users fetched successfully" : "No users found",
+      users.length > 0
+        ? {
+            users,
+            total_page: totalPages,
+            current_page: page,
+            total_records: totalCount,
+            per_page: limit,
+          }
+        : null
+    )
+  );
+});
+
 export {
   getUserProfile,
   updateUserProfile,
@@ -1523,4 +1721,5 @@ export {
   updateProfessionalImage,
   getProfessionalProfile,
   searchSkills,
+  searchAllUsers,
 };
