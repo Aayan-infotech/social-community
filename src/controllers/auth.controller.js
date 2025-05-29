@@ -18,22 +18,12 @@ import {
   createCustomer,
   createConnectAccount,
 } from "../services/stripeService.js";
+import { loadConfig } from "../config/loadConfig.js";
 
-// const generateAccessAndRefreshTokens = async (userId) => {
-//   try {
-//     const user = await User.findById(userId);
-//     const accessToken = user.generateAccessToken();
-//     const refreshToken = user.generateRefreshToken();
-//     user.refreshToken = refreshToken;
-//     await user.save({ validateBeforeSave: false });
-//     return { accessToken, refreshToken };
-//   } catch (error) {
-//     throw new ApiError(
-//       500,
-//       "Something went wrong while generating refresh and access token"
-//     );
-//   }
-// };
+
+
+
+const secret = await loadConfig();
 
 const generateAccessAndRefreshTokens = async (userId) => {
   try {
@@ -45,7 +35,7 @@ const generateAccessAndRefreshTokens = async (userId) => {
     const accessToken = user.generateAccessToken();
     let refreshToken = user.refreshToken;
     try {
-      jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
+      jwt.verify(refreshToken, secret.REFRESH_TOKEN_SECRET);
     } catch (error) {
       refreshToken = user.generateRefreshToken();
       user.refreshToken = refreshToken;
@@ -277,7 +267,7 @@ const loginUser = asyncHandler(async (req, res) => {
 const verifyEmail = asyncHandler(async (req, res) => {
   const { token } = req.params;
 
-  const decoded = jwt.verify(token, process.env.REFRESH_TOKEN_SECRET);
+  const decoded = jwt.verify(token, secret.REFRESH_TOKEN_SECRET);
 
   const user = await User.findOne({ email: decoded.email });
 
@@ -539,7 +529,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
 
     const decodedToken = jwt.verify(
       incomingRefreshToken,
-      process.env.REFRESH_TOKEN_SECRET
+      secret.REFRESH_TOKEN_SECRET
     );
 
     const user = await User.findById(decodedToken?._id);

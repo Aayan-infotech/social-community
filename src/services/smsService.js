@@ -1,8 +1,11 @@
 import twilio from 'twilio';
+import { loadConfig } from '../config/loadConfig.js';
 
-const accountSid = process.env.TWILIO_ACCOUNT_SID;
-const authToken =  process.env.TWILIO_AUTH_TOKEN;
-const serviceId =  process.env.TWILIO_SERVICE_SID;
+const secret = await loadConfig();
+
+const accountSid = secret.TWILIO_ACCOUNT_SID;
+const authToken =  secret.TWILIO_AUTH_TOKEN;
+const serviceId =  secret.TWILIO_SERVICE_SID;
 
 const client = twilio(accountSid, authToken);
 

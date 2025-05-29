@@ -101,7 +101,7 @@ const updateUserProfile = asyncHandler(async (req, res) => {
 
   let profile_image = req.user?.profile_image
     ? req.user?.profile_image
-    : process.env.APP;
+    : '';
 
   if (req.files && req.files.profile_image) {
     // Delete the previous profile image from AWS
@@ -589,6 +589,8 @@ const getFriendSuggestionList = asyncHandler(async (req, res) => {
 
   const userId = user?.userId;
   const friendList = await FriendsModel.findOne({ userId });
+
+  console.log("Friend List:", friendList);
 
   const friends = friendList?.friends || [];
 

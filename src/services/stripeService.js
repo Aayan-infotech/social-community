@@ -1,6 +1,9 @@
 import stripe from "stripe";
+import { loadConfig } from "../config/loadConfig.js";
 
-const stripeClient = stripe(process.env.STRIPE_SECRET_KEY);
+const secret = await loadConfig();
+
+const stripeClient = stripe(secret.STRIPE_SECRET_KEY);
 
 const createCustomer = async (email, name) => {
   try {
@@ -37,8 +40,8 @@ const completeKYC = async (accountId) => {
   try {
     const accountLink = await stripeClient.accountLinks.create({
       account: accountId,
-      refresh_url: process.env.REFRESH_URL,
-      return_url: process.env.RETURN_URL,
+      refresh_url: secret.REFRESH_URL,
+      return_url: secret.RETURN_URL,
       type: "account_onboarding",
     });
     
@@ -125,7 +128,7 @@ const paymentSheet = async (customerId, amount, currency, AccountId) => {
       paymentIntent: paymentIntent.client_secret,
       ephemeralKey: ephemeralKey.secret,
       customer: customerId,
-      publishableKey: process.env.STRIPE_PUBLIC_KEY,
+      publishableKey: secret.STRIPE_PUBLIC_KEY,
     };
   } catch (error) {
     console.error("Error creating payment sheet:", error);
@@ -138,7 +141,7 @@ const confirmPayment = async (paymentIntentId) => {
       paymentIntentId,
       {
         payment_method: "pm_card_visa",
-        return_url: process.env.RETURN_URL,
+        return_url: secret.RETURN_URL,
       }
     );
     return paymentIntent;
