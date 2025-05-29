@@ -33,6 +33,7 @@ import {
   getProfessionalProfile,
   searchSkills, 
   searchAllUsers,
+  deleteFriendRequest,
 } from "../controllers/users.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { validateRequest } from "../middlewares/validation.middleware.js";
@@ -90,6 +91,7 @@ router.post(
   verifyJWT,
   friendRequest
 );
+router.delete('/friend-request',verifyJWT,deleteFriendRequest);
 router.put(
   "/accept-reject-friend-request",
   validateRequest(acceptRejectFriendRequestSchema),

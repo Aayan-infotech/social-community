@@ -1739,6 +1739,19 @@ const searchAllUsers = asyncHandler(async (req, res) => {
   );
 });
 
+const deleteFriendRequest = asyncHandler(async (req, res) => {
+  const { userId } = req.body;
+  const currentUserId = req.user.userId;
+  if (!userId) {
+    throw new ApiError(400, "User ID is required");
+  }
+  await FriendRequestModel.findOneAndDelete({
+    senderId: currentUserId,
+    receiverId: userId,
+  });
+  res.json(new ApiResponse(200, "Friend request deleted successfully"));
+});
+
 export {
   getUserProfile,
   updateUserProfile,
@@ -1772,4 +1785,5 @@ export {
   getProfessionalProfile,
   searchSkills,
   searchAllUsers,
+  deleteFriendRequest,
 };
