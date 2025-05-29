@@ -16,10 +16,10 @@ const secret = await loadConfig();
 // Initialize the S3 client
 const s3 = new S3Client({
   region: secret.AWS_REGION,
-  credentials: {
-    accessKeyId: secret.AWS_ACCESS_KEY_ID,
-    secretAccessKey: secret.AWS_SECRET_ACCESS_KEY,
-  },
+  // credentials: {
+  //   accessKeyId: secret.AWS_ACCESS_KEY_ID,
+  //   secretAccessKey: secret.AWS_SECRET_ACCESS_KEY,
+  // },
 });
 
 // Function to upload an image to S3
@@ -30,7 +30,7 @@ const uploadImage = async (file) => {
       throw new ApiError(400, "Invalid file");
     }
     const params = {
-      Bucket: process.env.AWS_BUCKET_NAME,
+      Bucket: secret.AWS_BUCKET_NAME,
       Key: file.filename,
       Body: fileContent,
       ContentType: file.mimetype,
@@ -45,7 +45,7 @@ const uploadImage = async (file) => {
     // return `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${file.filename}`;
     return {
       success: true,
-      fileUrl: `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${file.filename}`,
+      fileUrl: `https://${secret.AWS_BUCKET_NAME}.s3.${secret.AWS_REGION}.amazonaws.com/${file.filename}`,
     };
   } catch (error) {
     fs.unlinkSync(file.path);
@@ -59,7 +59,7 @@ const deleteObject = async (imageUrl) => {
   try {
     const fileName = imageUrl.split("/").pop();
     const params = {
-      Bucket: process.env.AWS_BUCKET_NAME,
+      Bucket: secret.AWS_BUCKET_NAME,
       Key: fileName,
     };
 
@@ -113,7 +113,7 @@ const uploadVideo = async (file) => {
     const fileStream = fs.createReadStream(file.path);
 
     const uploadParams = {
-      Bucket: process.env.AWS_BUCKET_NAME,
+      Bucket: secret.AWS_BUCKET_NAME,
       Key: `videos/${file.filename}`,
       Body: fileStream,
       ContentType: file.mimetype,
