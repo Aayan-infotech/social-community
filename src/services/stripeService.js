@@ -1,5 +1,6 @@
 import stripe from "stripe";
 import { loadConfig } from "../config/loadConfig.js";
+import { ApiError } from "../utils/ApiError.js";
 
 const secret = await loadConfig();
 
@@ -136,6 +137,7 @@ const paymentSheet = async (customerId, amount, currency, AccountId) => {
     };
   } catch (error) {
     console.error("Error creating payment sheet:", error);
+    throw new ApiError(500, "Please Complete the KYC First", error.message);
   }
 };
 
