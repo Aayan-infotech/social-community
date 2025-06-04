@@ -929,10 +929,9 @@ const paymentSheetFn = asyncHandler(async (req, res) => {
     AccountId,
   );
 
-
-  throw new ApiError(400, "Payment sheet not created");
-  // Order placement logic here
-  // res.json(new ApiResponse(200, "Order placed successfully", paySheet));
+  return res.status(200).json(
+    new ApiResponse(200, "Payment sheet created successfully", paySheet)
+  );
 });
 
 const confirmPaymentFn = asyncHandler(async (req, res) => {
