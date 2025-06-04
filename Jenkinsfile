@@ -2,9 +2,9 @@ pipeline {
     agent any
 
     environment {
-        IMAGE_NAME = "docker.io/aayanindia/social-com-back"
-        CONTAINER_PORT = "3030"
-        HOST_PORT = "3030"
+        IMAGE_NAME = "docker.io/aayanindia/cart-back"
+        CONTAINER_PORT = "9090"
+        HOST_PORT = "9090"
         DOCKER_HUB_USERNAME = credentials('docker-hub-username')
         DOCKER_HUB_PASSWORD = credentials('docker-hub-password')
         EMAIL_RECIPIENTS = "ujjwal.singh@aayaninfotech.com"
@@ -22,23 +22,7 @@ pipeline {
             }
         }
 
-        stage('SonarQube Analysis') {
-            steps {
-                script {
-                    sh '''
-                    echo "Running SonarQube analysis using Docker..."
-                    docker run --rm \
-                        -v $(pwd):/usr/src \
-                        --network host \
-                        sonarsource/sonar-scanner-cli:latest \
-                        -Dsonar.projectKey=social-ecom-back \
-                        -Dsonar.sources=/usr/src \
-                        -Dsonar.host.url=http://18.209.91.97:9000 \
-                        -Dsonar.login=${SONARTOKEN}
-                    '''
-                }
-            }
-        }
+
         stage('Login to Docker Hub') {
             steps {
                 script {
