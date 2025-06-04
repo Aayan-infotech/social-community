@@ -7,6 +7,7 @@ import familyRoutes from './family.route.js';
 import healthWellnessRoutes from './health_wellness.route.js';
 import nearbyRoutes from './nearby.route.js';
 import marketPlacesRoutes from './marketplace.route.js';
+import chatRoutes from './chat.route.js';
 
 const router = express.Router();
 
@@ -18,6 +19,6 @@ router.use('/family', familyRoutes);
 router.use('/health-wellness', healthWellnessRoutes);
 router.use('/nearby', nearbyRoutes);
 router.use('/marketplace', marketPlacesRoutes);
-
+router.use('/chat', chatRoutes);
 
 export default router;
