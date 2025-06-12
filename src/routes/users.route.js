@@ -34,6 +34,7 @@ import {
   searchSkills, 
   searchAllUsers,
   deleteFriendRequest,
+  sendNotification
 } from "../controllers/users.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { validateRequest } from "../middlewares/validation.middleware.js";
@@ -49,6 +50,7 @@ import {
   addPagesSchema,
   saveFAQSchema,
   updateMatrimonialProfileSchema,
+  sendNotificationSchema,
 } from "../validators/userValidator.js";
 import errorHandler from "../middlewares/errorhandler.middleware.js";
 
@@ -167,5 +169,6 @@ router.get("/get-matrimonial-profile", verifyJWT, getMatrimonialProfile);
 // Info Pages
 router.get("/info-pages", verifyJWT, getAllInfoPages);
 router.get("/search",verifyJWT,searchAllUsers);
+router.post("/send-notification",verifyJWT,validateRequest(sendNotificationSchema),sendNotification)
 
 export default router;

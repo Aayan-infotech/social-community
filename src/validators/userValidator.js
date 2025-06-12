@@ -533,6 +533,19 @@ const updateMatrimonialProfileSchema = Joi.object({
   }),
 });
 
+const sendNotificationSchema = Joi.object({
+  receiverId: Joi.array().items(Joi.string()).required().messages({
+    "string.base": "Receiver Id must be a string.",
+    "string.empty": "Receiver Id is required.",
+    "any.required": "Receiver Id is required.",
+  }),
+  message: Joi.string().required().messages({
+    "string.base": "Message must be a string.",
+    "string.empty": "Message is required.",
+    "any.required": "Message is required.",
+  }),
+});
+
 export {
   userValidationSchema,
   loginValidationSchema,
@@ -551,4 +564,5 @@ export {
   addPagesSchema,
   saveFAQSchema,
   updateMatrimonialProfileSchema,
+  sendNotificationSchema,
 };

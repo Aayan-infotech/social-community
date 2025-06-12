@@ -487,12 +487,12 @@ const getFriendRequestList = asyncHandler(async (req, res) => {
         : "No friend requests found",
       friendRequests.length > 0
         ? {
-            friendRequests,
-            total_page: totalPages,
-            current_page: page,
-            total_records: totalCount,
-            per_page: limit,
-          }
+          friendRequests,
+          total_page: totalPages,
+          current_page: page,
+          total_records: totalCount,
+          per_page: limit,
+        }
         : null
     )
   );
@@ -566,12 +566,12 @@ const getFriendList = asyncHandler(async (req, res) => {
         : "No friends found",
       friends.length > 0
         ? {
-            friends,
-            total_page: totalPages,
-            current_page: page,
-            total_records: totalCount,
-            per_page: limit,
-          }
+          friends,
+          total_page: totalPages,
+          current_page: page,
+          total_records: totalCount,
+          per_page: limit,
+        }
         : null
     )
   );
@@ -1728,12 +1728,12 @@ const searchAllUsers = asyncHandler(async (req, res) => {
       users.length > 0 ? "Users fetched successfully" : "No users found",
       users.length > 0
         ? {
-            users,
-            total_page: totalPages,
-            current_page: page,
-            total_records: totalCount,
-            per_page: limit,
-          }
+          users,
+          total_page: totalPages,
+          current_page: page,
+          total_records: totalCount,
+          per_page: limit,
+        }
         : null
     )
   );
@@ -1750,6 +1750,34 @@ const deleteFriendRequest = asyncHandler(async (req, res) => {
     receiverId: userId,
   });
   res.json(new ApiResponse(200, "Friend request deleted successfully"));
+});
+
+
+const sendNotification = asyncHandler(async (req, res) => {
+  const { receiverId, message } = req.body;
+  if (!receiverId || !message) {
+    throw new ApiError(400, "Receiver ID and message are required");
+  }
+
+  if (Array.isArray(receiverId)) {
+    for (const id of receiverId) {
+      const user = await User.findOne({ userId: id });
+      if (user?.device_token.length > 0) {
+        const saveNotification = await sendPushNotification(
+          user?.device_token,
+          "Message",
+          message,
+          req.user.userId,
+          id
+        );
+      }
+    }
+  }
+
+  return res.status(200).json(
+    new ApiResponse(200, "Notification sent successfully")
+  );
+
 });
 
 export {
@@ -1786,4 +1814,5 @@ export {
   searchSkills,
   searchAllUsers,
   deleteFriendRequest,
+  sendNotification
 };
