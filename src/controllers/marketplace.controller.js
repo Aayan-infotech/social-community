@@ -824,7 +824,7 @@ const checkKYCStatus = asyncHandler(async (req, res) => {
   const status = await handleKYCStatus(stripeAccountId);
 
   if (status === "active") {
-    return res.redirect(`http://localhost:5173/kyc-success`);
+    return res.redirect(`http://18.209.91.97:5623//kyc-success`);
   } else if (status === "pending") {
     return res.json(new ApiResponse(200, "KYC is pending", status));
     // return res.json(new ApiResponse(200, "KYC is pending", status));
