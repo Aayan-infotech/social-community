@@ -98,4 +98,12 @@ const updateBookingStatusSchema = Joi.object({
     })
 });
 
-export { virtualEventSchema, bookingValidationSchema, bookTicketSchema, updateBookingStatusSchema };
+const cancelBookingSchema = Joi.object({
+    bookingId: Joi.string().required().messages({
+        "string.empty": "Booking ID is required",
+        "any.required": "Booking ID is required"
+    }),
+    cancellationReason: Joi.string().optional()
+});
+
+export { virtualEventSchema, bookingValidationSchema, bookTicketSchema, updateBookingStatusSchema, cancelBookingSchema };

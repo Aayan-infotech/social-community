@@ -7,6 +7,7 @@ import {
     virtualEventSchema,
     bookTicketSchema,
     updateBookingStatusSchema,
+    cancelBookingSchema,
 } from "../validators/virtualEventValidator.js";
 import {
     addEvent,
@@ -15,6 +16,7 @@ import {
     eventDetails,
     bookTickets,
     updateBookingStatus,
+    cancelBooking,
 } from "../controllers/virtualEvent.controller.js";
 
 const router = Router();
@@ -48,5 +50,6 @@ router.put(
     validateRequest(updateBookingStatusSchema),
     updateBookingStatus
 );
+router.post('/cancel-booking',verifyJWT,validateRequest(cancelBookingSchema),cancelBooking);
 
 export default router;

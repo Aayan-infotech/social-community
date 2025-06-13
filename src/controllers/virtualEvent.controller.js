@@ -388,6 +388,10 @@ const updateBookingStatus = asyncHandler(async (req, res) => {
         throw new ApiError(404, "Booking not found");
     }
 
+    if (booking.bookingStatus === "completed") {
+        throw new ApiError(400, "Booking is already completed");
+    }
+
     if (!["booked", "cancelled"].includes(bookingStatus)) {
         throw new ApiError(400, "Invalid booking status. Must be 'booked' or 'cancelled'");
     }
@@ -424,6 +428,28 @@ const updateBookingStatus = asyncHandler(async (req, res) => {
     return res.json(new ApiResponse(200, "Booking status updated successfully", updatedBooking));
 });
 
+const cancelBooking = asyncHandler(async (req, res) => {
+    const { bookingId } = req.body;
+
+    if (!isValidObjectId(bookingId)) {
+        throw new ApiError(400, "Invalid booking ID");
+    }
+
+    const booking = await TicketBooking.findById(bookingId);
+    if (!booking) {
+        throw new ApiError(404, "Booking not found");
+    }
+
+    booking.bookingStatus = "cancelled";
+    booking.paymentStatus = "failed";
+    const updatedBooking = await booking.save();
+    if (!updatedBooking) {
+        throw new ApiError(500, "Failed to cancel booking");
+    }
+
+    return res.json(new ApiResponse(200, "Booking cancelled successfully", updatedBooking));
+});
+
 
 export {
     addEvent,
@@ -431,5 +457,6 @@ export {
     myEvenets,
     eventDetails,
     bookTickets,
-    updateBookingStatus
+    updateBookingStatus,
+    cancelBooking
 };
