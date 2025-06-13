@@ -41,8 +41,8 @@ const completeKYC = async (accountId) => {
   try {
     const accountLink = await stripeClient.accountLinks.create({
       account: accountId,
-      refresh_url: secret.REFRESH_URL + "?id=" + accountId,
-      return_url: secret.RETURN_URL + "?id=" + accountId,
+      refresh_url: "http://18.209.91.97:3030/api/marketplace/refresh-url" + "?id=" + accountId,
+      return_url: "http://18.209.91.97:3030/api/marketplace/kyc-status" + "?id=" + accountId,
       type: "account_onboarding",
     });
 
