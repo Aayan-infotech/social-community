@@ -1,5 +1,5 @@
 import nodemailer from "nodemailer";
-import {loadConfig} from "../config/loadConfig.js";
+import { loadConfig } from "../config/loadConfig.js";
 const config = await loadConfig();
 
 const transporter = nodemailer.createTransport({
@@ -13,17 +13,17 @@ const transporter = nodemailer.createTransport({
 });
 
 
-export const sendEmail = async (to, subject, html) => {
-    try{
+export const sendEmail = async (to, subject, html, attachments = []) => {
+    try {
         await transporter.sendMail({
             from: `"MyApp Support" <${config.EMAIL_USER}>`,
             to,
             subject,
             html,
+            attachments
         });
         return { success: true };
-    }catch(err){
+    } catch (err) {
         return { success: false, message: "Failed to send email" };
     }
-    
 };

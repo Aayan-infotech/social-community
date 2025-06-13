@@ -97,6 +97,8 @@ const loadConfig = async () => {
     // Stripe configuration
     STRIPE_PUBLIC_KEY: process.env.STRIPE_PUBLIC_KEY,
     STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
+    REFRESH_URL: process.env.REFRESH_URL,
+    RETURN_URL: process.env.RETURN_URL,
 
     FIREBASE_CONFIG: process.env.FIREBASE_CONFIG, 
   };

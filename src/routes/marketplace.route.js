@@ -41,6 +41,9 @@ import {
   orderPlace,
   paymentSheetFn,
   confirmPaymentFn,
+  removeProductFromCart,
+  refreshUrl,
+  checkKYCStatus,
 } from "../controllers/marketplace.controller.js";
 
 const router = Router();
@@ -133,6 +136,7 @@ router.put(
   updateProductQuantity
 );
 router.get("/get-cart", verifyJWT, getCartProducts);
+router.delete("/remove-from-cart/:product_id", verifyJWT, removeProductFromCart);
 
 // delivery address routes
 router.post(
@@ -156,6 +160,8 @@ router.post("/add-card", verifyJWT, addCard);
 router.get("/card-list", verifyJWT, getCards);
 
 router.get("/complete-kyc", verifyJWT, doKYC);
+router.get('/refresh-url', refreshUrl);
+router.get("/kyc-status", checkKYCStatus);
 router.post('/order-place',verifyJWT,validateRequest(orderPlaceSchema),errorHandler,orderPlace);
 router.post('/payment-sheet',verifyJWT,validateRequest(orderPlaceSchema),errorHandler,paymentSheetFn);
 router.get("/confirm-payment",verifyJWT,confirmPaymentFn);

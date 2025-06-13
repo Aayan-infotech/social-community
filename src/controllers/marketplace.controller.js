@@ -17,8 +17,10 @@ import {
   createPaymentIntent,
   paymentSheet,
   confirmPayment,
+  handleKYCStatus,
 } from "../services/stripeService.js";
 import Card from "../models/userCard.model.js";
+import { User } from "../models/user.model.js";
 
 const upsertCategory = asyncHandler(async (req, res) => {
   const { id, category_name } = req.body;
@@ -395,12 +397,12 @@ const getProductList = asyncHandler(async (req, res) => {
         : "No products found",
       products.length > 0
         ? {
-            products,
-            total_page: totalPages,
-            current_page: page,
-            total_records: totalCount,
-            per_page: limit,
-          }
+          products,
+          total_page: totalPages,
+          current_page: page,
+          total_records: totalCount,
+          per_page: limit,
+        }
         : null
     )
   );
@@ -486,12 +488,12 @@ const getMarketplaceProducts = asyncHandler(async (req, res) => {
         : "No products found",
       products?.length > 0
         ? {
-            products,
-            total_page: totalPages,
-            current_page: page,
-            total_records: totalCount,
-            per_page: limit,
-          }
+          products,
+          total_page: totalPages,
+          current_page: page,
+          total_records: totalCount,
+          per_page: limit,
+        }
         : null
     )
   );
@@ -680,6 +682,23 @@ const updateProductQuantity = asyncHandler(async (req, res) => {
   res.json(new ApiResponse(200, "Product quantity updated successfully"));
 });
 
+const removeProductFromCart = asyncHandler(async (req, res) => {
+  const { product_id } = req.params;
+
+  if (!isValidObjectId(product_id)) {
+    throw new ApiError(400, "Invalid product ID");
+  }
+
+  const cartItem = await Cart.findOneAndDelete({
+    userId: req.user.userId,
+    productId: product_id,
+  });
+  if (!cartItem) {
+    throw new ApiError(404, "Product not found in cart");
+  }
+  res.json(new ApiResponse(200, "Product removed from cart successfully"));
+});
+
 const getAllCustomers = asyncHandler(async (req, res) => {
   const customers = await getAllCustomersList();
   if (!customers) {
@@ -770,10 +789,54 @@ const doKYC = asyncHandler(async (req, res) => {
   );
 });
 
+const refreshUrl = asyncHandler(async (req, res) => {
+  const { id } = req.query;
+  if (!id) {
+    throw new ApiError(400, "Account ID not found");
+  }
+  const getUser = await User.findOne({ stripeAccountId: id });
+  if (!getUser) {
+    throw new ApiError(404, "User not found with the provided account ID");
+  }
+  const stripeAccountId = getUser.stripeAccountId;
+
+  const accountLink = await completeKYC(stripeAccountId);
+  if (!accountLink) {
+    throw new ApiError(500, "Failed to create account link");
+  }
+
+  // res.json(
+  //   new ApiResponse(200, "KYC process refreshed successfully", accountLink)
+  // );
+  res.redirect(accountLink.url);
+});
+
+const checkKYCStatus = asyncHandler(async (req, res) => {
+  const { id } = req.query;
+  if (!id) {
+    throw new ApiError(400, "Account ID not found");
+  }
+  const getUser = await User.findOne({ stripeAccountId: id });
+  if (!getUser) {
+    throw new ApiError(404, "User not found with the provided account ID");
+  }
+  const stripeAccountId = getUser.stripeAccountId;
+  const status = await handleKYCStatus(stripeAccountId);
+
+  if (status === "active") {
+    return res.redirect(`http://localhost:5173/kyc-success`);
+  } else if (status === "pending") {
+    return res.json(new ApiResponse(200, "KYC is pending", status));
+    // return res.json(new ApiResponse(200, "KYC is pending", status));
+  } else {
+    return res.json(new ApiResponse(200, "KYC is not verified", status));
+  }
+
+});
+
 const getCartProducts = asyncHandler(async (req, res) => {
   const userId = req.user.userId;
 
-  // const cartProducts = await Cart.find({ userId });
   const aggregation = [];
 
   aggregation.push({
@@ -868,7 +931,7 @@ const orderPlace = asyncHandler(async (req, res) => {
   }
 
   const confirm = await confirmPayment(paymentIntent.id);
- 
+
   // Order placement logic here
 
   res.json(new ApiResponse(200, "Order placed successfully", paymentIntent));
@@ -979,4 +1042,7 @@ export {
   orderPlace,
   paymentSheetFn,
   confirmPaymentFn,
+  removeProductFromCart,
+  refreshUrl,
+  checkKYCStatus,
 };

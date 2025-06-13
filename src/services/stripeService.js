@@ -39,21 +39,27 @@ const createConnectAccount = async (email) => {
 
 const completeKYC = async (accountId) => {
   try {
-    console.log("Creating account link for account ID:", accountId);
-    console.log("Stripe Refresh URL:", secret.REFRESH_URL);
-    console.log("Stripe Return URL:", secret.RETURN_URL);
-
     const accountLink = await stripeClient.accountLinks.create({
       account: accountId,
-      refresh_url: 'http://localhost:3030/api/v1/auth/refresh',
-      return_url: 'http://localhost:3030/api/v1/auth/return',
+      refresh_url: secret.REFRESH_URL + "?id=" + accountId,
+      return_url: secret.RETURN_URL + "?id=" + accountId,
       type: "account_onboarding",
     });
-    
+
     return accountLink;
   } catch (error) {
     console.error("Error creating account link:", error);
     throw new Error(500, "Failed to create account link", error.message);
+  }
+};
+
+const handleKYCStatus = async (accountId) => {
+  try {
+    const account = await stripeClient.accounts.retrieve(accountId);
+    return account.capabilities.transfers;
+  } catch (error) {
+    console.error("Error retrieving account KYC status:", error);
+    throw new ApiError(500, "Failed to retrieve KYC status", error.message);
   }
 };
 
@@ -211,4 +217,5 @@ export {
   paymentMethod,
   paymentSheet,
   confirmPayment,
+  handleKYCStatus
 };

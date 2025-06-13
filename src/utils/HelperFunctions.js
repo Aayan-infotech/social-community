@@ -2,6 +2,7 @@
 import { nanoid } from "nanoid";
 import { User } from "../models/user.model.js";
 import { ApiError } from "./ApiError.js";
+import QRCode from "qrcode";
 
 const generateReferralCode = async function (name) {
   if (!name) {
@@ -129,10 +130,34 @@ const getHierarchyLevel = (relation) => {
   return hierarchy[relation] || null;
 };
 
+
+// Generate unique ticket ID
+function generateTicketId() {
+  return 'TKT-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9).toUpperCase();
+}
+
+async function generateQRCodeData(ticketId, eventId) {
+  const text = `${ticketId}-${eventId}`;
+  const dataURL = await QRCode.toDataURL(text);
+  return dataURL;
+}
+
+function convertTo12Hour(time24) {
+  const [hour, minute] = time24.split(":").map(Number);
+  const date = new Date();
+  date.setHours(hour, minute);
+
+  const options = { hour: 'numeric', minute: '2-digit', hour12: true };
+  return date.toLocaleTimeString('en-US', options);
+}
+
 export {
   generateReferralCode,
   generateUniqueUserId,
   handleReferral,
   getRelatedRelation,
   getHierarchyLevel,
+  generateTicketId,
+  generateQRCodeData,
+  convertTo12Hour
 };
