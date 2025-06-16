@@ -208,7 +208,7 @@ const loginUser = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Password Is Required Field..!!");
   }
   let user = await User.findOne({
-    $or: [{ email: userEmail }, { mobile }],
+    $or: [{ email: userEmail }],
   });
 
   if (!user) {
