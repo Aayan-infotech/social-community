@@ -76,7 +76,7 @@ const sendMessage = asyncHandler(async (req, res) => {
       }
     }
   } else {
-    console.log("Sending message to group chat");
+
     if (!groupId || !isValidObjectId(groupId)) {
       throw new ApiError(400, "Valid Group ID is required");
     }
@@ -121,7 +121,6 @@ const sendMessage = asyncHandler(async (req, res) => {
 
 const getGroupDetails = asyncHandler(async (req, res) => {
   const { groupId } = req.params;
-  console.log("Group ID:", groupId);
 
   if (!groupId && !isValidObjectId(groupId)) {
     throw new ApiError(400, "Group ID is required");
@@ -151,8 +150,6 @@ const getGroupDetails = asyncHandler(async (req, res) => {
   });
 
   const group = await ChatGroup.aggregate(aggregation);
-  console.log("Group:", group);
-
   return res
     .status(200)
     .json(new ApiResponse(200, "Group details fetched successfully", group));

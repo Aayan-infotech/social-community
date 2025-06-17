@@ -590,8 +590,6 @@ const getFriendSuggestionList = asyncHandler(async (req, res) => {
   const userId = user?.userId;
   const friendList = await FriendsModel.findOne({ userId });
 
-  console.log("Friend List:", friendList);
-
   const friends = friendList?.friends || [];
 
   const baseMatchPipeline = [
@@ -1333,7 +1331,6 @@ const getAllDeleteRequest = asyncHandler(async (req, res) => {
   });
 
   const deleteRequests = await DeleteAccountRequestModel.aggregate(aggregation);
-  // console.log(deleteRequests);
   const totalRequests = await DeleteAccountRequestModel.countDocuments({
     status: "pending",
   });
@@ -1780,6 +1777,20 @@ const sendNotification = asyncHandler(async (req, res) => {
 
 });
 
+const uploadChatDocument = asyncHandler(async (req, res) => {
+  const { document } = req.files;
+  if (!document || !document.length) {
+    throw new ApiError(400, "File is required");
+  }
+
+  const uploadStatus = await uploadImage(document[0]);
+  if (!uploadStatus.success) {
+    throw new ApiError(500, "Failed to upload file");
+  }
+
+  res.json(new ApiResponse(200, "File uploaded successfully", uploadStatus));
+});
+
 export {
   getUserProfile,
   updateUserProfile,
@@ -1814,5 +1825,6 @@ export {
   searchSkills,
   searchAllUsers,
   deleteFriendRequest,
-  sendNotification
+  sendNotification,
+  uploadChatDocument
 };

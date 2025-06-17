@@ -31,10 +31,11 @@ import {
   getResources,
   updateProfessionalImage,
   getProfessionalProfile,
-  searchSkills, 
+  searchSkills,
   searchAllUsers,
   deleteFriendRequest,
-  sendNotification
+  sendNotification,
+  uploadChatDocument,
 } from "../controllers/users.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { validateRequest } from "../middlewares/validation.middleware.js";
@@ -84,8 +85,8 @@ router.post(
   updateProfessionalImage
 );
 
-router.get('/get-professional-profile',verifyJWT,getProfessionalProfile);
-router.get("/search-skills",verifyJWT,searchSkills);
+router.get('/get-professional-profile', verifyJWT, getProfessionalProfile);
+router.get("/search-skills", verifyJWT, searchSkills);
 
 router.post(
   "/friend-request",
@@ -93,7 +94,7 @@ router.post(
   verifyJWT,
   friendRequest
 );
-router.delete('/friend-request',verifyJWT,deleteFriendRequest);
+router.delete('/friend-request', verifyJWT, deleteFriendRequest);
 router.put(
   "/accept-reject-friend-request",
   validateRequest(acceptRejectFriendRequestSchema),
@@ -168,7 +169,13 @@ router.get("/get-matrimonial-profile", verifyJWT, getMatrimonialProfile);
 
 // Info Pages
 router.get("/info-pages", verifyJWT, getAllInfoPages);
-router.get("/search",verifyJWT,searchAllUsers);
-router.post("/send-notification",verifyJWT,validateRequest(sendNotificationSchema),sendNotification)
+router.get("/search", verifyJWT, searchAllUsers);
+router.post("/send-notification", verifyJWT, validateRequest(sendNotificationSchema), sendNotification);
+router.post('/upload-chat-document', verifyJWT, upload.fields([
+  {
+    name: "document",
+    maxCount: 1,
+  },
+]), errorHandler, uploadChatDocument);
 
 export default router;

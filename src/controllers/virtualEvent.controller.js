@@ -287,7 +287,6 @@ const eventDetails = asyncHandler(async (req, res) => {
 
 const bookTickets = asyncHandler(async (req, res) => {
     const { eventId, ticketCount, totalPrice, bookingDate, bookingTime } = req.body;
-    console.log("Booking request body:", req.body);
     if (!isValidObjectId(eventId)) {
         throw new ApiError(400, "Invalid event ID");
     }
