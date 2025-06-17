@@ -19,6 +19,7 @@ import {
   createConnectAccount,
 } from "../services/stripeService.js";
 import { loadConfig } from "../config/loadConfig.js";
+import passport from "passport";
 
 
 
@@ -207,12 +208,17 @@ const loginUser = asyncHandler(async (req, res) => {
   if (!password) {
     throw new ApiError(400, "Password Is Required Field..!!");
   }
+  
   let user = await User.findOne({
     $or: [{ email: userEmail }],
   });
 
   if (!user) {
     throw new ApiError(404, "User Doesn't Exist Or Invalid Email Or Mobile No");
+  }
+
+  if(user.googleId){
+    throw new ApiError(400, "You have registered with Google. Please login with Google.");
   }
 
   // check if the User is DeleteaccountRequest is in pending or approved status
@@ -227,10 +233,7 @@ const loginUser = asyncHandler(async (req, res) => {
     );
   }
 
-  // check if the user is verified
-  // if (!user.isEmailVerified && !user.isMobileVerified) {
-  //   throw new ApiError(400, "Email and Mobile number is not verified");
-  // }
+
 
   const isValidPassord = await user.isPasswordCorrect(password);
 
@@ -590,6 +593,45 @@ const saveDeviceDetails = asyncHandler(async (req, res) => {
     );
 });
 
+const googleAuth = asyncHandler(async (req, res, next) => {
+  passport.authenticate("google", {
+    scope: ["profile", "email"],
+    session: false,
+  })(req, res, next);
+});
+
+const googleAuthCallback = asyncHandler(async (req, res, next) => {
+  passport.authenticate("google", (err, user, info) => {
+    if (err) {
+      next(err);
+    }
+    if (!user) {
+      throw new ApiError(401, "Authentication failed");
+    }
+    const { accessToken, refreshToken } = user;
+    if (!accessToken || !refreshToken) {
+      throw new ApiError(500, "Failed to generate access or refresh token");
+    }
+
+    const options = {
+      httpOnly: true,
+      secure: true,
+    };
+
+    return res
+      .status(200)
+      .cookie("accessToken", accessToken, options)
+      .cookie("refreshToken", refreshToken, options)
+      .json(
+        new ApiResponse(200, "Google OAuth login successful", {
+          user: user.user,
+          accessToken,
+          refreshToken,
+        })
+      );
+  })(req, res, next);
+});
+
 export {
   signup,
   loginUser,
@@ -603,4 +645,6 @@ export {
   changePassword,
   refreshAccessToken,
   saveDeviceDetails,
+  googleAuth,
+  googleAuthCallback
 };

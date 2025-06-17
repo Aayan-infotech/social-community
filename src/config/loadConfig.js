@@ -51,6 +51,9 @@ const loadConfig = async () => {
             STRIPE_PUBLIC_KEY: secrets.STRIPE_PUBLIC_KEY,
             STRIPE_SECRET_KEY: secrets.STRIPE_SECRET_KEY,
 
+            // Google OAuth configuration
+            GOOGLE_CLIENT_ID: secrets.GOOGLE_CLIENT_ID,
+            GOOGLE_CLIENT_SECRET: secrets.GOOGLE_CLIENT_SECRET,
 
             // Firebase configuration
             FIREBASE_CONFIG: secrets.FIREBASE_CONFIG,
@@ -100,7 +103,11 @@ const loadConfig = async () => {
     REFRESH_URL: process.env.REFRESH_URL,
     RETURN_URL: process.env.RETURN_URL,
 
-    FIREBASE_CONFIG: process.env.FIREBASE_CONFIG, 
+    // GOOGLE CLOUD OAUTH
+    GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
+    GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
+
+    FIREBASE_CONFIG: process.env.FIREBASE_CONFIG,
   };
 };
 
