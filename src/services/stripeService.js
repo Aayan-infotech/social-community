@@ -205,6 +205,17 @@ const getCardList = async (customerId) => {
 };
 
 
+const createLoginLink = async (accountId) => {
+  try {
+    const loginLink = await stripeClient.accounts.createLoginLink(accountId);
+    return loginLink;
+  } catch (error) {
+    console.error("Error creating login link:", error);
+    throw new ApiError(500, "Failed to create login link", error.message);
+  }
+};
+
+
 export {
   createCustomer,
   addCardToCustomer,
@@ -217,5 +228,6 @@ export {
   paymentMethod,
   paymentSheet,
   confirmPayment,
-  handleKYCStatus
+  handleKYCStatus,
+  createLoginLink
 };

@@ -11,6 +11,7 @@ import {
   uploadVideo,
   compressVideo,
   deleteObject,
+  getVideoDuration,
 } from "../utils/awsS3Utils.js";
 import fs, { stat } from "fs";
 import { isValidObjectId } from "../utils/isValidObjectId.js";
@@ -44,6 +45,11 @@ const createPost = asyncHandler(async (req, res) => {
         mediaType = "image";
       }
     } else {
+
+      const videoDuration = await getVideoDuration(file.path);
+      if (videoDuration > 30) {
+        throw new ApiError(400, "Video duration should not exceed 30 seconds");
+      }
       const status = await compressVideo(file.path, "./public/temp");
       if (!status.success) {
         throw new ApiError(400, "Video compression failed");
@@ -109,9 +115,16 @@ const updatePost = asyncHandler(async function (req, res) {
         if (!saveUpload.success) {
           throw new ApiError(400, "Image upload failed");
         } else {
-          post.media.push(saveUpload.thumbnailUrl);
+          // post.media.push(saveUpload.thumbnailUrl);
+          media = saveUpload.thumbnailUrl;
+          post.mediaType = "image";
         }
       } else {
+        const videoDuration = await getVideoDuration(file.path);
+        if (videoDuration > 30) {
+          throw new ApiError(400, "Video duration should not exceed 30 seconds");
+        }
+        // compress the video
         const status = await compressVideo(file.path, "./public/temp");
         if (!status.success) {
           throw new ApiError(400, "Video compression failed");
@@ -126,7 +139,9 @@ const updatePost = asyncHandler(async function (req, res) {
         if (!upload.success) {
           throw new ApiError(400, "Video upload failed");
         } else {
-          post.media.push(upload.videoUrl);
+          // post.media.push(upload.videoUrl);
+          media = upload.videoUrl;
+          post.mediaType = "video";
         }
       }
 

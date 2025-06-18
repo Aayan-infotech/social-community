@@ -36,6 +36,7 @@ import {
   deleteFriendRequest,
   sendNotification,
   uploadChatDocument,
+  removeFriend,
 } from "../controllers/users.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { validateRequest } from "../middlewares/validation.middleware.js";
@@ -177,5 +178,7 @@ router.post('/upload-chat-document', verifyJWT, upload.fields([
     maxCount: 1,
   },
 ]), errorHandler, uploadChatDocument);
+
+router.post('/remove-friend',verifyJWT,removeFriend);
 
 export default router;

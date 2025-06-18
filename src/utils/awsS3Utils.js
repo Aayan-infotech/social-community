@@ -156,10 +156,21 @@ const compressVideo = (inputPath, outputFolder) => {
   });
 };
 
+const getVideoDuration = (filePath) => {
+  return new Promise((resolve, reject) => {
+    ffmpeg.ffprobe(filePath, (err, metadata) => {
+      if (err) return reject(err);
+      const durationInSeconds = metadata.format.duration;
+      resolve(durationInSeconds);
+    });
+  });
+};
+
 export {
   uploadImage,
   deleteObject,
   saveCompressedImage,
   uploadVideo,
   compressVideo,
+  getVideoDuration
 };

@@ -44,6 +44,7 @@ import {
   removeProductFromCart,
   refreshUrl,
   checkKYCStatus,
+  loginExpress,
 } from "../controllers/marketplace.controller.js";
 
 const router = Router();
@@ -165,5 +166,7 @@ router.get("/kyc-status", checkKYCStatus);
 router.post('/order-place',verifyJWT,validateRequest(orderPlaceSchema),errorHandler,orderPlace);
 router.post('/payment-sheet',verifyJWT,validateRequest(orderPlaceSchema),errorHandler,paymentSheetFn);
 router.get("/confirm-payment",verifyJWT,confirmPaymentFn);
+
+router.get('/login-express',verifyJWT,loginExpress)
 
 export default router;

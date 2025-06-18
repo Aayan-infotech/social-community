@@ -1626,6 +1626,12 @@ const searchAllUsers = asyncHandler(async (req, res) => {
 
   const aggregation = [];
   aggregation.push({
+    $match:{
+      role: "user",
+      userId: { $ne: userId },
+    }
+  });
+  aggregation.push({
     $match: {
       $or: [
         { name: { $regex: search, $options: "i" } },
@@ -1791,6 +1797,38 @@ const uploadChatDocument = asyncHandler(async (req, res) => {
   res.json(new ApiResponse(200, "File uploaded successfully", uploadStatus));
 });
 
+
+const removeFriend = asyncHandler(async (req, res) => {
+  const { friendId } = req.body;
+  const currentUserId = req.user.userId;
+
+  if (!friendId) {
+    throw new ApiError(400, "Friend ID is required");
+  }
+
+  // Remove the friend from the user's friend list
+  const friendList = await FriendsModel.findOne({ userId: currentUserId });
+  if (!friendList) {
+    throw new ApiError(404, "Friend list not found");
+  }
+
+  friendList.friends = friendList.friends.filter(
+    (friend) => friend !== friendId
+  );
+  await friendList.save();
+  // Remove the user from the friend's friend list
+  const friendsFriendList = await FriendsModel.findOne({ userId: friendId });
+  if (!friendsFriendList) {
+    throw new ApiError(404, "Friend's friend list not found");
+  }
+  friendsFriendList.friends = friendsFriendList.friends.filter(
+    (friend) => friend !== currentUserId
+  );
+  await friendsFriendList.save();
+
+  res.json(new ApiResponse(200, "Friend removed successfully"));
+});
+
 export {
   getUserProfile,
   updateUserProfile,
@@ -1826,5 +1864,6 @@ export {
   searchAllUsers,
   deleteFriendRequest,
   sendNotification,
-  uploadChatDocument
+  uploadChatDocument,
+  removeFriend
 };

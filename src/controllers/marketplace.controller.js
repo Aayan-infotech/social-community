@@ -18,6 +18,7 @@ import {
   paymentSheet,
   confirmPayment,
   handleKYCStatus,
+  createLoginLink,
 } from "../services/stripeService.js";
 import Card from "../models/userCard.model.js";
 import { User } from "../models/user.model.js";
@@ -937,7 +938,7 @@ const orderPlace = asyncHandler(async (req, res) => {
 });
 
 const paymentSheetFn = asyncHandler(async (req, res) => {
-  const { product_ids, address_id, order_amount } = req.body;
+  const { product_ids, quantity, address_id, order_amount } = req.body;
   const userId = req.user.userId;
 
   if (!Array.isArray(product_ids) || product_ids.length === 0) {
@@ -1013,6 +1014,18 @@ const confirmPaymentFn = asyncHandler(async (req, res) => {
   );
 });
 
+const loginExpress = asyncHandler(async (req, res) => {
+  const user = req.user;
+  if (!user.stripeAccountId) {
+    throw new ApiError(400, "Stripe account ID not found");
+  }
+  const loginLink = await createLoginLink(user.stripeAccountId);
+  if (!loginLink) {
+    throw new ApiError(500, "Failed to create login link");
+  }
+  res.json(new ApiResponse(200, "Login link created successfully", loginLink));
+});
+
 export {
   upsertCategory,
   getCategory,
@@ -1044,4 +1057,5 @@ export {
   removeProductFromCart,
   refreshUrl,
   checkKYCStatus,
+  loginExpress  
 };

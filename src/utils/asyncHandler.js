@@ -7,7 +7,6 @@ function asyncHandler(fn) {
         } catch (error) {
             if (req.files) {
                 const keyNames = Object.keys(req.files)[0];
-                console.error(`Error in asyncHandler: ${error.message}`);
                 if (keyNames) {
                     req.files[keyNames].forEach(file => {
                         if (file.path) {
