@@ -255,11 +255,11 @@ const updateProfileSchema = Joi.object({
     "any.only": "Gender must be 'male', 'female' or 'other'",
   }),
   bio: Joi.string()
+    .min(10)
     .max(200)
     .trim()
-    .custom(wordLimit(1, 200), "Word limit validation")
     .messages({
-      "string.max": "Bio must not exceed 2000 characters.",
+      "string.max": "Bio must not exceed 200 characters.",
     }),
 });
 

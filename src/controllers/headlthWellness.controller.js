@@ -22,7 +22,9 @@ export const addResources = asyncHandler(async (req, res) => {
     } else {
       resourceImage = saveUpload.thumbnailUrl;
     }
-    fs.unlinkSync(file.path);
+    if (file.path && fs.existsSync(file.path)) {
+      fs.unlinkSync(file.path);
+    }
   }
 
   const resource = await HealthWellnessModel.create({
@@ -55,7 +57,9 @@ export const upsertResource = asyncHandler(async (req, res) => {
     } else {
       resourceImage = saveUpload.thumbnailUrl;
     }
-    fs.unlinkSync(file.path);
+    if (file.path && fs.existsSync(file.path)) {
+      fs.unlinkSync(file.path);
+    }
   } else {
     resourceImage = null;
   }
@@ -141,12 +145,12 @@ export const getResources = asyncHandler(async (req, res) => {
         : "No resources found",
       resources.length > 0
         ? {
-            resources,
-            total_page: totalPages,
-            current_page: page,
-            total_records: totalCount,
-            per_page: limit,
-          }
+          resources,
+          total_page: totalPages,
+          current_page: page,
+          total_records: totalCount,
+          per_page: limit,
+        }
         : null
     )
   );
@@ -154,18 +158,18 @@ export const getResources = asyncHandler(async (req, res) => {
 
 export const getResourcesDetails = asyncHandler(async (req, res) => {
   const { resourceId } = req.query;
-    if (!resourceId) {
-        throw new ApiError(400, "Resource ID is required");
-    }
-    if (!isValidObjectId(resourceId)) {
-        throw new ApiError(400, "Invalid resource ID format");
-    }
-    const resource = await HealthWellnessModel.findById(resourceId).select("-__v ");
-    res.json(
-        new ApiResponse(
-            200,
-            resource ? "Resource details fetched successfully" : "Resource not found",
-            resource
-        )
-    );
+  if (!resourceId) {
+    throw new ApiError(400, "Resource ID is required");
+  }
+  if (!isValidObjectId(resourceId)) {
+    throw new ApiError(400, "Invalid resource ID format");
+  }
+  const resource = await HealthWellnessModel.findById(resourceId).select("-__v ");
+  res.json(
+    new ApiResponse(
+      200,
+      resource ? "Resource details fetched successfully" : "Resource not found",
+      resource
+    )
+  );
 });

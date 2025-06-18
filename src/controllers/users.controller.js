@@ -105,9 +105,9 @@ const updateUserProfile = asyncHandler(async (req, res) => {
 
   if (req.files && req.files.profile_image) {
     // Delete the previous profile image from AWS
-    if (req.user.profile_image) {
-      await deleteObject(req.user.profile_image);
-    }
+    // if (req.user.profile_image) {
+    //   await deleteObject(req.user.profile_image);
+    // }
 
     // Upload the new profile image to AWS S3
     const updateStatus = await saveCompressedImage(
@@ -120,7 +120,9 @@ const updateUserProfile = asyncHandler(async (req, res) => {
     }
 
     // remove the oringinal file from the server
-    fs.unlinkSync(req.files.profile_image[0].path);
+    if (req.files.profile_image[0].path && fs.existsSync(req.files.profile_image[0].path)) {
+      fs.unlinkSync(req.files.profile_image[0].path);
+    }
   }
 
   const user = await User.findByIdAndUpdate(
@@ -155,9 +157,9 @@ const updateProfessionalImage = asyncHandler(async (req, res) => {
 
   if (req.files && req.files.professional_image) {
     // Delete the previous profile image from AWS
-    if (req.user.professional_image) {
-      await deleteObject(req.user.professional_image);
-    }
+    // if (req.user.professional_image) {
+    //   await deleteObject(req.user.professional_image);
+    // }
 
     // Upload the new profile image to AWS S3
     const updateStatus = await saveCompressedImage(
@@ -170,7 +172,9 @@ const updateProfessionalImage = asyncHandler(async (req, res) => {
     }
 
     // remove the oringinal file from the server
-    fs.unlinkSync(req.files.professional_image[0].path);
+    if (req.files.professional_image[0].path && fs.existsSync(req.files.professional_image[0].path)) {
+      fs.unlinkSync(req.files.professional_image[0].path);
+    }
   }
 
   const updatedUser = await User.findByIdAndUpdate(
@@ -1110,7 +1114,9 @@ const addStory = asyncHandler(async (req, res) => {
         }
 
         // remove the raw and compressed file from the server
-        fs.unlinkSync(storyFile[0].path);
+        if (storyFile[0].path && fs.existsSync(storyFile[0].path)) {
+          fs.unlinkSync(storyFile[0].path);
+        }
       }
     }
     if (!mediaUrl) {
@@ -1626,7 +1632,7 @@ const searchAllUsers = asyncHandler(async (req, res) => {
 
   const aggregation = [];
   aggregation.push({
-    $match:{
+    $match: {
       role: "user",
       userId: { $ne: userId },
     }

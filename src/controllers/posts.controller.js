@@ -75,9 +75,9 @@ const createPost = asyncHandler(async (req, res) => {
         mediaType = "video";
       }
     }
-    // remove the file from the server
-    fs.unlinkSync(file.path);
-    // }
+    if (file.path && fs.existsSync(file.path)) {
+      fs.unlinkSync(file.path);
+    }
   }
 
   // save the post data
@@ -145,7 +145,9 @@ const updatePost = asyncHandler(async function (req, res) {
         }
       }
 
-      fs.unlinkSync(file.path);
+      if (file.path && fs.existsSync(file.path)) {
+        fs.unlinkSync(file.path);
+      }
     }
   }
 
@@ -480,7 +482,7 @@ const getReplyofComment = asyncHandler(async (req, res) => {
 
   let aggregation = [];
   aggregation.push({
-    $match: { commentId :  new mongoose.Types.ObjectId(commentId) },
+    $match: { commentId: new mongoose.Types.ObjectId(commentId) },
   });
   aggregation.push({
     $lookup: {
@@ -566,7 +568,7 @@ const getPostDetails = asyncHandler(async (req, res) => {
     },
   });
 
-    // isLiked boolean field that logged in user liked the post or not
+  // isLiked boolean field that logged in user liked the post or not
   aggregation.push({
     $addFields: {
       isLiked: {

@@ -40,7 +40,9 @@ const uploadImage = async (file) => {
     const data = await s3.send(command);
 
     // remove the file
-    fs.unlinkSync(file.path);
+    if (file.path && fs.existsSync(file.path)) {
+      fs.unlinkSync(file.path);
+    }
 
     // return `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${file.filename}`;
     return {
@@ -48,7 +50,9 @@ const uploadImage = async (file) => {
       fileUrl: `https://${secret.AWS_BUCKET_NAME}.s3.${secret.AWS_REGION}.amazonaws.com/${file.filename}`,
     };
   } catch (error) {
-    fs.unlinkSync(file.path);
+    if (file.path && fs.existsSync(file.path)) {
+      fs.unlinkSync(file.path);
+    }
     console.error("Error uploading file:", error);
     throw new ApiError(500, error.message);
   }
@@ -91,12 +95,12 @@ const saveCompressedImage = async (file, width, height) => {
 
     const thumbnailUrl = await uploadImage(fileObject);
 
-    if(thumbnailUrl.success) {
+    if (thumbnailUrl.success) {
       return {
         success: true,
         thumbnailUrl: thumbnailUrl.fileUrl,
       };
-    }else{
+    } else {
       throw new ApiError(500, "Failed to upload thumbnail");
     }
   } catch (error) {
@@ -132,10 +136,15 @@ const uploadVideo = async (file) => {
 
     const result = await upload.done();
 
-    fs.unlinkSync(file.path);
+    if (file.path && fs.existsSync(file.path)) {
+      fs.unlinkSync(file.path);
+    }
 
     return { success: true, videoUrl: result.Location };
   } catch (error) {
+    if (file.path && fs.existsSync(file.path)) {
+      fs.unlinkSync(file.path);
+    }
     console.error(error);
     throw new ApiError(500, error.message);
   }

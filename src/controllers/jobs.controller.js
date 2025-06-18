@@ -28,7 +28,9 @@ export const addJob = asyncHandler(async (req, res) => {
     } else {
       jobImage = saveUpload.thumbnailUrl;
     }
-    fs.unlinkSync(file.path);
+    if (file.path && fs.existsSync(file.path)) {
+      fs.unlinkSync(file.path);
+    }
   }
 
   const newJob = await JobModel.create({
@@ -106,12 +108,12 @@ export const getAllJobs = asyncHandler(async (req, res) => {
       jobs.length > 0 ? "Jobs fetched successfully" : "No jobs found",
       jobs.length > 0
         ? {
-            jobs,
-            total_page: totalPages,
-            current_page: page,
-            total_records: totalCount,
-            per_page: limit,
-          }
+          jobs,
+          total_page: totalPages,
+          current_page: page,
+          total_records: totalCount,
+          per_page: limit,
+        }
         : null
     )
   );
@@ -343,7 +345,9 @@ export const editJob = asyncHandler(async (req, res) => {
     } else {
       jobImage = saveUpload.thumbnailUrl;
     }
-    fs.unlinkSync(file.path);
+    if (file.path && fs.existsSync(file.path)) {
+      fs.unlinkSync(file.path);
+    }
   }
 
   const updatedJob = await JobModel.findByIdAndUpdate(
@@ -468,7 +472,7 @@ export const updateApplicantStatus = asyncHandler(async (req, res) => {
 
   if (application.status !== "applied") {
     throw new ApiError(400, "Application already processed");
-  } 
+  }
   // get the details of the user
   const user = await User.find({ userId: application.userId }).select(
     "email name"
