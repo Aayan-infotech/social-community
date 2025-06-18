@@ -1811,8 +1811,14 @@ const removeFriend = asyncHandler(async (req, res) => {
   if (!friendId) {
     throw new ApiError(400, "Friend ID is required");
   }
+  
+  const friendRequest = await FriendRequestModel.findOneAndDelete({
+    $or: [
+      { senderId: currentUserId, receiverId: friendId },
+      { senderId: friendId, receiverId: currentUserId },
+    ],
+  });
 
-  // Remove the friend from the user's friend list
   const friendList = await FriendsModel.findOne({ userId: currentUserId });
   if (!friendList) {
     throw new ApiError(404, "Friend list not found");
