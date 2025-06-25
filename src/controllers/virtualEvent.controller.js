@@ -415,6 +415,7 @@ const updateBookingStatus = asyncHandler(async (req, res) => {
     };
 
     const ticketFilePath = await generateAndSendTicket(eventDetails, req.user.email);
+    console.log("Ticket file path:", ticketFilePath);
     if (!ticketFilePath.success) {
         throw new ApiError(500, "Failed to generate and send ticket");
     }

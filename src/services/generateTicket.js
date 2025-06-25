@@ -9,7 +9,7 @@ async function generateAndSendTicket(eventDetails, recipientEmail) {
     try {
         // Generate ticket data
         const ticketId = eventDetails.ticketId ;
-        // const qrData = await generateQRCodeData(ticketId, eventDetails.eventId);
+        const qrData = await generateQRCodeData(ticketId, eventDetails.eventId);
 
         const ticketData = {
             ticketId: ticketId,
@@ -21,7 +21,7 @@ async function generateAndSendTicket(eventDetails, recipientEmail) {
             noOfTickets: eventDetails.noOfTickets,
             attendeeName: eventDetails.attendeeName,
             price: eventDetails.price,
-            // qrData: qrData
+            qrData: qrData
         };
 
         // Generate HTML ticket
