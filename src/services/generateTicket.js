@@ -54,7 +54,7 @@ async function generateAndSendTicket(eventDetails, recipientEmail) {
         };
 
         // Send email
-        const emailResponse = await sendEmail('ankul.yadav@aayaninfotech.com', mailOptions.subject, mailOptions.html, mailOptions.attachments);
+        const emailResponse = await sendEmail(recipientEmail, mailOptions.subject, mailOptions.html, mailOptions.attachments);
         if (!emailResponse.success) {
             throw new ApiError(500, 'Failed to send ticket email');
         }

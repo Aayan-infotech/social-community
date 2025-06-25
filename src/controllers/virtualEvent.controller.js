@@ -400,6 +400,7 @@ const updateBookingStatus = asyncHandler(async (req, res) => {
 
     const bookingTime12 = convertTo12Hour(booking.bookingTime);
 
+    const qrCodeData = `${booking.ticketId}-${booking.eventId._id}`;
     const eventDetails = {
         ticketId: booking.ticketId,
         eventId: booking.eventId._id,
@@ -409,7 +410,8 @@ const updateBookingStatus = asyncHandler(async (req, res) => {
         venue: booking.eventId.eventLocation,
         noOfTickets: booking.ticketCount,
         attendeeName: req.user.name,
-        price: booking.totalPrice
+        price: booking.totalPrice,
+        qrcode: qrCodeData
     };
 
     const ticketFilePath = await generateAndSendTicket(eventDetails, req.user.email);
@@ -424,7 +426,7 @@ const updateBookingStatus = asyncHandler(async (req, res) => {
         throw new ApiError(500, "Failed to update booking status");
     }
 
-    return res.json(new ApiResponse(200, "Booking status updated successfully", updatedBooking));
+    return res.json(new ApiResponse(200, "Booking status updated successfully", { updatedBooking, eventDetails }));
 });
 
 const cancelBooking = asyncHandler(async (req, res) => {

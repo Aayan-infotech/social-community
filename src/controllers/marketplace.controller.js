@@ -825,6 +825,11 @@ const checkKYCStatus = asyncHandler(async (req, res) => {
   const status = await handleKYCStatus(stripeAccountId);
 
   if (status === "active") {
+    getUser.isKYCVerified = true;
+    const saveStatus = await getUser.save();
+    if (!saveStatus) {
+      throw new ApiError(500, "Failed to update KYC status");
+    }
     return res.redirect(`http://18.209.91.97:5623/kyc-success`);
   } else if (status === "pending") {
     return res.json(new ApiResponse(200, "KYC is pending", status));
@@ -1057,5 +1062,5 @@ export {
   removeProductFromCart,
   refreshUrl,
   checkKYCStatus,
-  loginExpress  
+  loginExpress
 };

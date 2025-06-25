@@ -131,7 +131,7 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
-    matrimonialAboutMe:{
+    matrimonialAboutMe: {
       type: String,
       default: null,
     },
@@ -180,19 +180,24 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
-    role:{
+    role: {
       type: String,
       enum: ["user", "admin"],
       default: "user",
     },
-    professional_image:{
+    professional_image: {
       type: String,
       default: null,
     },
-    stripeAccountId:{
+    stripeAccountId: {
       type: String,
       default: null,
-    }
+    },
+    isKYCVerified: {
+      type: Boolean,
+      default: false,
+      required: true,
+    },
   },
   {
     timestamps: true,
@@ -218,10 +223,10 @@ userSchema.methods.isPreviousPassword = async function (password) {
   for (const hashedPassword of this.previous_passwords) {
     const isMatch = await bcrypt.compare(password, hashedPassword);
     if (isMatch) {
-      return true; 
+      return true;
     }
   }
-  return false; 
+  return false;
 };
 
 // check if the password is correct using bcrypt
