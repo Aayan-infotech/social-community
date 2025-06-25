@@ -200,9 +200,6 @@ function createTicketHTML(ticketData) {
             <div class="ticket-id">
                 Ticket ID: ${ticketData.ticketId}
             </div>
-            <div class="qr-placeholder" style="background: none; padding: 0;">
-                <img src="${ticketData.qrData}" alt="QR Code" style="width: 80px; height: 80px;" />
-            </div>
         </div>
     </div>
 </body>
