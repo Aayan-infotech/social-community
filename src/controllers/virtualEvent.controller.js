@@ -345,6 +345,13 @@ const bookTickets = asyncHandler(async (req, res) => {
         throw new ApiError(400, "Event creator does not have a Stripe account ID");
     }
 
+    if (new Date(bookingDate) < new Date()) {
+        throw new ApiError(400, "Booking date cannot be in the past");
+    }
+    if (new Date(bookingDate) > new Date(event[0].eventEndDate)) {
+        throw new ApiError(400, "Booking date cannot be after the event end date");
+    }
+
     const ticketId = generateTicketId();
 
     const newBooking = await TicketBooking.create({
@@ -415,7 +422,8 @@ const updateBookingStatus = asyncHandler(async (req, res) => {
     };
 
     const ticketFilePath = await generateAndSendTicket(eventDetails, req.user.email);
-    console.log("Ticket file path:", ticketFilePath);
+
+    // console.log("Ticket file path:", ticketFilePath);
     if (!ticketFilePath.success) {
         throw new ApiError(500, "Failed to generate and send ticket");
     }
