@@ -461,6 +461,82 @@ const cancelBooking = asyncHandler(async (req, res) => {
 });
 
 
+const getBooking = asyncHandler(async (req, res) => {
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.max(1, parseInt(req.query.limit) || 10);
+    const skip = (page - 1) * limit;
+    const aggregation = [];
+    aggregation.push({
+        $match: {
+            userId: req.user.userId
+        }
+    });
+
+    aggregation.push({
+        $sort: { bookingDate: -1 }
+    });
+
+    aggregation.push({
+        $lookup: {
+            from: "virtualevents",
+            localField: "eventId",
+            foreignField: "_id",
+            as: "eventDetails"
+        }
+    });
+
+    aggregation.push({
+        $unwind: "$eventDetails",
+    });
+
+    aggregation.push({
+        $facet: {
+            bookings: [
+                { $skip: skip },
+                { $limit: limit },
+                {
+                    $project: {
+                        _id: 1,
+                        ticketId: 1,
+                        eventId: "$eventDetails._id",
+                        eventName: "$eventDetails.eventName",
+                        eventLocation: "$eventDetails.eventLocation",
+                        eventStartDate: "$eventDetails.eventStartDate",
+                        eventEndDate: "$eventDetails.eventEndDate",
+                        eventImage: "$eventDetails.eventImage",
+                        bookingDate: 1,
+                        bookingTime: 1,
+                        ticketCount: 1,
+                        totalPrice: 1,
+                        bookingStatus: 1,
+                        paymentStatus: 1,
+                    }
+                },
+            ],
+            totalCount: [{ $count: "count" }],
+        }
+    });
+
+
+    const result = await TicketBooking.aggregate(aggregation);
+    const bookings = result[0]?.bookings || [];
+    const totalCount = result[0]?.totalCount[0]?.count || 0;
+    const totalPages = Math.ceil(totalCount / limit);
+
+
+    return res.json(new ApiResponse(200, bookings.length > 0 ? "Bookings fetched successfully" : "No bookings found", bookings.length > 0 ? {
+        bookings,
+        total_page: totalPages,
+        current_page: page,
+        total_records: totalCount,
+        per_page: limit,
+    } : null));
+
+
+
+});
+
+
 export {
     addEvent,
     getEvents,
@@ -468,5 +544,6 @@ export {
     eventDetails,
     bookTickets,
     updateBookingStatus,
-    cancelBooking
+    cancelBooking,
+    getBooking
 };
