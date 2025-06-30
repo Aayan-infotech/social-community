@@ -37,6 +37,7 @@ import {
   sendNotification,
   uploadChatDocument,
   removeFriend,
+  getMatrimonialProfileSuggestions,
 } from "../controllers/users.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { validateRequest } from "../middlewares/validation.middleware.js";
@@ -167,6 +168,7 @@ router.put(
   updateMatrimonialProfile
 );
 router.get("/get-matrimonial-profile", verifyJWT, getMatrimonialProfile);
+router.get("/get-matrimonial-suggestions", verifyJWT, getMatrimonialProfileSuggestions);
 
 // Info Pages
 router.get("/info-pages", verifyJWT, getAllInfoPages);

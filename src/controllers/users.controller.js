@@ -25,6 +25,7 @@ import saveResourceModel from "../models/saveResources.model.js";
 import PageModel from "../models/pages.model.js";
 import FAQModel from "../models/FAQ.model.js";
 import Skill from "../models/skills.model.js";
+import { type } from "os";
 
 const getUserProfile = asyncHandler(async (req, res) => {
   const userId = req.query.user_id || req.user.userId;
@@ -1615,6 +1616,138 @@ const getMatrimonialProfile = asyncHandler(async (req, res) => {
   );
 });
 
+const getMatrimonialProfileSuggestions = asyncHandler(async (req, res) => {
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.max(1, parseInt(req.query.limit) || 10);
+  const skip = (page - 1) * limit;
+
+  let { minAge, maxAge, minHeight, maxHeight, religion, caste, maritalStatus } = req.query;
+  minAge = parseInt(minAge) || 18;
+  maxAge = parseInt(maxAge) || 60;
+
+  if (isNaN(minAge) || isNaN(maxAge)) {
+    throw new ApiError(400, "Invalid age range provided");
+  }
+
+  maritalStatus = maritalStatus ? maritalStatus.split(",") : ["single", "divorced", "widowed"];
+  religion = religion ? religion.split(",") : ["Hindu", "Muslim", "Christian", "Sikh", "Jain", "Buddhist", "Other"];
+  caste = caste ? caste.split(",") : [];
+
+
+  const baseMatchPipeline = [
+    { $match: { role: "user", matrimonialAboutMe: { $ne: null } } },
+    { $match: { userId: { $ne: req.user.userId } } },
+    { $match: { gender: { $ne: req.user.gender } } }
+  ];
+
+  const aggregation = [];
+  aggregation.push(...baseMatchPipeline);
+
+  const currentYear = new Date().getFullYear();
+  aggregation.push({
+    $match: {
+      dob: {
+        $gte: new Date(currentYear - maxAge, 0, 1),
+        $lte: new Date(currentYear - minAge, 11, 31),
+      },
+    },
+  });
+
+
+  if (minHeight && maxHeight) {
+    aggregation.push({
+      $match: {
+        height: {
+          $gte: minHeight,
+          $lte: maxHeight,
+        },
+      },
+    });
+  }
+
+  console.log("Min Height:", minHeight, "Max Height:", maxHeight);
+
+  console.log("Marital Status:", maritalStatus, " Religion:", religion, " Caste:", caste, typeof maritalStatus, typeof religion, typeof caste);
+
+  aggregation.push({
+    $match: {
+      maritalStatus: { $in: maritalStatus },
+    },
+  });
+
+  aggregation.push({
+    $match: {
+      religion: { $in: religion },
+    },
+  });
+
+  if (caste.length > 0) {
+    aggregation.push({
+      $match: {
+        caste: { $in: caste },
+      },
+    });
+  }
+
+  aggregation.push({
+    $facet: {
+      suggestions: [
+        { $skip: skip },
+        { $limit: limit },
+        {
+          $project: {
+            _id: 0,
+            userId: 1,
+            name: 1,
+            email: 1,
+            mobile: 1,
+            city: 1,
+            state: 1,
+            country: 1,
+            profile_image: {
+              $ifNull: [
+                "$profile_image",
+                `${req.protocol}://${req.hostname}:${process.env.PORT}/placeholder/person.png`,
+              ],
+            },
+            matrimonialAboutMe: 1,
+            maritalStatus: 1,
+            dob: 1,
+            address: 1,
+            nativePlace: 1,
+            birthPlace: 1,
+            height: 1,
+            weight: 1,
+            complexion: 1,
+            religion: 1,
+            caste: 1,
+          },
+        },
+      ],
+      totalCount: [{ $count: "count" }],
+    }
+  });
+
+  const results = await User.aggregate(aggregation);
+  const suggestions = results[0]?.suggestions || [];
+  const totalCount = results[0]?.totalCount[0]?.count || 0;
+  const totalPages = Math.ceil(totalCount / limit);
+
+  return res.json(
+    new ApiResponse(
+      200,
+      suggestions.length > 0 ? "Matrimonial profile suggestions fetched successfully" : "No matrimonial profile suggestions found",
+      suggestions.length > 0 ? {
+        suggestions,
+        total_page: totalPages,
+        current_page: page,
+        total_records: totalCount,
+        per_page: limit,
+      } : null
+    )
+  );
+});
+
 const getAllInfoPages = asyncHandler(async (req, res) => {
   const pages = await PageModel.find({});
   res.json(new ApiResponse(200, "Info pages fetched successfully", pages));
@@ -1811,7 +1944,7 @@ const removeFriend = asyncHandler(async (req, res) => {
   if (!friendId) {
     throw new ApiError(400, "Friend ID is required");
   }
-  
+
   const friendRequest = await FriendRequestModel.findOneAndDelete({
     $or: [
       { senderId: currentUserId, receiverId: friendId },
@@ -1877,5 +2010,6 @@ export {
   deleteFriendRequest,
   sendNotification,
   uploadChatDocument,
-  removeFriend
+  removeFriend,
+  getMatrimonialProfileSuggestions,
 };
