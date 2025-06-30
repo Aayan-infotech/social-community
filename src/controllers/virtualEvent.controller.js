@@ -72,9 +72,15 @@ const getEvents = asyncHandler(async (req, res) => {
     const limit = Math.max(1, parseInt(req.query.limit) || 10);
     const skip = (page - 1) * limit;
 
+    // Search Event By Event Name or User Name
+    const searchQuery = req.query.search || "";
+    const searchRegex = new RegExp(searchQuery, "i");
+
     const userId = req.query.userId || req.user.userId;
 
     const aggregation = [];
+
+
 
     aggregation.push({
         $match: {
@@ -99,6 +105,17 @@ const getEvents = asyncHandler(async (req, res) => {
     aggregation.push({
         $unwind: "$userDetails",
     });
+
+    if (searchQuery) {
+        aggregation.push({
+            $match: {
+                $or: [
+                    { eventName: searchRegex },
+                    { "userDetails.name": searchRegex }
+                ]
+            }
+        });
+    }
 
     aggregation.push({
         $facet: {
