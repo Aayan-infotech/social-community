@@ -1820,6 +1820,9 @@ const acceptRejectInterest = asyncHandler(async (req, res) => {
   if (!interest) {
     throw new ApiError(404, "Interest not found");
   }
+  if (interest.status !== "pending") {
+    throw new ApiError(400, "Interest already processed");
+  }
 
   const friendId = interest.senderId;
   const userId = req.user.userId;
