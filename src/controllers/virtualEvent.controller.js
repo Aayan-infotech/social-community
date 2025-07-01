@@ -89,7 +89,7 @@ const getEvents = asyncHandler(async (req, res) => {
         $match: {
             $or: [
                 { eventStartDate: { $gte: new Date() } },
-                { eventEndDate: { $gte: new Date() } }
+                { eventEndDate: { $lte: new Date() } }
             ]
         }
     });
