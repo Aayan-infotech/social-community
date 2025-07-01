@@ -38,6 +38,9 @@ import {
   uploadChatDocument,
   removeFriend,
   getMatrimonialProfileSuggestions,
+  sendInterest,
+  acceptRejectInterest,
+  getInterrestedProfiles
 } from "../controllers/users.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { validateRequest } from "../middlewares/validation.middleware.js";
@@ -169,6 +172,9 @@ router.put(
 );
 router.get("/get-matrimonial-profile", verifyJWT, getMatrimonialProfile);
 router.get("/get-matrimonial-suggestions", verifyJWT, getMatrimonialProfileSuggestions);
+router.post('/sent-interest',verifyJWT,sendInterest);
+router.put('/accept-reject-interest',verifyJWT,acceptRejectInterest);
+router.get('/get-interest-profiles',verifyJWT,getInterrestedProfiles);
 
 // Info Pages
 router.get("/info-pages", verifyJWT, getAllInfoPages);

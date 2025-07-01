@@ -25,7 +25,8 @@ import saveResourceModel from "../models/saveResources.model.js";
 import PageModel from "../models/pages.model.js";
 import FAQModel from "../models/FAQ.model.js";
 import Skill from "../models/skills.model.js";
-import { type } from "os";
+import InterestInProfileModel from "../models/matrimonialProfileInterest.model.js";
+
 
 const getUserProfile = asyncHandler(async (req, res) => {
   const userId = req.query.user_id || req.user.userId;
@@ -1621,6 +1622,8 @@ const getMatrimonialProfileSuggestions = asyncHandler(async (req, res) => {
   const limit = Math.max(1, parseInt(req.query.limit) || 10);
   const skip = (page - 1) * limit;
 
+  const userId = req.user.userId;
+
   let { minAge, maxAge, minHeight, maxHeight, religion, caste, maritalStatus } = req.query;
   minAge = parseInt(minAge) || 18;
   maxAge = parseInt(maxAge) || 60;
@@ -1636,9 +1639,10 @@ const getMatrimonialProfileSuggestions = asyncHandler(async (req, res) => {
 
   const baseMatchPipeline = [
     { $match: { role: "user", matrimonialAboutMe: { $ne: null } } },
-    { $match: { userId: { $ne: req.user.userId } } },
+    { $match: { userId: { $ne: userId } } },
     { $match: { gender: { $ne: req.user.gender } } }
   ];
+
 
   const aggregation = [];
   aggregation.push(...baseMatchPipeline);
@@ -1665,10 +1669,6 @@ const getMatrimonialProfileSuggestions = asyncHandler(async (req, res) => {
     });
   }
 
-  console.log("Min Height:", minHeight, "Max Height:", maxHeight);
-
-  console.log("Marital Status:", maritalStatus, " Religion:", religion, " Caste:", caste, typeof maritalStatus, typeof religion, typeof caste);
-
   aggregation.push({
     $match: {
       maritalStatus: { $in: maritalStatus },
@@ -1688,6 +1688,29 @@ const getMatrimonialProfileSuggestions = asyncHandler(async (req, res) => {
       },
     });
   }
+
+
+  aggregation.push({
+    $lookup: {
+      from: "interestinprofiles",
+      localField: "userId",
+      foreignField: "senderId",
+      as: "interests",
+    },
+  });
+
+
+  aggregation.push({
+    $addFields: {
+      hasInterestSend: {
+        $cond: {
+          if: { $gt: [{ $size: "$interests" }, 0] },
+          then: true,
+          else: false,
+        },
+      },
+    },
+  });
 
   aggregation.push({
     $facet: {
@@ -1721,6 +1744,7 @@ const getMatrimonialProfileSuggestions = asyncHandler(async (req, res) => {
             complexion: 1,
             religion: 1,
             caste: 1,
+            hasInterestSend: 1,
           },
         },
       ],
@@ -1729,6 +1753,7 @@ const getMatrimonialProfileSuggestions = asyncHandler(async (req, res) => {
   });
 
   const results = await User.aggregate(aggregation);
+
   const suggestions = results[0]?.suggestions || [];
   const totalCount = results[0]?.totalCount[0]?.count || 0;
   const totalPages = Math.ceil(totalCount / limit);
@@ -1746,6 +1771,195 @@ const getMatrimonialProfileSuggestions = asyncHandler(async (req, res) => {
       } : null
     )
   );
+});
+
+const sendInterest = asyncHandler(async (req, res) => {
+  const { receiverId } = req.body;
+
+  if (!receiverId) {
+    throw new ApiError(400, "Receiver ID is required");
+  }
+
+  // Check if any sender or receiver is the same as 
+  const aggregation = [];
+  aggregation.push({
+    $match: {
+      $or: [
+        { senderId: req.user.userId, receiverId },
+        { senderId: receiverId, receiverId: req.user.userId },
+      ],
+      status: { $in: ["pending", "accepted"] }
+    },
+  });
+  const existingInterest = await InterestInProfileModel.aggregate(aggregation);
+  if (existingInterest.length > 0) {
+    throw new ApiError(400, "Interest already sent or received");
+  }
+
+  const interest = await InterestInProfileModel.create({
+    senderId: req.user.userId,
+    receiverId,
+  });
+
+  res.json(new ApiResponse(201, "Interest sent successfully", interest));
+});
+
+const acceptRejectInterest = asyncHandler(async (req, res) => {
+  const { interestId, status } = req.body;
+
+  if (!interestId || !status) {
+    throw new ApiError(400, "Interest ID and status are required");
+  }
+
+  const validStatuses = ["accepted", "rejected"];
+  if (!validStatuses.includes(status)) {
+    throw new ApiError(400, "Invalid status");
+  }
+
+  const interest = await InterestInProfileModel.findById(interestId);
+  if (!interest) {
+    throw new ApiError(404, "Interest not found");
+  }
+
+  const friendId = interest.senderId;
+  const userId = req.user.userId;
+
+  const friendExists = await User.findOne({
+    userId: friendId,
+  }).select(
+    "-password -refreshToken -previous_passwords -_id -__v -referrals -referredBy -otpExpire -otp"
+  );
+  if (!friendExists) {
+    throw new ApiError(404, "Invalid friend id provided");
+  }
+
+  let message = '';
+  if (status === "accepted") {
+
+    // Add the user to the friends list
+    const friendList = await FriendsModel.findOneAndUpdate(
+      { userId },
+      { $addToSet: { friends: friendId } },
+      { new: true, upsert: true }
+    );
+
+    const friendFriendList = await FriendsModel.findOneAndUpdate(
+      { userId: friendId },
+      { $addToSet: { friends: userId } },
+      { new: true, upsert: true }
+    );
+
+    if (friendExists?.device_token?.length > 0) {
+      // send push notification to the friend
+      await sendPushNotification(
+        friendExists?.device_token,
+        "Matrimonial Interest Accepted",
+        req?.user?.name + " has accepted your matrimonial interest",
+        userId,
+        friendId,
+        {
+          type: "matrimonial_interest_accepted",
+          profileDetails: JSON.stringify(friendExists),
+        }
+      );
+    }
+    interest.status = "accepted";
+    message = "Interest accepted successfully";
+  } else {
+    interest.status = "rejected";
+    message = "Interest rejected successfully";
+  }
+
+  await interest.save();
+
+
+
+  res.json(new ApiResponse(200, message, interest));
+});
+
+const getInterrestedProfiles = asyncHandler(async (req, res) => {
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.max(1, parseInt(req.query.limit) || 10);
+  const skip = (page - 1) * limit;
+
+  const userId = req.user.userId;
+
+  const aggregation = [];
+
+  aggregation.push({
+    $match: {
+      receiverId: userId,
+      status: "pending",
+    },
+  });
+
+
+
+  aggregation.push({
+    $lookup: {
+      from: "users",
+      localField: "senderId",
+      foreignField: "userId",
+      as: "senderInfo",
+    },
+  });
+  aggregation.push({
+    $unwind: {
+      path: "$senderInfo",
+      preserveNullAndEmptyArrays: true,
+    },
+  });
+
+
+  aggregation.push({
+    $facet: {
+      interestedProfiles: [
+        { $skip: skip },
+        { $limit: limit },
+        {
+          $project: {
+            _id: 1,
+            senderId: 1,
+            senderName: "$senderInfo.name",
+            senderEmail: "$senderInfo.email",
+            senderMobile: "$senderInfo.mobile",
+            senderProfileImage: {
+              $ifNull: [
+                "$senderInfo.profile_image",
+                `${req.protocol}://${req.hostname}:${process.env.PORT}/placeholder/person.png`,
+              ],
+            },
+            createdAt: 1,
+            status: 1,
+          },
+        },
+      ],
+      totalCount: [{ $count: "count" }],
+    },
+  });
+
+  const results = await InterestInProfileModel.aggregate(aggregation);
+  console.log(results);
+  const interestedProfiles = results[0]?.interestedProfiles || [];
+  const totalCount = results[0]?.totalCount[0]?.count || 0;
+  const totalPages = Math.ceil(totalCount / limit);
+
+  res.json(
+    new ApiResponse(
+      200,
+      interestedProfiles.length > 0 ? "Interests fetched successfully" : "No interests found",
+      interestedProfiles.length > 0
+        ? {
+          interestedProfiles,
+          total_page: totalPages,
+          current_page: page,
+          total_records: totalCount,
+          per_page: limit,
+        }
+        : null
+    )
+  );
+
 });
 
 const getAllInfoPages = asyncHandler(async (req, res) => {
@@ -2012,4 +2226,7 @@ export {
   uploadChatDocument,
   removeFriend,
   getMatrimonialProfileSuggestions,
+  sendInterest,
+  acceptRejectInterest,
+  getInterrestedProfiles
 };
