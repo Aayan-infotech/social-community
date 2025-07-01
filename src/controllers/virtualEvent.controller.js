@@ -28,14 +28,14 @@ const addEvent = asyncHandler(async (req, res) => {
         throw new ApiError(400, "Event with this name already exists");
     }
 
-    if (new Date(eventStartDate) < new Date()) {
-        throw new ApiError(400, "Event start date cannot be in the past");
-    }
+    // if (new Date(eventStartDate) < new Date()) {
+    //     throw new ApiError(400, "Event start date cannot be in the past");
+    // }
 
     // Validate eventStartDate and eventEndDate
-    if (new Date(eventStartDate) >= new Date(eventEndDate)) {
-        throw new ApiError(400, "Event start date must be before the end date");
-    }
+    // if (new Date(eventStartDate) == new Date(eventEndDate)) {
+    //     throw new ApiError(400, "Event start date must be before the end date");
+    // }
 
     // upload event image if provided
     let eventImageUrl = "";
