@@ -95,7 +95,7 @@ const getEvents = asyncHandler(async (req, res) => {
     });
 
     aggregation.push({
-        $sort: { eventStartDate: 1 }
+        $sort: { createdAt: 1 }
     });
     aggregation.push({
         $lookup: {
