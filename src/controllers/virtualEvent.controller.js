@@ -58,7 +58,7 @@ const addEvent = asyncHandler(async (req, res) => {
         eventStartDate,
         eventEndDate,
         ticketPrice,
-        eventImage: eventImageUrl ? eventImageUrl : null,
+        eventImage: eventImageUrl ? eventImageUrl : 'https://social-bucket-p8c1ayeq.s3.us-east-1.amazonaws.com/eventImage-1751367872913-592757111.png',
         userId: req.user.userId
     });
 
