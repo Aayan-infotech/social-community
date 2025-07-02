@@ -383,7 +383,7 @@ const bookTickets = asyncHandler(async (req, res) => {
         eventId,
         ticketCount,
         totalPrice,
-        bookingStatus: "booked",
+        bookingStatus: "pending",
         paymentStatus: "pending",
         bookingDate,
         bookingTime,
