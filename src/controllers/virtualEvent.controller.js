@@ -200,7 +200,7 @@ const myEvenets = asyncHandler(async (req, res) => {
     });
 
     aggregation.push({
-        $sort: { createdAt: 1 }
+        $sort: { createdAt: -1 }
     });
 
     aggregation.push({
@@ -302,6 +302,8 @@ const eventDetails = asyncHandler(async (req, res) => {
             eventDescription: 1,
             eventLocation: 1,
             eventStartDate: 1,
+            eventTimeStart: 1,
+            eventTimeEnd: 1,
             eventEndDate: 1,
             ticketPrice: 1,
             eventImage: 1,
