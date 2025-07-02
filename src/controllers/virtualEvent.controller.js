@@ -19,7 +19,9 @@ const addEvent = asyncHandler(async (req, res) => {
         eventLocation,
         eventStartDate,
         eventEndDate,
-        ticketPrice
+        ticketPrice,
+        eventTimeStart,
+        eventTimeEnd
     } = req.body;
 
 
@@ -64,6 +66,8 @@ const addEvent = asyncHandler(async (req, res) => {
         eventStartDate,
         eventEndDate,
         ticketPrice,
+        eventTimeStart,
+        eventTimeEnd,
         eventImage: eventImageUrl ? eventImageUrl : 'https://social-bucket-p8c1ayeq.s3.us-east-1.amazonaws.com/eventImage-1751367872913-592757111.png',
         userId: req.user.userId
     });
@@ -138,6 +142,8 @@ const getEvents = asyncHandler(async (req, res) => {
                         eventDescription: 1,
                         eventLocation: 1,
                         eventStartDate: 1,
+                        eventTimeStart: 1,
+                        eventTimeEnd: 1,
                         eventEndDate: 1,
                         ticketPrice: 1,
                         eventImage: 1,
@@ -194,7 +200,7 @@ const myEvenets = asyncHandler(async (req, res) => {
     });
 
     aggregation.push({
-        $sort: { eventStartDate: 1 }
+        $sort: { createdAt: 1 }
     });
 
     aggregation.push({
@@ -222,6 +228,8 @@ const myEvenets = asyncHandler(async (req, res) => {
                         eventDescription: 1,
                         eventLocation: 1,
                         eventStartDate: 1,
+                        eventTimeStart: 1,
+                        eventTimeEnd: 1,
                         eventEndDate: 1,
                         ticketPrice: 1,
                         eventImage: 1,

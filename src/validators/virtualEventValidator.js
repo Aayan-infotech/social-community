@@ -18,6 +18,14 @@ const virtualEventSchema = Joi.object({
         "date.base": "Event end date must be a valid date",
         "any.required": "Event end date is required"
     }),
+    eventTimeStart: Joi.string().required().messages({
+        "string.empty": "Event start time is required",
+        "any.required": "Event start time is required"
+    }),
+    eventTimeEnd: Joi.string().required().messages({
+        "string.empty": "Event end time is required",
+        "any.required": "Event end time is required"
+    }),
     eventImage: Joi.string().optional(),
     ticketPrice: Joi.number().required().default(0).messages({
         "number.base": "Ticket price must be a number",
@@ -80,7 +88,7 @@ const bookTicketSchema = Joi.object({
     bookingTime: Joi.string().required().messages({
         "string.empty": "Booking time is required",
         "any.required": "Booking time is required"
-    }), 
+    }),
 });
 
 const updateBookingStatusSchema = Joi.object({

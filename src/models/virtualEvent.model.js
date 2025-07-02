@@ -22,6 +22,14 @@ const virtualEventSchema = new mongoose.Schema({
         type: Date,
         required: true,
     },
+    eventTimeStart: {
+        type: String,
+        required: true,
+    },
+    eventTimeEnd: {
+        type: String,
+        required: true,
+    },
     eventImage: {
         type: String,
         required: false,
