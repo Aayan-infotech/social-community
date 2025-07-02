@@ -197,6 +197,11 @@ const addProduct = asyncHandler(async (req, res) => {
   } = req.body;
   const userId = req.user.userId;
 
+  const isKYCCompleted = req.user?.isKYCVerified;
+  if (!isKYCCompleted) {
+    throw new ApiError(403, "KYC verification is required to add a product");
+  }
+
   if (!isValidObjectId(category_id)) {
     throw new ApiError(400, "Invalid category ID");
   }

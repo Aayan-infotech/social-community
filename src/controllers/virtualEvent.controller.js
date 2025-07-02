@@ -22,6 +22,12 @@ const addEvent = asyncHandler(async (req, res) => {
         ticketPrice
     } = req.body;
 
+
+    const isKYCCompleted = req.user?.isKYCVerified;
+    if (!isKYCCompleted) {
+        throw new ApiError(403, "KYC verification is required to create a virtual event");
+    }
+
     // eventName is unique, so we check if it already exists
     const existingEvent = await VirtualEvent.findOne({ eventName });
     if (existingEvent) {
@@ -365,12 +371,10 @@ const bookTickets = asyncHandler(async (req, res) => {
         throw new ApiError(400, "Event creator does not have a Stripe account ID");
     }
 
-    if (new Date(bookingDate) < new Date()) {
-        throw new ApiError(400, "Booking date cannot be in the past");
+    if(new Date(bookingDate) <= new Date(event[0].eventStartDate) && new Date(bookingDate) >= new Date(event[0].eventEndDate)) {
+        throw new ApiError(400, "Booking date must be between event start and end dates");
     }
-    if (new Date(bookingDate) > new Date(event[0].eventEndDate)) {
-        throw new ApiError(400, "Booking date cannot be after the event end date");
-    }
+
 
     const ticketId = generateTicketId();
 
