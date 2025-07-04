@@ -213,10 +213,31 @@ const orderPlaceSchema = joi.object({
     "array.empty": "Product IDs are required",
     "any.required": "Product IDs are required",
   }),
-  order_amount: joi.string().required().messages({
-    "string.empty": "Order amount is required",
+  order_amount: joi.number().required().messages({
+    "number.base": "Order amount must be a number",
     "any.required": "Order amount is required",
   }),
+  quantity: joi.array().required().messages({
+    "array.empty": "Quantity is required",
+    "any.required": "Quantity is required",
+  }),
+});
+
+const updateOrderStatusSchema = joi.object({
+  orderId: joi.string().required().messages({
+    "string.empty": "Order ID is required",
+    "any.required": "Order ID is required",
+  }),
+  status: joi.string().valid("placed","shipped","completed", "cancelled").required().messages({
+    "string.empty": "Status is required",
+    "any.required": "Status is required",
+    "any.only": "Status must be one of 'placed', 'shipped', 'completed', or 'cancelled'",
+  }),
+  paymentStatus: joi.string().valid("pending", "completed", "failed").required().messages({
+    "string.empty": "Payment status is required",
+    "any.required": "Payment status is required",
+    "any.only": "Payment status must be one of 'pending', 'completed', or 'failed'",
+  }),   
 });
 
 export {
@@ -228,4 +249,5 @@ export {
   updateAddressSchema,
   addToCartSchema,
   orderPlaceSchema,
+  updateOrderStatusSchema
 };

@@ -12,6 +12,7 @@ import {
   updateAddressSchema,
   addToCartSchema,
   orderPlaceSchema,
+  updateOrderStatusSchema,
 } from "../validators/marketplaceValidator.js";
 import {
   upsertCategory,
@@ -39,10 +40,13 @@ import {
   getCartProducts,
   getMarketplaceProducts,
   orderPlace,
-  paymentSheetFn,
+  placeOrder,
   confirmPaymentFn,
   removeProductFromCart,
   refreshUrl,
+  myOrders,
+  updateOrderStatus,
+
   checkKYCStatus,
   loginExpress,
 } from "../controllers/marketplace.controller.js";
@@ -163,10 +167,12 @@ router.get("/card-list", verifyJWT, getCards);
 router.get("/complete-kyc", verifyJWT, doKYC);
 router.get('/refresh-url', refreshUrl);
 router.get("/kyc-status", checkKYCStatus);
-router.post('/order-place',verifyJWT,validateRequest(orderPlaceSchema),errorHandler,orderPlace);
-router.post('/payment-sheet',verifyJWT,validateRequest(orderPlaceSchema),errorHandler,paymentSheetFn);
-router.get("/confirm-payment",verifyJWT,confirmPaymentFn);
+router.post('/place-order', verifyJWT, validateRequest(orderPlaceSchema), errorHandler, placeOrder);
+router.put('/update-order-status', verifyJWT, validateRequest(updateOrderStatusSchema), errorHandler, updateOrderStatus);
+router.get("/my-orders", verifyJWT, myOrders);
 
-router.get('/login-express',verifyJWT,loginExpress)
+router.get("/confirm-payment", verifyJWT, confirmPaymentFn);
+router.get('/login-express', verifyJWT, loginExpress);
+
 
 export default router;

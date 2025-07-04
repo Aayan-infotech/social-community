@@ -38,7 +38,7 @@ const addEvent = asyncHandler(async (req, res) => {
 
 
 
-    if(new Date(eventStartDate) < new Date(Date.now() - 24 * 60 * 60 * 1000)) {
+    if (new Date(eventStartDate) < new Date(Date.now() - 24 * 60 * 60 * 1000)) {
         throw new ApiError(400, "Event start date cannot be in the past");
     }
 
@@ -68,7 +68,7 @@ const addEvent = asyncHandler(async (req, res) => {
         ticketPrice,
         eventTimeStart,
         eventTimeEnd,
-        eventImage: eventImageUrl ? eventImageUrl : 'https://social-bucket-p8c1ayeq.s3.us-east-1.amazonaws.com/eventImage-1751367872913-592757111.png',
+        eventImage: eventImageUrl ? eventImageUrl : 'https://social-bucket-p8c1ayeq.s3.us-east-1.amazonaws.com/eventImage-1751519688680-594049422.png',
         userId: req.user.userId
     });
 
@@ -331,7 +331,7 @@ const bookTickets = asyncHandler(async (req, res) => {
         throw new ApiError(400, "Ticket count must be at least 1");
     }
 
-    // const event = await VirtualEvent.findById(eventId).populate("userId", "userId stripeAccountId");
+
     const aggregation = [];
     aggregation.push({
         $match: {
@@ -357,6 +357,8 @@ const bookTickets = asyncHandler(async (req, res) => {
             eventLocation: 1,
             eventStartDate: 1,
             eventEndDate: 1,
+            eventTimeStart: 1,
+            eventTimeEnd: 1,
             ticketPrice: 1,
             eventImage: 1,
             userId: 1,
@@ -373,7 +375,8 @@ const bookTickets = asyncHandler(async (req, res) => {
         throw new ApiError(404, "Event not found");
     }
 
-    const { userDetails } = event[0];
+    const eventDetails = event[0];
+    const { userDetails } = eventDetails;
     if (!userDetails.stripeCustomerId) {
         throw new ApiError(400, "User does not have a Stripe customer ID");
     }
@@ -381,8 +384,22 @@ const bookTickets = asyncHandler(async (req, res) => {
         throw new ApiError(400, "Event creator does not have a Stripe account ID");
     }
 
-    if(new Date(bookingDate) <= new Date(event[0].eventStartDate) && new Date(bookingDate) >= new Date(event[0].eventEndDate)) {
-        throw new ApiError(400, "Booking date must be between event start and end dates");
+    const eventStartDate = eventDetails.eventStartDate.toISOString().split('T')[0];
+    const eventEndDate = eventDetails.eventEndDate.toISOString().split('T')[0];
+    const eventTimeStart = eventDetails.eventTimeStart;
+    const eventTimeEnd = eventDetails.eventTimeEnd;
+    const bookingDateTime = new Date(`${bookingDate}T${bookingTime}`);
+
+    const eventStartDateTime = new Date(`${eventStartDate}T${eventTimeStart}`);
+    const eventEndDateTime = new Date(`${eventEndDate}T${eventTimeEnd}`);
+
+
+    if (bookingDateTime < eventStartDateTime || bookingDateTime > eventEndDateTime) {
+        throw new ApiError(400, "Booking date and time must be between event start and end dates and times");
+    }
+
+    if(eventEndDateTime < new Date()) {
+        throw new ApiError(400, "Event Already ended, cannot book tickets");
     }
 
 
@@ -457,7 +474,6 @@ const updateBookingStatus = asyncHandler(async (req, res) => {
 
     const ticketFilePath = await generateAndSendTicket(eventDetails, req.user.email);
 
-    // console.log("Ticket file path:", ticketFilePath);
     if (!ticketFilePath.success) {
         throw new ApiError(500, "Failed to generate and send ticket");
     }

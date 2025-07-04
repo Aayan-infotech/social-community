@@ -115,25 +115,59 @@ const paymentMethod = async (customerId) => {
   }
 };
 
-const paymentSheet = async (customerId, amount, currency, AccountId) => {
+const productOrder = async (customerId, amount, currency, transferGroup) => {
   try {
     const ephemeralKey = await stripeClient.ephemeralKeys.create(
       { customer: customerId },
-      { apiVersion: "2020-08-27" }
+      { apiVersion: '2025-04-30.basil' }
     );
-
     const paymentIntent = await stripeClient.paymentIntents.create({
-      amount: amount * 100,
+      amount: Number(amount) * 100, // amount in cents
       currency: currency,
       customer: customerId,
       automatic_payment_methods: {
         enabled: true,
       },
-      application_fee_amount: 123,
+      transfer_group: transferGroup,
+    });
+
+    console.log(paymentIntent);
+
+    return ({
+      paymentIntent: paymentIntent.client_secret,
+      ephemeralKey: ephemeralKey.secret,
+      customer: customerId,
+      publishableKey: secret.STRIPE_PUBLIC_KEY,
+    });
+  } catch (error) {
+    console.error("Error creating product order:", error);
+    throw new ApiError(500, "Failed to create product order", error.message);
+  }
+};
+
+const paymentSheet = async (customerId, amount, currency, AccountId) => {
+  try {
+    const ephemeralKey = await stripeClient.ephemeralKeys.create(
+      { customer: customerId },
+      { apiVersion: '2025-04-30.basil' }
+    );
+
+    const platFormFee = 100 + Math.floor(Number(amount) * 100 * 0.1);
+
+    const paymentIntent = await stripeClient.paymentIntents.create({
+      amount: Number(amount) * 100,
+      currency: currency,
+      customer: customerId,
+      automatic_payment_methods: {
+        enabled: true,
+      },
+      application_fee_amount: platFormFee, // Platform fee in cents
       transfer_data: {
         destination: AccountId,
       },
     });
+
+    console.log(paymentIntent);
 
     return {
       paymentIntent: paymentIntent.client_secret,
@@ -216,6 +250,8 @@ const createLoginLink = async (accountId) => {
 };
 
 
+
+
 export {
   createCustomer,
   addCardToCustomer,
@@ -229,5 +265,6 @@ export {
   paymentSheet,
   confirmPayment,
   handleKYCStatus,
-  createLoginLink
+  createLoginLink,
+  productOrder,
 };

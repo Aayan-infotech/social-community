@@ -3,6 +3,7 @@ import { nanoid } from "nanoid";
 import { User } from "../models/user.model.js";
 import { ApiError } from "./ApiError.js";
 import QRCode from "qrcode";
+import Order from "../models/orders.model.js";
 
 const generateReferralCode = async function (name) {
   if (!name) {
@@ -151,6 +152,22 @@ function convertTo12Hour(time24) {
   return date.toLocaleTimeString('en-US', options);
 }
 
+function generateUniqueOrderId() {
+  const timestamp = Date.now();
+  const randomPart = Math.random().toString(36).substring(2, 8).toUpperCase();
+  const nanoidPart = nanoid(5).toUpperCase();
+
+  // check if the generated order ID already exists in the database
+  Order.findOne({ orderId: `ORDER_${timestamp}${randomPart}${nanoidPart}` })
+    .then(existingOrder => {
+      if (existingOrder) {
+        return generateUniqueOrderId();
+      }
+    });
+
+  return `ORDER_${timestamp}${randomPart}${nanoidPart}`;
+}
+
 export {
   generateReferralCode,
   generateUniqueUserId,
@@ -159,5 +176,6 @@ export {
   getHierarchyLevel,
   generateTicketId,
   generateQRCodeData,
-  convertTo12Hour
+  convertTo12Hour,
+  generateUniqueOrderId
 };

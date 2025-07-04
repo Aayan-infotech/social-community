@@ -19,9 +19,12 @@ import {
   confirmPayment,
   handleKYCStatus,
   createLoginLink,
+  productOrder,
 } from "../services/stripeService.js";
 import Card from "../models/userCard.model.js";
 import { User } from "../models/user.model.js";
+import { generateUniqueOrderId } from "../utils/HelperFunctions.js";
+import Order from "../models/orders.model.js";
 
 const upsertCategory = asyncHandler(async (req, res) => {
   const { id, category_name } = req.body;
@@ -654,17 +657,27 @@ const addToCart = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Product not found");
   }
 
-  const cartData = {
-    userId,
-    productId,
-    quantity,
-  };
+  // Check if the product is already in the cart
+  const existingCartItem = await Cart.findOne({ userId, productId });
+  if (existingCartItem) {
+    // If it exists, update the quantity
+    existingCartItem.quantity += quantity;
+    await existingCartItem.save();
+  } else {
+    const cartData = {
+      userId,
+      productId,
+      quantity,
+    };
 
-  // Add to cart logic here
-  const addToCart = await Cart.create(cartData);
-  if (!addToCart) {
-    throw new ApiError(500, "Failed to add product to cart");
+    // Add to cart logic here
+    const addToCart = await Cart.create(cartData);
+    if (!addToCart) {
+      throw new ApiError(500, "Failed to add product to cart");
+    }
   }
+
+
 
   res.json(new ApiResponse(200, "Product added to cart successfully"));
 });
@@ -871,6 +884,22 @@ const getCartProducts = asyncHandler(async (req, res) => {
     },
   });
 
+  // seller details
+  aggregation.push({
+    $lookup: {
+      from: "users",
+      localField: "product.userId",
+      foreignField: "userId",
+      as: "seller",
+    },
+  });
+  aggregation.push({
+    $unwind: {
+      path: "$seller",
+      preserveNullAndEmptyArrays: true,
+    },
+  });
+
   aggregation.push({
     $lookup: {
       from: "users",
@@ -894,8 +923,12 @@ const getCartProducts = asyncHandler(async (req, res) => {
       quantity: 1,
       "product.product_name": 1,
       "product.product_price": 1,
+      "product.product_image": 1,
+      "product.product_discount": 1,
       "buyer.name": 1,
       "buyer.email": 1,
+      "seller.name": 1,
+      "seller.email": 1,
     },
   });
 
@@ -947,7 +980,7 @@ const orderPlace = asyncHandler(async (req, res) => {
   res.json(new ApiResponse(200, "Order placed successfully", paymentIntent));
 });
 
-const paymentSheetFn = asyncHandler(async (req, res) => {
+const placeOrder = asyncHandler(async (req, res) => {
   const { product_ids, quantity, address_id, order_amount } = req.body;
   const userId = req.user.userId;
 
@@ -962,7 +995,7 @@ const paymentSheetFn = asyncHandler(async (req, res) => {
 
   aggregation.push({
     $match: {
-      _id: new mongoose.Types.ObjectId(product_ids[0]),
+      _id: { $in: product_ids.map(id => new mongoose.Types.ObjectId(id)) },
     },
   });
 
@@ -981,26 +1014,77 @@ const paymentSheetFn = asyncHandler(async (req, res) => {
     },
   });
 
+  aggregation.push({
+    $project: {
+      _id: 1,
+      product_name: 1,
+      product_price: 1,
+      product_discount: 1,
+      userId: 1,
+      user: {
+        name: "$user.name",
+        email: "$user.email",
+        stripeAccountId: "$user.stripeAccountId",
+        stripeCustomerId: "$user.stripeCustomerId",
+      }
+    }
+  });
+
   const product = await Product.aggregate(aggregation);
   if (product.length === 0) {
     throw new ApiError(404, "Product not found");
   }
 
 
+  const totalAmount = product.reduce((total, item) => {
+    const discountedPrice = item.product_price - (item.product_price * item.product_discount) / 100;
+    total += discountedPrice * quantity[product_ids.indexOf(item._id.toString())];
+    return total;
+  }, 0);
 
-  const address = await DeliveryAddress.findById(address_id);
+
+  if (Number(totalAmount) !== Number(order_amount)) {
+    throw new ApiError(400, "Order amount does not match the total amount");
+  }
+  if (!isValidObjectId(address_id)) {
+    throw new ApiError(400, "Invalid address ID");
+  }
+
+  const address = await DeliveryAddress.find({ _id: address_id, userId });
   if (!address) {
     throw new ApiError(404, "Address not found");
   }
 
-  const AccountId = product[0].user.stripeAccountId;
+  const orderId = generateUniqueOrderId();
 
-  const paySheet = await paymentSheet(
+  for (let i = 0; i < product.length; i++) {
+    const order = new Order({
+      orderId,
+      transferGroup: orderId,
+      sellerId: product[i].userId,
+      buyerId: userId,
+      productId: product[i]._id,
+      amount: product[i].product_price * quantity[i],
+      currency: "usd",
+      quantity: quantity[i],
+      shippingAddressId: address_id,
+    });
+
+    const savedOrder = await order.save();
+    if (!savedOrder) {
+      throw new ApiError(500, "Failed to save order");
+    }
+  }
+
+  const paySheet = await productOrder(
     req.user.stripeCustomerId,
-    order_amount,
+    totalAmount,
     "usd",
-    AccountId,
+    orderId,
   );
+
+
+  paySheet.orderId = orderId;
 
 
   return res.status(200).json(
@@ -1036,6 +1120,143 @@ const loginExpress = asyncHandler(async (req, res) => {
   res.json(new ApiResponse(200, "Login link created successfully", loginLink));
 });
 
+const myOrders = asyncHandler(async (req, res) => {
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.max(1, parseInt(req.query.limit) || 10);
+  const skip = (page - 1) * limit;
+
+  const userId = req.user.userId;
+
+  const aggregation = [];
+  aggregation.push({
+    $match: {
+      buyerId: userId,
+    },
+  });
+  aggregation.push({
+    $lookup: {
+      from: "products",
+      localField: "productId",
+      foreignField: "_id",
+      as: "product",
+    },
+  });
+  aggregation.push({
+    $unwind: {
+      path: "$product",
+      preserveNullAndEmptyArrays: true,
+    },
+  });
+  aggregation.push({
+    $lookup: {
+      from: "deliveryaddresses",
+      localField: "shippingAddressId",
+      foreignField: "_id",
+      as: "shippingAddress",
+    },
+  });
+
+  aggregation.push({
+    $unwind: {
+      path: "$shippingAddress",
+      preserveNullAndEmptyArrays: true,
+    },
+  });
+
+
+  aggregation.push({
+    $lookup: {
+      from: "users",
+      localField: "sellerId",
+      foreignField: "userId",
+      as: "seller",
+    },
+  });
+  aggregation.push({
+    $unwind: {
+      path: "$seller",
+      preserveNullAndEmptyArrays: true,
+    },
+  });
+
+  aggregation.push({
+    $facet: {
+      orders: [
+        { $skip: skip },
+        { $limit: limit },
+        {
+          $project: {
+            _id: 1,
+            orderId: 1,
+            transferGroup: 1,
+            amount: 1,
+            currency: 1,
+            quantity: 1,
+            createdAt: 1,
+            product_name: "$product.product_name",
+            product_image: "$product.product_image",
+            seller_name: "$seller.name",
+            shippingAddress: {
+              name: "$shippingAddress.name",
+              address: "$shippingAddress.address",
+              city: "$shippingAddress.city",
+              state: "$shippingAddress.state",
+              country: "$shippingAddress.country",
+              pincode: "$shippingAddress.pincode",
+            },
+          },
+        },
+      ],
+      totalCount: [{ $count: "count" }],
+    }
+  });
+
+  const result = await Order.aggregate(aggregation);
+
+  const orders = result[0]?.orders || [];
+  const totalCount = result[0]?.totalCount[0]?.count || 0;
+  const totalPages = Math.ceil(totalCount / limit);
+
+  res.json(new ApiResponse(200, orders.length > 0 ? "Orders fetched successfully" : "No orders found", orders.length > 0 ? {
+    orders,
+    total_page: totalPages,
+    current_page: page,
+    total_records: totalCount,
+    per_page: limit,
+  } : null));
+
+});
+
+
+const updateOrderStatus = asyncHandler(async (req, res) => {
+  const { orderId, status, paymentStatus } = req.body;
+  const userId = req.user.userId;
+  const aggregation = [];
+  aggregation.push({
+    $match: {
+      orderId: orderId,
+      buyerId: userId,
+    }
+  });
+
+  const Orders = await Order.aggregate(aggregation);
+
+  if (!Orders || Orders.length === 0) {
+    throw new ApiError(400, "Order not found");
+  }
+
+
+  for (let i = 0; i < Orders.length; i++) {
+    const order = Orders[i];
+    const updateOrder = await Order.findByIdAndUpdate(order._id, { status, paymentStatus }, { new: true });
+    if (!updateOrder) {
+      throw new ApiError(500, 'Failed to update order status');
+    }
+  }
+
+  res.json(new ApiResponse(200, 'Order Status Updated Successfully',null));
+});
+
 export {
   upsertCategory,
   getCategory,
@@ -1062,10 +1283,12 @@ export {
   getCartProducts,
   getMarketplaceProducts,
   orderPlace,
-  paymentSheetFn,
+  placeOrder,
   confirmPaymentFn,
   removeProductFromCart,
   refreshUrl,
+  myOrders,
   checkKYCStatus,
-  loginExpress
+  loginExpress,
+  updateOrderStatus
 };
