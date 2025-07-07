@@ -46,6 +46,7 @@ import {
   refreshUrl,
   myOrders,
   updateOrderStatus,
+  getAllOrders,
 
   checkKYCStatus,
   loginExpress,
@@ -170,6 +171,7 @@ router.get("/kyc-status", checkKYCStatus);
 router.post('/place-order', verifyJWT, validateRequest(orderPlaceSchema), errorHandler, placeOrder);
 router.put('/update-order-status', verifyJWT, validateRequest(updateOrderStatusSchema), errorHandler, updateOrderStatus);
 router.get("/my-orders", verifyJWT, myOrders);
+router.get("/get-orders", verifyJWT, getAllOrders);
 
 router.get("/confirm-payment", verifyJWT, confirmPaymentFn);
 router.get('/login-express', verifyJWT, loginExpress);

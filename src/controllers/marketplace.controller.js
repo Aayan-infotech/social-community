@@ -1076,6 +1076,9 @@ const placeOrder = asyncHandler(async (req, res) => {
     }
   }
 
+  await Cart.deleteMany({ userId, productId: { $in: product_ids } });
+
+
   const paySheet = await productOrder(
     req.user.stripeCustomerId,
     totalAmount,
@@ -1246,15 +1249,134 @@ const updateOrderStatus = asyncHandler(async (req, res) => {
   }
 
 
-  for (let i = 0; i < Orders.length; i++) {
-    const order = Orders[i];
-    const updateOrder = await Order.findByIdAndUpdate(order._id, { status, paymentStatus }, { new: true });
-    if (!updateOrder) {
-      throw new ApiError(500, 'Failed to update order status');
-    }
+ 
+  const updateOrder = await Order.updateMany(
+    { orderId: orderId, buyerId: userId },
+    { $set: { status, paymentStatus } },
+    { new: true }
+  );
+
+  res.json(new ApiResponse(200, 'Order Status Updated Successfully', updateOrder));
+});
+
+const getAllOrders = asyncHandler(async (req, res) => {
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.max(1, parseInt(req.query.limit) || 10);
+  const skip = (page - 1) * limit;
+
+  const userId = req.user.userId;
+  const role = req.user.role;
+
+  const aggregation = [];
+
+  if (role !== 'admin') {
+    aggregation.push({
+      $match: {
+        sellerId: userId,
+      }
+    });
   }
 
-  res.json(new ApiResponse(200, 'Order Status Updated Successfully',null));
+  aggregation.push({
+    $lookup: {
+      from: "products",
+      localField: "productId",
+      foreignField: "_id",
+      as: "product",
+    },
+  });
+
+  aggregation.push({
+    $unwind: {
+      path: "$product",
+      preserveNullAndEmptyArrays: true,
+    },
+  });
+
+  aggregation.push({
+    $lookup: {
+      from: "deliveryaddresses",
+      localField: "shippingAddressId",
+      foreignField: "_id",
+      as: "shippingAddress",
+    },
+  });
+
+  aggregation.push({
+    $unwind: {
+      path: "$shippingAddress",
+      preserveNullAndEmptyArrays: true,
+    },
+  });
+
+
+  aggregation.push({
+    $lookup: {
+      from: "users",
+      localField: "buyerId",
+      foreignField: "userId",
+      as: "buyer",
+    },
+  });
+
+
+
+  aggregation.push({
+    $unwind: {
+      path: "$buyer",
+      preserveNullAndEmptyArrays: true,
+    },
+  });
+
+  aggregation.push({
+    $facet: {
+      orders: [
+        { $skip: skip },
+        { $limit: limit },
+        {
+          $project: {
+            _id: 1,
+            orderId: 1,
+            transferGroup: 1,
+            amount: 1,
+            currency: 1,
+            quantity: 1,
+            createdAt: 1,
+            status: 1,
+            paymentStatus: 1,
+            product_name: "$product.product_name",
+            product_image: "$product.product_image",
+            buyer_name: "$buyer.name",
+            shippingAddress: {
+              name: "$shippingAddress.name",
+              address: "$shippingAddress.address",
+              city: "$shippingAddress.city",
+              state: "$shippingAddress.state",
+              country: "$shippingAddress.country",
+              pincode: "$shippingAddress.pincode",
+            },
+          },
+        },
+      ],
+      totalCount: [{ $count: "count" }],
+    }
+  });
+
+
+  const result = await Order.aggregate(aggregation);
+  const orders = result[0]?.orders || [];
+  const totalCount = result[0]?.totalCount[0]?.count || 0;
+  const totalPages = Math.ceil(totalCount / limit);
+
+  res.json(new ApiResponse(200, orders.length > 0 ? "Orders fetched successfully" : "No orders found", orders.length > 0 ? {
+    orders,
+    total_page: totalPages,
+    current_page: page,
+    total_records: totalCount,
+    per_page: limit,
+  } : null));
+
+
 });
 
 export {
@@ -1290,5 +1412,6 @@ export {
   myOrders,
   checkKYCStatus,
   loginExpress,
-  updateOrderStatus
+  updateOrderStatus,
+  getAllOrders,
 };
