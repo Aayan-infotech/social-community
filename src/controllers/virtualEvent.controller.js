@@ -189,6 +189,11 @@ const myEvenets = asyncHandler(async (req, res) => {
     const limit = Math.max(1, parseInt(req.query.limit) || 10);
     const skip = (page - 1) * limit;
 
+    const type = req.query.type || "all";
+    if (!["all", "upcoming", "past"].includes(type)) {
+        throw new ApiError(400, "Invalid type parameter. Must be 'all', 'upcoming', or 'past'");
+    }
+
     const userId = req.user.userId;
 
     const aggregation = [];
@@ -198,6 +203,51 @@ const myEvenets = asyncHandler(async (req, res) => {
             userId: userId,
         }
     });
+    if (type === "upcoming") {
+        aggregation.push({
+            $match: {
+                $expr: {
+                    $gte: [
+                        {
+                            $dateFromString: {
+                                dateString: {
+                                    $concat: [
+                                        { $dateToString: { format: "%Y-%m-%d", date: "$eventStartDate" } },
+                                        "T",
+                                        "$eventTimeStart",
+                                        ":00.000Z"
+                                    ]
+                                }
+                            }
+                        },
+                        new Date()
+                    ]
+                }
+            }
+        });
+    } else if (type === "past") {
+        aggregation.push({
+            $match: {
+                $expr: {
+                    $lt: [
+                        {
+                            $dateFromString: {
+                                dateString: {
+                                    $concat: [
+                                        { $dateToString: { format: "%Y-%m-%d", date: "$eventEndDate" } },
+                                        "T",
+                                        "$eventTimeEnd",
+                                        ":00.000Z"
+                                    ]
+                                }
+                            }
+                        },
+                        new Date()
+                    ]
+                }
+            }
+        });
+    }
 
     aggregation.push({
         $sort: { createdAt: -1 }
