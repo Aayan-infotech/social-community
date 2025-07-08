@@ -17,7 +17,8 @@ import {
     bookTickets,
     updateBookingStatus,
     cancelBooking,
-    getBooking
+    getBooking,
+    updateEvent,
 } from "../controllers/virtualEvent.controller.js";
 
 const router = Router();
@@ -34,6 +35,18 @@ router.post(
     errorHandler,
     validateRequest(virtualEventSchema),
     addEvent
+);
+router.put("/update/:id",
+    verifyJWT,
+    upload.fields([
+        {
+            name: "eventImage",
+            maxCount: 1,
+        },
+    ]),
+    errorHandler,
+    validateRequest(virtualEventSchema),
+    updateEvent
 );
 
 router.get("/get", verifyJWT, getEvents);

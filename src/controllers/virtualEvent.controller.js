@@ -269,6 +269,62 @@ const myEvenets = asyncHandler(async (req, res) => {
     );
 });
 
+const updateEvent = asyncHandler(async (req, res) => {
+    const eventId = req.params.id;
+    if (!isValidObjectId(eventId)) {
+        throw new ApiError(400, "Invalid event ID");
+    }
+
+    const { eventName, eventDescription, eventLocation, eventStartDate, eventTimeStart, eventTimeEnd, eventEndDate, ticketPrice } = req.body;
+
+
+    // Check if the event Name is already taken by another event
+    const event = await VirtualEvent.findById(eventId);
+    if (!event) {
+        throw new ApiError(404, "Event not found");
+    }
+
+    if (event.userId.toString() !== req.user.userId) {
+        throw new ApiError(403, "You are not authorized to update this event");
+    }
+
+    if (new Date(eventStartDate) > new Date(eventEndDate)) {
+        throw new ApiError(400, "Event start date cannot be after the end date");
+    }
+
+
+
+    let eventImageUrl = '';
+
+    if (req.files && req.files.eventImage) {
+        const eventImage = await uploadImage(req.files.eventImage[0]);
+        if (!eventImage.success) {
+            throw new ApiError(500, "Failed to upload event image");
+        }
+        eventImageUrl = eventImage.fileUrl;
+    } else {
+        eventImageUrl = event.eventImage;
+    }
+
+    const updatedEvent = await VirtualEvent.findByIdAndUpdate(eventId, {
+        eventName,
+        eventDescription,
+        eventLocation,
+        eventStartDate,
+        eventEndDate,
+        ticketPrice,
+        eventTimeEnd,
+        eventTimeStart,
+        eventImage: eventImageUrl,
+    }, { new: true });
+
+    if (!updatedEvent) {
+        throw new ApiError(404, "Event not found");
+    }
+
+    res.json(new ApiResponse(200, "Event updated successfully", updatedEvent));
+});
+
 
 const eventDetails = asyncHandler(async (req, res) => {
     const eventId = req.params.id;
@@ -398,7 +454,7 @@ const bookTickets = asyncHandler(async (req, res) => {
         throw new ApiError(400, "Booking date and time must be between event start and end dates and times");
     }
 
-    if(eventEndDateTime < new Date()) {
+    if (eventEndDateTime < new Date()) {
         throw new ApiError(400, "Event Already ended, cannot book tickets");
     }
 
@@ -595,5 +651,6 @@ export {
     bookTickets,
     updateBookingStatus,
     cancelBooking,
-    getBooking
+    getBooking,
+    updateEvent
 };

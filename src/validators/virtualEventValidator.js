@@ -5,7 +5,7 @@ const virtualEventSchema = Joi.object({
         "string.empty": "Event name is required",
         "any.required": "Event name is required"
     }),
-    eventDescription: Joi.string().optional(),
+    eventDescription: Joi.string().optional().allow(''),
     eventLocation: Joi.string().required().messages({
         "string.empty": "Event location is required",
         "any.required": "Event location is required"
@@ -26,7 +26,7 @@ const virtualEventSchema = Joi.object({
         "string.empty": "Event end time is required",
         "any.required": "Event end time is required"
     }),
-    eventImage: Joi.string().optional(),
+    eventImage: Joi.string().optional().allow(''),
     ticketPrice: Joi.number().required().default(0).messages({
         "number.base": "Ticket price must be a number",
         "any.required": "Ticket price is required"
