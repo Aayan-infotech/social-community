@@ -785,6 +785,86 @@ const getEventDropdown = asyncHandler(async (req, res) => {
     return res.json(new ApiResponse(200, "Event dropdown fetched successfully", events));
 });
 
+
+const getAllCancelledTickets = asyncHandler(async (req, res) => {
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.max(1, parseInt(req.query.limit) || 10);
+    const skip = (page - 1) * limit;
+
+
+    const aggregation = [];
+
+    aggregation.push({
+        $match: {
+            eventId: new mongoose.Types.ObjectId(req.params.eventId),
+            bookingStatus: "cancelled"
+        }
+    });
+
+
+    aggregation.push({
+        $sort: { bookingDate: -1 }
+    });
+
+    aggregation.push({
+        $lookup: {
+            from: "virtualevents",
+            localField: "eventId",
+            foreignField: "_id",
+            as: "eventDetails"
+        }
+    });
+
+
+    aggregation.push({
+        $facet: {
+            cancelledTickets: [
+                { $skip: skip },
+                { $limit: limit },
+                {
+                    $project: {
+                        _id: 1,
+                        ticketId: 1,
+                        eventId: 1,
+                        userId: 1,
+                        eventDetails: {
+                            _id: "$eventDetails._id",
+                            eventName: "$eventDetails.eventName",
+                            eventLocation: "$eventDetails.eventLocation",
+                            ...getTimezoneDateProjection("eventDetails.eventStartDate", req.headers?.timezone || "UTC", "eventStartDate"),
+                            ...getTimezoneDateProjection("eventDetails.eventEndDate", req.headers?.timezone || "UTC", "eventEndDate"),
+                            eventImage: "$eventDetails.eventImage",
+                        },
+                        ...getTimezoneDateProjection("bookingDate", req.headers?.timezone || "UTC", "bookingDate"),
+                        ticketCount: 1,
+                        totalPrice: 1,
+                        bookingStatus: 1,
+                        paymentStatus: 1,
+                    }
+                },
+            ],
+            totalCount: [{ $count: "count" }],
+        }
+    });
+
+
+    const result = await TicketBooking.aggregate(aggregation);
+
+    console.log("Cancelled Tickets Result:", result);
+
+    const cancelledTickets = result[0]?.cancelledTickets || [];
+    const totalCount = result[0]?.totalCount[0]?.count || 0;
+    const totalPages = Math.ceil(totalCount / limit);
+
+    return res.json(new ApiResponse(200, cancelledTickets.length > 0 ? "Cancelled tickets fetched successfully" : "No cancelled tickets found", cancelledTickets.length > 0 ? {
+        tickets: cancelledTickets,
+        total_page: totalPages,
+        current_page: page,
+        total_records: totalCount,
+        per_page: limit,
+    } : null));
+});
+
 export {
     addEvent,
     getEvents,
@@ -796,5 +876,6 @@ export {
     getBooking,
     updateEvent,
     getAllTickets,
-    getEventDropdown
+    getEventDropdown,
+    getAllCancelledTickets
 };

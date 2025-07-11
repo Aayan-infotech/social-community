@@ -1,9 +1,16 @@
 import admin from "firebase-admin";
+import { loadConfig } from "./loadConfig.js";
+
+const config = await loadConfig();
+
+if (!config.FIREBASE_CONFIG) {
+  throw new Error("FIREBASE_CONFIG is not defined in the configuration.");
+}
 
 const serviceAccount =
-   typeof process.env.FIREBASE_CONFIG === "string"
-     ? JSON.parse(process.env.FIREBASE_CONFIG)
-     : process.env.FIREBASE_CONFIG;
+  typeof config.FIREBASE_CONFIG === "string"
+    ? JSON.parse(config.FIREBASE_CONFIG)
+    : config.FIREBASE_CONFIG;
 
 
 
