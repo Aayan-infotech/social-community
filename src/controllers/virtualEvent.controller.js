@@ -39,8 +39,8 @@ const addEvent = asyncHandler(async (req, res) => {
 
 
     // Event Start Date and Time 
-    const eventStartDateTime = new Date(`${eventStartDate}T${eventTimeStart}`);
-    const eventEndDateTime = new Date(`${eventEndDate}T${eventTimeEnd}`);
+    const eventStartDateTime = `${eventStartDate}T${eventTimeStart}:00`;
+    const eventEndDateTime = `${eventEndDate}T${eventTimeEnd}:00`;
 
     if (new Date(eventStartDateTime) < new Date()) {
         throw new ApiError(400, "Event start date and time cannot be in the past");
@@ -61,6 +61,7 @@ const addEvent = asyncHandler(async (req, res) => {
         }
         eventImageUrl = eventImage.fileUrl;
     }
+
 
 
     const newEvent = new VirtualEvent({
@@ -146,8 +147,10 @@ const getEvents = asyncHandler(async (req, res) => {
                         eventName: 1,
                         eventDescription: 1,
                         eventLocation: 1,
-                        ...getTimezoneDateProjection("eventStartDate", timezone, "eventStartDate"),
-                        ...getTimezoneDateProjection("eventEndDate", timezone, "eventEndDate"),
+                        eventStartDate: 1,
+                        eventEndDate: 1,
+                        eventTimeStart: 1,
+                        eventTimeEnd: 1,
                         ticketPrice: 1,
                         eventImage: 1,
                         userId: 1,
@@ -250,8 +253,12 @@ const myEvenets = asyncHandler(async (req, res) => {
                         eventName: 1,
                         eventDescription: 1,
                         eventLocation: 1,
-                        ...getTimezoneDateProjection("eventStartDate", timezone, "eventStartDate"),
-                        ...getTimezoneDateProjection("eventEndDate", timezone, "eventEndDate"),
+                        // ...getTimezoneDateProjection("eventStartDate", timezone, "eventStartDate"),
+                        // ...getTimezoneDateProjection("eventEndDate", timezone, "eventEndDate"),
+                        eventStartDate: 1,
+                        eventEndDate: 1,
+                        eventTimeStart: 1,
+                        eventTimeEnd: 1,
                         ticketPrice: 1,
                         eventImage: 1,
                         userId: 1,
@@ -392,8 +399,12 @@ const eventDetails = asyncHandler(async (req, res) => {
             eventName: 1,
             eventDescription: 1,
             eventLocation: 1,
-            ...getTimezoneDateProjection("eventStartDate", req.headers?.timezone || "UTC", "eventStartDate"),
-            ...getTimezoneDateProjection("eventEndDate", req.headers?.timezone || "UTC", "eventEndDate"),
+            // ...getTimezoneDateProjection("eventStartDate", req.headers?.timezone || "UTC", "eventStartDate"),
+            // ...getTimezoneDateProjection("eventEndDate", req.headers?.timezone || "UTC", "eventEndDate"),
+            eventStartDate: 1,
+            eventEndDate: 1,
+            eventTimeStart: 1,
+            eventTimeEnd: 1,
             ticketPrice: 1,
             eventImage: 1,
             userId: 1,
@@ -643,7 +654,9 @@ const getBooking = asyncHandler(async (req, res) => {
                         eventStartDate: "$eventDetails.eventStartDate",
                         eventEndDate: "$eventDetails.eventEndDate",
                         eventImage: "$eventDetails.eventImage",
-                        ...getTimezoneDateProjection("bookingDate", req.headers?.timezone || "UTC", "bookingDate"),
+                        // ...getTimezoneDateProjection("bookingDate", req.headers?.timezone || "UTC", "bookingDate"),
+                        bookingDate: 1,
+                        bookingTime: 1,
                         ticketCount: 1,
                         totalPrice: 1,
                         bookingStatus: 1,
@@ -729,8 +742,12 @@ const getAllTickets = asyncHandler(async (req, res) => {
                             _id: "$eventDetails._id",
                             eventName: "$eventDetails.eventName",
                             eventLocation: "$eventDetails.eventLocation",
-                            ...getTimezoneDateProjection("eventDetails.eventStartDate", req.headers?.timezone || "UTC", "eventStartDate"),
-                            ...getTimezoneDateProjection("eventDetails.eventEndDate", req.headers?.timezone || "UTC", "eventEndDate"),
+                            // ...getTimezoneDateProjection("eventDetails.eventStartDate", req.headers?.timezone || "UTC", "eventStartDate"),
+                            // ...getTimezoneDateProjection("eventDetails.eventEndDate", req.headers?.timezone || "UTC", "eventEndDate"),
+                            eventStartDate: "$eventDetails.eventStartDate",
+                            eventEndDate: "$eventDetails.eventEndDate",
+                            eventTimeStart: "$eventDetails.eventTimeStart",
+                            eventTimeEnd: "$eventDetails.eventTimeEnd",
                             eventImage: "$eventDetails.eventImage",
                         },
                         userDetails: {
@@ -740,7 +757,9 @@ const getAllTickets = asyncHandler(async (req, res) => {
                             profile_image: "$userDetails.profile_image",
                             name: "$userDetails.name"
                         },
-                        ...getTimezoneDateProjection("bookingDate", req.headers?.timezone || "UTC", "bookingDate"),
+                        // ...getTimezoneDateProjection("bookingDate", req.headers?.timezone || "UTC", "bookingDate"),
+                        bookingDate: 1,
+                        bookingTime: 1,
                         ticketCount: 1,
                         totalPrice: 1,
                         bookingStatus: 1,
@@ -815,6 +834,22 @@ const getAllCancelledTickets = asyncHandler(async (req, res) => {
         }
     });
 
+    aggregation.push({
+        $unwind: "$eventDetails",
+    });
+
+    aggregation.push({
+        $lookup: {
+            from: "users",
+            localField: "userId",
+            foreignField: "userId",
+            as: "userDetails"
+        }
+    });
+
+    aggregation.push({
+        $unwind: "$userDetails",
+    });
 
     aggregation.push({
         $facet: {
@@ -831,11 +866,24 @@ const getAllCancelledTickets = asyncHandler(async (req, res) => {
                             _id: "$eventDetails._id",
                             eventName: "$eventDetails.eventName",
                             eventLocation: "$eventDetails.eventLocation",
-                            ...getTimezoneDateProjection("eventDetails.eventStartDate", req.headers?.timezone || "UTC", "eventStartDate"),
-                            ...getTimezoneDateProjection("eventDetails.eventEndDate", req.headers?.timezone || "UTC", "eventEndDate"),
+                            // ...getTimezoneDateProjection("eventDetails.eventStartDate", req.headers?.timezone || "UTC", "eventStartDate"),
+                            // ...getTimezoneDateProjection("eventDetails.eventEndDate", req.headers?.timezone || "UTC", "eventEndDate"),
+                            eventStartDate: "$eventDetails.eventStartDate",
+                            eventEndDate: "$eventDetails.eventEndDate",
+                            eventTimeStart: "$eventDetails.eventTimeStart",
+                            eventTimeEnd: "$eventDetails.eventTimeEnd",
                             eventImage: "$eventDetails.eventImage",
                         },
-                        ...getTimezoneDateProjection("bookingDate", req.headers?.timezone || "UTC", "bookingDate"),
+                        userDetails: {
+                            userId: "$userDetails.userId",
+                            email: "$userDetails.email",
+                            mobile: "$userDetails.mobile",
+                            profile_image: "$userDetails.profile_image",
+                            name: "$userDetails.name"
+                        },
+                        // ...getTimezoneDateProjection("bookingDate", req.headers?.timezone || "UTC", "bookingDate"),
+                        bookingDate: 1,
+                        bookingTime: 1,
                         ticketCount: 1,
                         totalPrice: 1,
                         bookingStatus: 1,
