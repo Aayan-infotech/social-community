@@ -19,6 +19,8 @@ import {
     cancelBooking,
     getBooking,
     updateEvent,
+    getAllTickets,
+    getEventDropdown,
 } from "../controllers/virtualEvent.controller.js";
 
 const router = Router();
@@ -66,5 +68,7 @@ router.put(
 );
 router.post('/cancel-booking',verifyJWT,validateRequest(cancelBookingSchema),cancelBooking);
 router.get('/get-booking',verifyJWT,getBooking);
+router.get('/getAllTickets/:eventId',verifyJWT,getAllTickets);
+router.get('/getEventDropdown',verifyJWT,getEventDropdown);
 
 export default router;

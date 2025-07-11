@@ -24,11 +24,13 @@ const s3 = new S3Client({
 
 // Function to upload an image to S3
 const uploadImage = async (file) => {
+  if (!file || !file.path || !file.filename || !file.mimetype) {
+    throw new ApiError(400, "Invalid file input");
+  }
+
   try {
     const fileContent = fs.readFileSync(file.path);
-    if (!fileContent) {
-      throw new ApiError(400, "Invalid file");
-    }
+
     const params = {
       Bucket: secret.AWS_BUCKET_NAME,
       Key: file.filename,
@@ -37,27 +39,35 @@ const uploadImage = async (file) => {
     };
 
     const command = new PutObjectCommand(params);
-    const data = await s3.send(command);
+    await s3.send(command);
 
-    // remove the file
-    if (file.path && fs.existsSync(file.path)) {
-      fs.unlinkSync(file.path);
+    // Clean up temp file
+    try {
+      if (fs.existsSync(file.path)) {
+        await fs.promises.unlink(file.path);
+      }
+    } catch (cleanupErr) {
+      console.warn("Failed to remove temp file:", cleanupErr.message);
     }
 
-    // return `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${file.filename}`;
     return {
       success: true,
       fileUrl: `https://${secret.AWS_BUCKET_NAME}.s3.${secret.AWS_REGION}.amazonaws.com/${file.filename}`,
     };
   } catch (error) {
-    if (file.path && fs.existsSync(file.path)) {
-      fs.unlinkSync(file.path);
+    // Attempt file cleanup even on failure
+    try {
+      if (fs.existsSync(file.path)) {
+        await fs.promises.unlink(file.path);
+      }
+    } catch (cleanupErr) {
+      console.warn("Cleanup on error failed:", cleanupErr.message);
     }
+
     console.error("Error uploading file:", error);
-    throw new ApiError(500, error.message);
+    throw new ApiError(500, error.message || "Error uploading file to S3");
   }
 };
-
 // Delete the image on the aws upload server using the imageURL
 const deleteObject = async (imageUrl) => {
   try {

@@ -168,6 +168,15 @@ function generateUniqueOrderId() {
   return `ORDER_${timestamp}${randomPart}${nanoidPart}`;
 }
 
+
+const changeDateTimeZone = (date, timezone) => {
+  if (!date || !timezone) {
+    throw new Error("Date and timezone are required");
+  }
+  const options = { timeZone: timezone, hour12: false };
+  return new Date(date.toLocaleString("en-US", options));
+}
+
 export {
   generateReferralCode,
   generateUniqueUserId,
@@ -177,5 +186,6 @@ export {
   generateTicketId,
   generateQRCodeData,
   convertTo12Hour,
-  generateUniqueOrderId
+  generateUniqueOrderId,
+  changeDateTimeZone
 };

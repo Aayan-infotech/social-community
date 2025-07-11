@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+import mongoose, { get } from "mongoose";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import VirtualEvent from "../models/virtualEvent.model.js";
 import { ApiError } from "../utils/ApiError.js";
@@ -8,7 +8,8 @@ import { isValidObjectId } from "../utils/isValidObjectId.js";
 import TicketBooking from "../models/ticketBooking.model.js";
 import { paymentSheet } from "../services/stripeService.js";
 import { generateAndSendTicket } from "../services/generateTicket.js";
-import { convertTo12Hour, generateTicketId } from "../utils/HelperFunctions.js";
+import { changeDateTimeZone, convertTo12Hour, generateTicketId } from "../utils/HelperFunctions.js";
+import { getTimezoneDateProjection } from "../utils/timezoneProjector.js";
 
 
 const addEvent = asyncHandler(async (req, res) => {
@@ -37,12 +38,15 @@ const addEvent = asyncHandler(async (req, res) => {
     }
 
 
+    // Event Start Date and Time 
+    const eventStartDateTime = new Date(`${eventStartDate}T${eventTimeStart}`);
+    const eventEndDateTime = new Date(`${eventEndDate}T${eventTimeEnd}`);
 
-    if (new Date(eventStartDate) < new Date(Date.now() - 24 * 60 * 60 * 1000)) {
-        throw new ApiError(400, "Event start date cannot be in the past");
+    if (new Date(eventStartDateTime) < new Date()) {
+        throw new ApiError(400, "Event start date and time cannot be in the past");
     }
 
-    if (new Date(eventStartDate) > new Date(eventEndDate)) {
+    if (new Date(eventStartDateTime) > new Date(eventEndDateTime)) {
         throw new ApiError(400, "Event start date cannot be after the end date");
     }
 
@@ -63,8 +67,8 @@ const addEvent = asyncHandler(async (req, res) => {
         eventName,
         eventDescription,
         eventLocation,
-        eventStartDate,
-        eventEndDate,
+        eventStartDate: eventStartDateTime,
+        eventEndDate: eventEndDateTime,
         ticketPrice,
         eventTimeStart,
         eventTimeEnd,
@@ -81,9 +85,12 @@ const addEvent = asyncHandler(async (req, res) => {
 });
 
 const getEvents = asyncHandler(async (req, res) => {
+
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.max(1, parseInt(req.query.limit) || 10);
     const skip = (page - 1) * limit;
+
+    const timezone = req.headers?.timezone || "Central Daylight Time";
 
     // Search Event By Event Name or User Name
     const searchQuery = req.query.search || "";
@@ -97,10 +104,8 @@ const getEvents = asyncHandler(async (req, res) => {
 
     aggregation.push({
         $match: {
-            $or: [
-                { eventStartDate: { $gte: new Date() } },
-                { eventEndDate: { $lte: new Date() } }
-            ]
+            eventStartDate: { $gte: new Date() },
+            eventEndDate: { $gte: new Date() },
         }
     });
 
@@ -141,10 +146,8 @@ const getEvents = asyncHandler(async (req, res) => {
                         eventName: 1,
                         eventDescription: 1,
                         eventLocation: 1,
-                        eventStartDate: 1,
-                        eventTimeStart: 1,
-                        eventTimeEnd: 1,
-                        eventEndDate: 1,
+                        ...getTimezoneDateProjection("eventStartDate", timezone, "eventStartDate"),
+                        ...getTimezoneDateProjection("eventEndDate", timezone, "eventEndDate"),
                         ticketPrice: 1,
                         eventImage: 1,
                         userId: 1,
@@ -194,6 +197,8 @@ const myEvenets = asyncHandler(async (req, res) => {
         throw new ApiError(400, "Invalid type parameter. Must be 'all', 'upcoming', or 'past'");
     }
 
+    const timezone = req.headers?.timezone || "UTC";
+
     const userId = req.user.userId;
 
     const aggregation = [];
@@ -206,45 +211,13 @@ const myEvenets = asyncHandler(async (req, res) => {
     if (type === "upcoming") {
         aggregation.push({
             $match: {
-                $expr: {
-                    $gte: [
-                        {
-                            $dateFromString: {
-                                dateString: {
-                                    $concat: [
-                                        { $dateToString: { format: "%Y-%m-%d", date: "$eventStartDate" } },
-                                        "T",
-                                        "$eventTimeStart",
-                                        ":00.000Z"
-                                    ]
-                                }
-                            }
-                        },
-                        new Date()
-                    ]
-                }
+                eventStartDate: { $gte: new Date() }
             }
         });
     } else if (type === "past") {
         aggregation.push({
             $match: {
-                $expr: {
-                    $lt: [
-                        {
-                            $dateFromString: {
-                                dateString: {
-                                    $concat: [
-                                        { $dateToString: { format: "%Y-%m-%d", date: "$eventEndDate" } },
-                                        "T",
-                                        "$eventTimeEnd",
-                                        ":00.000Z"
-                                    ]
-                                }
-                            }
-                        },
-                        new Date()
-                    ]
-                }
+                eventEndDate: { $lt: new Date() }
             }
         });
     }
@@ -277,10 +250,8 @@ const myEvenets = asyncHandler(async (req, res) => {
                         eventName: 1,
                         eventDescription: 1,
                         eventLocation: 1,
-                        eventStartDate: 1,
-                        eventTimeStart: 1,
-                        eventTimeEnd: 1,
-                        eventEndDate: 1,
+                        ...getTimezoneDateProjection("eventStartDate", timezone, "eventStartDate"),
+                        ...getTimezoneDateProjection("eventEndDate", timezone, "eventEndDate"),
                         ticketPrice: 1,
                         eventImage: 1,
                         userId: 1,
@@ -338,7 +309,21 @@ const updateEvent = asyncHandler(async (req, res) => {
         throw new ApiError(403, "You are not authorized to update this event");
     }
 
-    if (new Date(eventStartDate) > new Date(eventEndDate)) {
+    const isKYCCompleted = req.user?.isKYCVerified;
+    if (!isKYCCompleted) {
+        throw new ApiError(403, "KYC verification is required to update a virtual event");
+    }
+    const existingEvent = await VirtualEvent.findOne({ eventName, _id: { $ne: eventId } });
+    if (existingEvent) {
+        throw new ApiError(400, "Event with this name already exists");
+    }
+
+    // Event Start Date and Time 
+    const eventStartDateTime = new Date(`${eventStartDate}T${eventTimeStart}`);
+    const eventEndDateTime = new Date(`${eventEndDate}T${eventTimeEnd}`);
+
+
+    if (eventStartDateTime > eventEndDateTime) {
         throw new ApiError(400, "Event start date cannot be after the end date");
     }
 
@@ -360,12 +345,12 @@ const updateEvent = asyncHandler(async (req, res) => {
         eventName,
         eventDescription,
         eventLocation,
-        eventStartDate,
-        eventEndDate,
+        eventStartDate: eventStartDateTime,
+        eventEndDate: eventEndDateTime,
         ticketPrice,
         eventTimeEnd,
         eventTimeStart,
-        eventImage: eventImageUrl,
+        eventImage: eventImageUrl ? eventImageUrl : 'https://social-bucket-p8c1ayeq.s3.us-east-1.amazonaws.com/eventImage-1751519688680-594049422.png',
     }, { new: true });
 
     if (!updatedEvent) {
@@ -407,10 +392,8 @@ const eventDetails = asyncHandler(async (req, res) => {
             eventName: 1,
             eventDescription: 1,
             eventLocation: 1,
-            eventStartDate: 1,
-            eventTimeStart: 1,
-            eventTimeEnd: 1,
-            eventEndDate: 1,
+            ...getTimezoneDateProjection("eventStartDate", req.headers?.timezone || "UTC", "eventStartDate"),
+            ...getTimezoneDateProjection("eventEndDate", req.headers?.timezone || "UTC", "eventEndDate"),
             ticketPrice: 1,
             eventImage: 1,
             userId: 1,
@@ -463,8 +446,6 @@ const bookTickets = asyncHandler(async (req, res) => {
             eventLocation: 1,
             eventStartDate: 1,
             eventEndDate: 1,
-            eventTimeStart: 1,
-            eventTimeEnd: 1,
             ticketPrice: 1,
             eventImage: 1,
             userId: 1,
@@ -490,14 +471,10 @@ const bookTickets = asyncHandler(async (req, res) => {
         throw new ApiError(400, "Event creator does not have a Stripe account ID");
     }
 
-    const eventStartDate = eventDetails.eventStartDate.toISOString().split('T')[0];
-    const eventEndDate = eventDetails.eventEndDate.toISOString().split('T')[0];
-    const eventTimeStart = eventDetails.eventTimeStart;
-    const eventTimeEnd = eventDetails.eventTimeEnd;
-    const bookingDateTime = new Date(`${bookingDate}T${bookingTime}`);
 
-    const eventStartDateTime = new Date(`${eventStartDate}T${eventTimeStart}`);
-    const eventEndDateTime = new Date(`${eventEndDate}T${eventTimeEnd}`);
+    const bookingDateTime = new Date(`${bookingDate}T${bookingTime}`);
+    const eventStartDateTime = new Date(eventDetails.eventStartDate);
+    const eventEndDateTime = new Date(eventDetails.eventEndDate);
 
 
     if (bookingDateTime < eventStartDateTime || bookingDateTime > eventEndDateTime) {
@@ -518,7 +495,7 @@ const bookTickets = asyncHandler(async (req, res) => {
         totalPrice,
         bookingStatus: "pending",
         paymentStatus: "pending",
-        bookingDate,
+        bookingDate: bookingDateTime,
         bookingTime,
         ticketId
     });
@@ -562,15 +539,21 @@ const updateBookingStatus = asyncHandler(async (req, res) => {
         throw new ApiError(400, "Invalid payment status. Must be 'pending', 'completed', or 'failed'");
     }
 
-    const bookingTime12 = convertTo12Hour(booking.bookingTime);
+    // const bookingDateTime = new Date(booking.bookingDate);
+    const bookingDateTime = changeDateTimeZone(new Date(booking.bookingDate), req.headers?.timezone || "UTC");
+
+    const bookingDate = bookingDateTime.toISOString().split('T')[0];
+    const bookingTime = convertTo12Hour(bookingDateTime.toTimeString().split(' ')[0]);
+
+
 
     const qrCodeData = `${booking.ticketId}-${booking.eventId._id}`;
     const eventDetails = {
         ticketId: booking.ticketId,
         eventId: booking.eventId._id,
         eventName: booking.eventId.eventName,
-        date: booking.bookingDate.toISOString().split('T')[0],
-        time: bookingTime12,
+        date: bookingDate,
+        time: bookingTime,
         venue: booking.eventId.eventLocation,
         noOfTickets: booking.ticketCount,
         attendeeName: req.user.name,
@@ -660,8 +643,7 @@ const getBooking = asyncHandler(async (req, res) => {
                         eventStartDate: "$eventDetails.eventStartDate",
                         eventEndDate: "$eventDetails.eventEndDate",
                         eventImage: "$eventDetails.eventImage",
-                        bookingDate: 1,
-                        bookingTime: 1,
+                        ...getTimezoneDateProjection("bookingDate", req.headers?.timezone || "UTC", "bookingDate"),
                         ticketCount: 1,
                         totalPrice: 1,
                         bookingStatus: 1,
@@ -693,6 +675,116 @@ const getBooking = asyncHandler(async (req, res) => {
 });
 
 
+const getAllTickets = asyncHandler(async (req, res) => {
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.max(1, parseInt(req.query.limit) || 10);
+    const skip = (page - 1) * limit;
+
+
+    const aggregation = [];
+    aggregation.push({
+        $match: {
+            eventId: new mongoose.Types.ObjectId(req.params.eventId),
+        }
+    });
+    aggregation.push({
+        $sort: { bookingDate: -1 }
+    });
+    aggregation.push({
+        $lookup: {
+            from: "virtualevents",
+            localField: "eventId",
+            foreignField: "_id",
+            as: "eventDetails"
+        }
+    });
+    aggregation.push({
+        $unwind: "$eventDetails",
+    });
+
+    aggregation.push({
+        $lookup: {
+            from: "users",
+            localField: "userId",
+            foreignField: "userId",
+            as: "userDetails"
+        }
+    });
+    aggregation.push({
+        $unwind: "$userDetails",
+    });
+
+    aggregation.push({
+        $facet: {
+            tickets: [
+                { $skip: skip },
+                { $limit: limit },
+                {
+                    $project: {
+                        _id: 1,
+                        ticketId: 1,
+                        eventId: 1,
+                        userId: 1,
+                        eventDetails: {
+                            _id: "$eventDetails._id",
+                            eventName: "$eventDetails.eventName",
+                            eventLocation: "$eventDetails.eventLocation",
+                            ...getTimezoneDateProjection("eventDetails.eventStartDate", req.headers?.timezone || "UTC", "eventStartDate"),
+                            ...getTimezoneDateProjection("eventDetails.eventEndDate", req.headers?.timezone || "UTC", "eventEndDate"),
+                            eventImage: "$eventDetails.eventImage",
+                        },
+                        userDetails: {
+                            userId: "$userDetails.userId",
+                            email: "$userDetails.email",
+                            mobile: "$userDetails.mobile",
+                            profile_image: "$userDetails.profile_image",
+                            name: "$userDetails.name"
+                        },
+                        ...getTimezoneDateProjection("bookingDate", req.headers?.timezone || "UTC", "bookingDate"),
+                        ticketCount: 1,
+                        totalPrice: 1,
+                        bookingStatus: 1,
+                        paymentStatus: 1,
+                    }
+                },
+            ],
+            totalCount: [{ $count: "count" }],
+        }
+    });
+
+    const result = await TicketBooking.aggregate(aggregation);
+
+    const tickets = result[0]?.tickets || [];
+    const totalCount = result[0]?.totalCount[0]?.count || 0;
+    const totalPages = Math.ceil(totalCount / limit);
+
+    return res.json(new ApiResponse(200, tickets.length > 0 ? "Tickets fetched successfully" : "No tickets found", tickets.length > 0 ? {
+        tickets,
+        total_page: totalPages,
+        current_page: page,
+        total_records: totalCount,
+        per_page: limit,
+    } : null));
+});
+
+const getEventDropdown = asyncHandler(async (req, res) => {
+    const aggregation = [];
+    aggregation.push({
+        $match: {
+            userId: req.user.userId,
+        }
+    });
+    aggregation.push({
+        $project: {
+            _id: 1,
+            eventName: 1,
+        }
+    });
+
+    const events = await VirtualEvent.aggregate(aggregation);
+    return res.json(new ApiResponse(200, "Event dropdown fetched successfully", events));
+});
+
 export {
     addEvent,
     getEvents,
@@ -702,5 +794,7 @@ export {
     updateBookingStatus,
     cancelBooking,
     getBooking,
-    updateEvent
+    updateEvent,
+    getAllTickets,
+    getEventDropdown
 };
