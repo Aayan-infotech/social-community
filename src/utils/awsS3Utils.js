@@ -164,11 +164,20 @@ const compressVideo = (inputPath, outputFolder) => {
   return new Promise((resolve, reject) => {
     const compressedFilename = `compressed-${Date.now()}-${Math.round(Math.random() * 1e9)}.mp4`;
     const outputPath = path.join(outputFolder, compressedFilename);
+ 
     ffmpeg(inputPath)
       .videoCodec("libx264")
       .audioCodec("aac")
       .size("480x360")
-      .outputOptions(["-preset slow", "-crf 28", "-movflags +faststart"])
+      .fps(30)
+      .outputOptions([
+        "-preset slow",           
+        "-crf 28",                
+        "-profile:v main",       
+        "-level 3.1",             
+        "-pix_fmt yuv420p",       
+        "-movflags +faststart"    
+      ])
       .on("end", () => resolve({ success: true, outputPath }))
       .on("error", (err) => reject(err))
       .save(outputPath);
