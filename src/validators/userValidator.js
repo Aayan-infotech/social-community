@@ -38,17 +38,15 @@ const userValidationSchema = Joi.object({
         "Mobile number must include a valid country code and be in the format: +<country code><number>.",
       "any.required": "Mobile number is required.",
     }),
-  country: Joi.string().required().messages({
+  country: Joi.string().optional().allow("").messages({
     "string.base": "Country must be a string.",
-    "string.empty": "Country is required.",
-    "any.required": "Country is required.",
   }),
-  state: Joi.string().required().messages({
+  state: Joi.string().optional().allow("").messages({
     "string.base": "State must be a string.",
     "string.empty": "State is required.",
     "any.required": "State is required.",
   }),
-  city: Joi.string().required().messages({
+  city: Joi.string().optional().allow("").messages({
     "string.base": "City must be a string.",
     "string.empty": "City is required.",
     "any.required": "City is required.",
