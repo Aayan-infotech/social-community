@@ -8,6 +8,7 @@ import {
     bookTicketSchema,
     updateBookingStatusSchema,
     cancelBookingSchema,
+    ticketExhaustSchema
 } from "../validators/virtualEventValidator.js";
 import {
     addEvent,
@@ -22,6 +23,7 @@ import {
     getAllTickets,
     getEventDropdown,
     getAllCancelledTickets,
+    ticketExhaust
 } from "../controllers/virtualEvent.controller.js";
 
 const router = Router();
@@ -72,5 +74,6 @@ router.get('/get-booking',verifyJWT,getBooking);
 router.get('/getAllTickets/:eventId',verifyJWT,getAllTickets);
 router.get('/getEventDropdown',verifyJWT,getEventDropdown);
 router.get('/getCancelledTickets/:eventId',verifyJWT,getAllCancelledTickets);
+router.post('/ticket-exhaust',verifyJWT,validateRequest(ticketExhaustSchema),ticketExhaust);
 
 export default router;

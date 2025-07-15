@@ -137,8 +137,8 @@ function generateTicketId() {
   return 'TKT-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9).toUpperCase();
 }
 
-async function generateQRCodeData(ticketId, eventId) {
-  const text = `${ticketId}-${eventId}`;
+async function generateQRCodeData(data) {
+  const text = JSON.stringify(data);
   const dataURL = await QRCode.toDataURL(text);
   return dataURL;
 }
