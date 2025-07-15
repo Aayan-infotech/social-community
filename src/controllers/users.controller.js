@@ -27,7 +27,6 @@ import FAQModel from "../models/FAQ.model.js";
 import Skill from "../models/skills.model.js";
 import InterestInProfileModel from "../models/matrimonialProfileInterest.model.js";
 
-
 const getUserProfile = asyncHandler(async (req, res) => {
   const userId = req.query.user_id || req.user.userId;
 
@@ -101,9 +100,7 @@ const updateUserProfile = asyncHandler(async (req, res) => {
 
   const userExists = await User.findOne({ _id: { $ne: req.user._id } });
 
-  let profile_image = req.user?.profile_image
-    ? req.user?.profile_image
-    : '';
+  let profile_image = req.user?.profile_image ? req.user?.profile_image : "";
 
   if (req.files && req.files.profile_image) {
     // Delete the previous profile image from AWS
@@ -122,7 +119,10 @@ const updateUserProfile = asyncHandler(async (req, res) => {
     }
 
     // remove the oringinal file from the server
-    if (req.files.profile_image[0].path && fs.existsSync(req.files.profile_image[0].path)) {
+    if (
+      req.files.profile_image[0].path &&
+      fs.existsSync(req.files.profile_image[0].path)
+    ) {
       fs.unlinkSync(req.files.profile_image[0].path);
     }
   }
@@ -174,7 +174,10 @@ const updateProfessionalImage = asyncHandler(async (req, res) => {
     }
 
     // remove the oringinal file from the server
-    if (req.files.professional_image[0].path && fs.existsSync(req.files.professional_image[0].path)) {
+    if (
+      req.files.professional_image[0].path &&
+      fs.existsSync(req.files.professional_image[0].path)
+    ) {
       fs.unlinkSync(req.files.professional_image[0].path);
     }
   }
@@ -493,12 +496,12 @@ const getFriendRequestList = asyncHandler(async (req, res) => {
         : "No friend requests found",
       friendRequests.length > 0
         ? {
-          friendRequests,
-          total_page: totalPages,
-          current_page: page,
-          total_records: totalCount,
-          per_page: limit,
-        }
+            friendRequests,
+            total_page: totalPages,
+            current_page: page,
+            total_records: totalCount,
+            per_page: limit,
+          }
         : null
     )
   );
@@ -572,12 +575,12 @@ const getFriendList = asyncHandler(async (req, res) => {
         : "No friends found",
       friends.length > 0
         ? {
-          friends,
-          total_page: totalPages,
-          current_page: page,
-          total_records: totalCount,
-          per_page: limit,
-        }
+            friends,
+            total_page: totalPages,
+            current_page: page,
+            total_records: totalCount,
+            per_page: limit,
+          }
         : null
     )
   );
@@ -1224,31 +1227,76 @@ const getStories = asyncHandler(async (req, res) => {
 });
 
 const getAllUsers = asyncHandler(async (req, res) => {
-  // pagination
   const page = Math.max(1, parseInt(req.query.page) || 1);
   const limit = Math.max(1, parseInt(req.query.limit) || 10);
   const skip = (page - 1) * limit;
 
-  // add the pagination to the query
-  const users = await User.find({ role: "user" })
-    .select(
-      "name userId email mobile profile_image gender city state country aboutMe referralCode isDeleted"
-    )
-    .skip(skip)
-    .limit(limit);
-  const totalUsers = await User.countDocuments({ role: "user" });
-  const totalPages = Math.ceil(totalUsers / limit);
+  const sortBy = req.query.sortBy || "createdAt";
+  const sortOrder = req.query.sortOrder === "asc" ? 1 : -1;
+  const search = req.query.search || "";
+
+  const aggregation = [];
+  if (search) {
+    aggregation.push({
+      $match: {
+        $or: [
+          { name: { $regex: search, $options: "i" } },
+          { email: { $regex: search, $options: "i" } },
+          { mobile: { $regex: search, $options: "i" } },
+        ],
+      },
+    });
+  }
+
+  aggregation.push({
+    $match: { role: "user" },
+  });
+
+  aggregation.push({
+    $sort: { [sortBy]: sortOrder },
+  });
+
+  aggregation.push({
+    $facet: {
+      data: [
+        { $skip: skip },
+        { $limit: limit },
+        {
+          $project: {
+            _id: 0,
+            name: 1,
+            email: 1,
+            mobile: 1,
+            profile_image: 1,
+            gender: 1,
+            city: 1,
+            state: 1,
+            country: 1,
+            aboutMe: 1,
+            referralCode: 1,
+            isDeleted: 1,
+          },
+        },
+      ],
+      total: [{ $count: "count" }],
+    },
+  });
+
+  const result = await User.aggregate(aggregation);
+
+  const users = result[0].data;
+  const totalCount = result[0].total[0]?.count || 0;
+
+  const totalPages = Math.ceil(totalCount / limit);
   const currentPage = page;
-  const totalRecords = totalUsers;
-  const perPage = limit;
 
   res.json(
     new ApiResponse(200, "Fetched all users successfully", {
       users,
       total_page: totalPages,
       current_page: currentPage,
-      total_records: totalRecords,
-      per_page: perPage,
+      total_records: totalCount,
+      per_page: limit,
     })
   );
 });
@@ -1624,7 +1672,8 @@ const getMatrimonialProfileSuggestions = asyncHandler(async (req, res) => {
 
   const userId = req.user.userId;
 
-  let { minAge, maxAge, minHeight, maxHeight, religion, caste, maritalStatus } = req.query;
+  let { minAge, maxAge, minHeight, maxHeight, religion, caste, maritalStatus } =
+    req.query;
   minAge = parseInt(minAge) || 18;
   maxAge = parseInt(maxAge) || 60;
 
@@ -1632,17 +1681,19 @@ const getMatrimonialProfileSuggestions = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Invalid age range provided");
   }
 
-  maritalStatus = maritalStatus ? maritalStatus.split(",") : ["single", "divorced", "widowed"];
-  religion = religion ? religion.split(",") : ["Hindu", "Muslim", "Christian", "Sikh", "Jain", "Buddhist", "Other"];
+  maritalStatus = maritalStatus
+    ? maritalStatus.split(",")
+    : ["single", "divorced", "widowed"];
+  religion = religion
+    ? religion.split(",")
+    : ["Hindu", "Muslim", "Christian", "Sikh", "Jain", "Buddhist", "Other"];
   caste = caste ? caste.split(",") : [];
-
 
   const baseMatchPipeline = [
     { $match: { role: "user", matrimonialAboutMe: { $ne: null } } },
     { $match: { userId: { $ne: userId } } },
-    { $match: { gender: { $ne: req.user.gender } } }
+    { $match: { gender: { $ne: req.user.gender } } },
   ];
-
 
   const aggregation = [];
   aggregation.push(...baseMatchPipeline);
@@ -1656,7 +1707,6 @@ const getMatrimonialProfileSuggestions = asyncHandler(async (req, res) => {
       },
     },
   });
-
 
   if (minHeight && maxHeight) {
     aggregation.push({
@@ -1689,7 +1739,6 @@ const getMatrimonialProfileSuggestions = asyncHandler(async (req, res) => {
     });
   }
 
-
   aggregation.push({
     $lookup: {
       from: "interestinprofiles",
@@ -1698,7 +1747,6 @@ const getMatrimonialProfileSuggestions = asyncHandler(async (req, res) => {
       as: "interests",
     },
   });
-
 
   aggregation.push({
     $addFields: {
@@ -1749,7 +1797,7 @@ const getMatrimonialProfileSuggestions = asyncHandler(async (req, res) => {
         },
       ],
       totalCount: [{ $count: "count" }],
-    }
+    },
   });
 
   const results = await User.aggregate(aggregation);
@@ -1761,14 +1809,18 @@ const getMatrimonialProfileSuggestions = asyncHandler(async (req, res) => {
   return res.json(
     new ApiResponse(
       200,
-      suggestions.length > 0 ? "Matrimonial profile suggestions fetched successfully" : "No matrimonial profile suggestions found",
-      suggestions.length > 0 ? {
-        suggestions,
-        total_page: totalPages,
-        current_page: page,
-        total_records: totalCount,
-        per_page: limit,
-      } : null
+      suggestions.length > 0
+        ? "Matrimonial profile suggestions fetched successfully"
+        : "No matrimonial profile suggestions found",
+      suggestions.length > 0
+        ? {
+            suggestions,
+            total_page: totalPages,
+            current_page: page,
+            total_records: totalCount,
+            per_page: limit,
+          }
+        : null
     )
   );
 });
@@ -1780,7 +1832,7 @@ const sendInterest = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Receiver ID is required");
   }
 
-  // Check if any sender or receiver is the same as 
+  // Check if any sender or receiver is the same as
   const aggregation = [];
   aggregation.push({
     $match: {
@@ -1788,7 +1840,7 @@ const sendInterest = asyncHandler(async (req, res) => {
         { senderId: req.user.userId, receiverId },
         { senderId: receiverId, receiverId: req.user.userId },
       ],
-      status: { $in: ["pending", "accepted"] }
+      status: { $in: ["pending", "accepted"] },
     },
   });
   const existingInterest = await InterestInProfileModel.aggregate(aggregation);
@@ -1836,9 +1888,8 @@ const acceptRejectInterest = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Invalid friend id provided");
   }
 
-  let message = '';
+  let message = "";
   if (status === "accepted") {
-
     // Add the user to the friends list
     const friendList = await FriendsModel.findOneAndUpdate(
       { userId },
@@ -1875,8 +1926,6 @@ const acceptRejectInterest = asyncHandler(async (req, res) => {
 
   await interest.save();
 
-
-
   res.json(new ApiResponse(200, message, interest));
 });
 
@@ -1896,8 +1945,6 @@ const getInterrestedProfiles = asyncHandler(async (req, res) => {
     },
   });
 
-
-
   aggregation.push({
     $lookup: {
       from: "users",
@@ -1912,7 +1959,6 @@ const getInterrestedProfiles = asyncHandler(async (req, res) => {
       preserveNullAndEmptyArrays: true,
     },
   });
-
 
   aggregation.push({
     $facet: {
@@ -1942,7 +1988,6 @@ const getInterrestedProfiles = asyncHandler(async (req, res) => {
   });
 
   const results = await InterestInProfileModel.aggregate(aggregation);
-  console.log(results);
   const interestedProfiles = results[0]?.interestedProfiles || [];
   const totalCount = results[0]?.totalCount[0]?.count || 0;
   const totalPages = Math.ceil(totalCount / limit);
@@ -1950,19 +1995,20 @@ const getInterrestedProfiles = asyncHandler(async (req, res) => {
   res.json(
     new ApiResponse(
       200,
-      interestedProfiles.length > 0 ? "Interests fetched successfully" : "No interests found",
+      interestedProfiles.length > 0
+        ? "Interests fetched successfully"
+        : "No interests found",
       interestedProfiles.length > 0
         ? {
-          interestedProfiles,
-          total_page: totalPages,
-          current_page: page,
-          total_records: totalCount,
-          per_page: limit,
-        }
+            interestedProfiles,
+            total_page: totalPages,
+            current_page: page,
+            total_records: totalCount,
+            per_page: limit,
+          }
         : null
     )
   );
-
 });
 
 const getAllInfoPages = asyncHandler(async (req, res) => {
@@ -1985,7 +2031,7 @@ const searchAllUsers = asyncHandler(async (req, res) => {
     $match: {
       role: "user",
       userId: { $ne: userId },
-    }
+    },
   });
   aggregation.push({
     $match: {
@@ -2087,12 +2133,12 @@ const searchAllUsers = asyncHandler(async (req, res) => {
       users.length > 0 ? "Users fetched successfully" : "No users found",
       users.length > 0
         ? {
-          users,
-          total_page: totalPages,
-          current_page: page,
-          total_records: totalCount,
-          per_page: limit,
-        }
+            users,
+            total_page: totalPages,
+            current_page: page,
+            total_records: totalCount,
+            per_page: limit,
+          }
         : null
     )
   );
@@ -2110,7 +2156,6 @@ const deleteFriendRequest = asyncHandler(async (req, res) => {
   });
   res.json(new ApiResponse(200, "Friend request deleted successfully"));
 });
-
 
 const sendNotification = asyncHandler(async (req, res) => {
   const { receiverId, message } = req.body;
@@ -2133,10 +2178,9 @@ const sendNotification = asyncHandler(async (req, res) => {
     }
   }
 
-  return res.status(200).json(
-    new ApiResponse(200, "Notification sent successfully")
-  );
-
+  return res
+    .status(200)
+    .json(new ApiResponse(200, "Notification sent successfully"));
 });
 
 const uploadChatDocument = asyncHandler(async (req, res) => {
@@ -2152,7 +2196,6 @@ const uploadChatDocument = asyncHandler(async (req, res) => {
 
   res.json(new ApiResponse(200, "File uploaded successfully", uploadStatus));
 });
-
 
 const removeFriend = asyncHandler(async (req, res) => {
   const { friendId } = req.body;
@@ -2231,5 +2274,5 @@ export {
   getMatrimonialProfileSuggestions,
   sendInterest,
   acceptRejectInterest,
-  getInterrestedProfiles
+  getInterrestedProfiles,
 };

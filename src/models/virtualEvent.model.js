@@ -1,53 +1,60 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
-const virtualEventSchema = new mongoose.Schema({
+const virtualEventSchema = new mongoose.Schema(
+  {
     eventName: {
-        type: String,
-        required: true,
-        unique: true,
+      type: String,
+      required: true,
+      unique: true,
     },
     eventDescription: {
-        type: String,
-        required: false,
+      type: String,
+      required: false,
     },
     eventLocation: {
-        type: String,
-        required: true,
+      type: String,
+      required: true,
     },
     eventStartDate: {
-        type: Date,
-        required: true,
+      type: Date,
+      required: true,
     },
     eventEndDate: {
-        type: Date,
-        required: true,
+      type: Date,
+      required: true,
     },
     eventTimeStart: {
-        type: String,
-        required: true,
+      type: String,
+      required: true,
     },
     eventTimeEnd: {
-        type: String,
-        required: true,
+      type: String,
+      required: true,
     },
     eventImage: {
-        type: String,
-        required: false,
+      type: String,
+      required: false,
     },
     ticketPrice: {
-        type: Number,
-        required: true,
-        default: 0,
+      type: Number,
+      required: true,
+      default: 0,
     },
-    userId:{
-        type: String,
-        required: true,
-        ref:'User',
-    }
-}, {
+    userId: {
+      type: String,
+      required: true,
+      ref: "User",
+    },
+    noOfSlots: {
+      type: Number,
+      required: false,
+    },
+  },
+  {
     timestamps: true,
     versionKey: false,
-});
+  }
+);
 
-const VirtualEvent = mongoose.model('VirtualEvent', virtualEventSchema);
+const VirtualEvent = mongoose.model("VirtualEvent", virtualEventSchema);
 export default VirtualEvent;

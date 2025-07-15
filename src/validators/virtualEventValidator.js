@@ -31,6 +31,7 @@ const virtualEventSchema = Joi.object({
     "number.base": "Ticket price must be a number",
     "any.required": "Ticket price is required",
   }),
+  noOfSlots: Joi.string().optional().allow(''),
 });
 
 const bookingValidationSchema = Joi.object({

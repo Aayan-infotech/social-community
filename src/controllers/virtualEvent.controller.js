@@ -25,6 +25,7 @@ const addEvent = asyncHandler(async (req, res) => {
     ticketPrice,
     eventTimeStart,
     eventTimeEnd,
+    noOfSlots,
   } = req.body;
 
   const isKYCCompleted = req.user?.isKYCVerified;
@@ -34,6 +35,14 @@ const addEvent = asyncHandler(async (req, res) => {
       "KYC verification is required to create a virtual event"
     );
   }
+
+  const role = req.user?.role;
+
+  if (!role.includes("event_manager")) {
+    req.user.role.push("event_manager");
+    await req.user.save();
+  }
+
 
   // eventName is unique, so we check if it already exists
   const existingEvent = await VirtualEvent.findOne({ eventName });
@@ -76,6 +85,7 @@ const addEvent = asyncHandler(async (req, res) => {
       ? eventImageUrl
       : "https://social-bucket-p8c1ayeq.s3.us-east-1.amazonaws.com/eventImage-1751519688680-594049422.png",
     userId: req.user.userId,
+    noOfSlots: noOfSlots,
   });
 
   const savedEvent = await newEvent.save();
@@ -180,12 +190,12 @@ const getEvents = asyncHandler(async (req, res) => {
         : "No virtual events found",
       virtualEvents.length > 0
         ? {
-            virtualEvents,
-            total_page: Math.ceil(totalCount / limit),
-            current_page: page,
-            total_records: totalCount,
-            per_page: limit,
-          }
+          virtualEvents,
+          total_page: Math.ceil(totalCount / limit),
+          current_page: page,
+          total_records: totalCount,
+          per_page: limit,
+        }
         : null
     )
   );
@@ -293,12 +303,12 @@ const myEvenets = asyncHandler(async (req, res) => {
         : "No virtual events found",
       virtualEvents.length > 0
         ? {
-            virtualEvents,
-            total_page: Math.ceil(totalCount / limit),
-            current_page: page,
-            total_records: totalCount,
-            per_page: limit,
-          }
+          virtualEvents,
+          total_page: Math.ceil(totalCount / limit),
+          current_page: page,
+          total_records: totalCount,
+          per_page: limit,
+        }
         : null
     )
   );
@@ -319,6 +329,7 @@ const updateEvent = asyncHandler(async (req, res) => {
     eventTimeEnd,
     eventEndDate,
     ticketPrice,
+    noOfSlots,
   } = req.body;
 
   // Check if the event Name is already taken by another event
@@ -380,6 +391,7 @@ const updateEvent = asyncHandler(async (req, res) => {
       eventImage: eventImageUrl
         ? eventImageUrl
         : "https://social-bucket-p8c1ayeq.s3.us-east-1.amazonaws.com/eventImage-1751519688680-594049422.png",
+      noOfSlots: noOfSlots,
     },
     { new: true }
   );
@@ -490,6 +502,7 @@ const bookTickets = asyncHandler(async (req, res) => {
       eventEndDate: 1,
       ticketPrice: 1,
       eventImage: 1,
+      noOfSlots: 1,
       userId: 1,
       userDetails: {
         userId: "$userDetails.userId",
@@ -512,6 +525,15 @@ const bookTickets = asyncHandler(async (req, res) => {
   if (!userDetails.stripeAccountId) {
     throw new ApiError(400, "Event creator does not have a Stripe account ID");
   }
+
+  // update the noOfSlots in the event
+  if (eventDetails.noOfSlots < ticketCount) {
+    throw new ApiError(
+      400,
+      `Not enough slots available. Only ${eventDetails.noOfSlots} slots left`
+    );
+  }
+
 
   const bookingDateTime = new Date(`${bookingDate}T${bookingTime}`);
   const eventStartDateTime = new Date(eventDetails.eventStartDate);
@@ -606,6 +628,29 @@ const updateBookingStatus = asyncHandler(async (req, res) => {
   const bookingTime = convertTo12Hour(
     bookingDateTime.toTimeString().split(" ")[0]
   );
+  if (bookingStatus === "booked" && paymentStatus === "completed") {
+    const eventId = booking.eventId._id;
+    const eventDetails = await VirtualEvent.findById(eventId);
+
+    if (!eventDetails) {
+      throw new ApiError(404, "Event not found");
+    }
+
+    if (eventDetails?.noOfSlots !== null && eventDetails?.noOfSlots !== undefined) {
+      if (eventDetails.noOfSlots < booking.ticketCount) {
+        throw new ApiError(
+          400,
+          `Not enough slots available. Only ${eventDetails.noOfSlots} slots left`
+        );
+      }
+
+      // Update the noOfSlots in the event
+      eventDetails.noOfSlots -= booking.ticketCount;
+
+      await eventDetails.save();
+    }
+  }
+
 
   const qrCodeData = {
     ticketId: booking.ticketId,
@@ -749,12 +794,12 @@ const getBooking = asyncHandler(async (req, res) => {
         : "No bookings found",
       bookings.length > 0
         ? {
-            bookings,
-            total_page: totalPages,
-            current_page: page,
-            total_records: totalCount,
-            per_page: limit,
-          }
+          bookings,
+          total_page: totalPages,
+          current_page: page,
+          total_records: totalCount,
+          per_page: limit,
+        }
         : null
     )
   );
@@ -854,12 +899,12 @@ const getAllTickets = asyncHandler(async (req, res) => {
       tickets.length > 0 ? "Tickets fetched successfully" : "No tickets found",
       tickets.length > 0
         ? {
-            tickets,
-            total_page: totalPages,
-            current_page: page,
-            total_records: totalCount,
-            per_page: limit,
-          }
+          tickets,
+          total_page: totalPages,
+          current_page: page,
+          total_records: totalCount,
+          per_page: limit,
+        }
         : null
     )
   );
@@ -975,7 +1020,6 @@ const getAllCancelledTickets = asyncHandler(async (req, res) => {
 
   const result = await TicketBooking.aggregate(aggregation);
 
-  console.log("Cancelled Tickets Result:", result);
 
   const cancelledTickets = result[0]?.cancelledTickets || [];
   const totalCount = result[0]?.totalCount[0]?.count || 0;
@@ -989,12 +1033,12 @@ const getAllCancelledTickets = asyncHandler(async (req, res) => {
         : "No cancelled tickets found",
       cancelledTickets.length > 0
         ? {
-            tickets: cancelledTickets,
-            total_page: totalPages,
-            current_page: page,
-            total_records: totalCount,
-            per_page: limit,
-          }
+          tickets: cancelledTickets,
+          total_page: totalPages,
+          current_page: page,
+          total_records: totalCount,
+          per_page: limit,
+        }
         : null
     )
   );
@@ -1025,7 +1069,7 @@ const ticketExhaust = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Ticket is already used");
   }
 
-//   throw new ApiError(400, "Ticket is not booked");
+  //   throw new ApiError(400, "Ticket is not booked");
 
   const updatedTicket = await TicketBooking.findOneAndUpdate(
     { ticketId: ticketId },
