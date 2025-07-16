@@ -72,6 +72,8 @@ const addEvent = asyncHandler(async (req, res) => {
     eventImageUrl = eventImage.fileUrl;
   }
 
+  
+
   const newEvent = new VirtualEvent({
     eventName,
     eventDescription,
