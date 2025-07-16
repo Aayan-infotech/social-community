@@ -4,6 +4,7 @@ import { User } from "../models/user.model.js";
 import { ApiError } from "./ApiError.js";
 import QRCode from "qrcode";
 import Order from "../models/orders.model.js";
+import EventLoginUser from "../models/eventLoginUser.model.js";
 
 const generateReferralCode = async function (name) {
   if (!name) {
@@ -177,6 +178,25 @@ const changeDateTimeZone = (date, timezone) => {
   return new Date(date.toLocaleString("en-US", options));
 }
 
+const generateUniqueUsername = async () => {
+  let lastUser = await EventLoginUser.findOne({}, { username: 1 }).sort({ createdAt: -1 });
+  let lastNumber = lastUser ? parseInt(lastUser.username.split("EventUser")[1]) : 0;
+  let newNumber = (lastNumber + 1) % 10000;
+  let formattedId = `EventUser${String(newNumber).padStart(5, "0")}`;
+  return formattedId;
+};
+
+async function generateRandomPassword(length = 12) {
+  const chars =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|;:<>?";
+  let password = "";
+  for (let i = 0; i < length; i++) {
+    const randomIndex = Math.floor(Math.random() * chars.length);
+    password += chars[randomIndex];
+  }
+  return password;
+}
+
 export {
   generateReferralCode,
   generateUniqueUserId,
@@ -187,5 +207,7 @@ export {
   generateQRCodeData,
   convertTo12Hour,
   generateUniqueOrderId,
-  changeDateTimeZone
+  changeDateTimeZone,
+  generateUniqueUsername,
+  generateRandomPassword
 };

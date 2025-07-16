@@ -9,9 +9,6 @@ async function generateAndSendTicket(eventDetails, recipientEmail) {
     try {
         // Generate ticket data
         const ticketId = eventDetails.ticketId ;
-        console.log("Ticket ID:", ticketId);
-        console.log("Event ID:", eventDetails);
-        console.log("QR Code Data:", eventDetails.qrCodeData);
 
         const qrData = await generateQRCodeData(eventDetails.qrCodeData);
 

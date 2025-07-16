@@ -134,6 +134,34 @@ const ticketExhaustSchema = Joi.object({
   }),
 });
 
+const registrationSchema = Joi.object({
+  eventId: Joi.string().required().messages({
+    "string.empty": "Event ID is required",
+    "any.required": "Event ID is required",
+  }),
+  email: Joi.string().email().required().messages({
+    "string.email": "Email must be a valid email address",
+    "string.empty": "Email is required",
+    "any.required": "Email is required",
+  }),
+  name: Joi.string().required().messages({
+    "string.empty": "Name is required",
+    "any.required": "Name is required",
+  }),
+});
+
+const EventLoginUserSchema = Joi.object({
+  username: Joi.string().required().messages({
+    "string.empty": "Username is required",
+    "any.required": "Username is required",
+  }),
+  password: Joi.string().required().messages({
+    "string.empty": "Password is required",
+    "any.required": "Password is required",
+  })
+});
+
+
 export {
   virtualEventSchema,
   bookingValidationSchema,
@@ -141,4 +169,6 @@ export {
   updateBookingStatusSchema,
   cancelBookingSchema,
   ticketExhaustSchema,
+  registrationSchema,
+  EventLoginUserSchema
 };

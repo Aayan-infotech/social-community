@@ -11,9 +11,14 @@ import { generateAndSendTicket } from "../services/generateTicket.js";
 import {
   changeDateTimeZone,
   convertTo12Hour,
+  generateRandomPassword,
   generateTicketId,
+  generateUniqueUsername,
 } from "../utils/HelperFunctions.js";
 import { getTimezoneDateProjection } from "../utils/timezoneProjector.js";
+import EventLoginUser from "../models/eventLoginUser.model.js";
+import { sendEventLoginCredentialEmail } from "../emails/eventLoginCredential.js";
+import { sendEmail } from "../services/emailService.js";
 
 const addEvent = asyncHandler(async (req, res) => {
   const {
@@ -72,7 +77,7 @@ const addEvent = asyncHandler(async (req, res) => {
     eventImageUrl = eventImage.fileUrl;
   }
 
-  
+
 
   const newEvent = new VirtualEvent({
     eventName,
@@ -1088,6 +1093,144 @@ const ticketExhaust = asyncHandler(async (req, res) => {
   );
 });
 
+
+const registration = asyncHandler(async (req, res) => {
+  const { eventId, email, name } = req.body;
+
+  if (!isValidObjectId(eventId)) {
+    throw new ApiError(400, "Invalid event ID");
+  }
+
+  const event = await VirtualEvent.findById(eventId);
+  if (!event) {
+    throw new ApiError(404, "Event not found");
+  }
+
+  // check if the user is already registered for the event
+  const existingRegistration = await EventLoginUser.findOne({
+    eventId: eventId,
+    email: email,
+  });
+  if (existingRegistration) {
+    throw new ApiError(400, "User is already registered for this event");
+  }
+
+  // generate unique Username 
+  const username = await generateUniqueUsername();
+  if (!username) {
+    throw new ApiError(500, "Failed to generate unique username");
+  }
+
+  const password = await generateRandomPassword(8);
+  if (!password) {
+    throw new ApiError(500, "Failed to generate random password");
+  }
+
+  // send the password to the user via email
+  const sendEventLoginHtml = await sendEventLoginCredentialEmail(username, password);
+  const send = await sendEmail(
+    email,
+    "Virtual Event Login Credentials",
+    sendEventLoginHtml
+  );
+
+  if (!send.success) {
+    throw new ApiError(500, "Failed to send event login credentials email");
+  }
+
+  const newRegistration = new EventLoginUser({
+    eventId: eventId,
+    email: email,
+    name: name,
+    username: username,
+    password: password,
+    userId: req.user.userId,
+  });
+  const savedRegistration = await newRegistration.save();
+  if (!savedRegistration) {
+    throw new ApiError(500, "Failed to register for the event");
+  }
+  // remove the password from the response key
+  savedRegistration.password = undefined;
+
+  return res.json(
+    new ApiResponse(200, "Registration successful", {
+      registration: savedRegistration,
+    })
+  );
+});
+
+
+
+const generateAccessAndRefreshTokens = async (userId) => {
+  try {
+    const user = await EventLoginUser.findById(userId);
+    if (!user) {
+      throw new ApiError(404, "User not found");
+    }
+
+    const accessToken = user.generateAccessToken();
+    let refreshToken = user.refreshToken;
+    try {
+      jwt.verify(refreshToken, secret.REFRESH_TOKEN_SECRET);
+    } catch (error) {
+      refreshToken = user.generateRefreshToken();
+      user.refreshToken = refreshToken;
+      await user.save({ validateBeforeSave: false });
+    }
+
+    return { accessToken, refreshToken };
+  } catch (error) {
+    throw new ApiError(
+      500,
+      "Something went wrong while generating refresh and access token"
+    );
+  }
+};
+
+
+const loginEventUser = asyncHandler(async (req, res) => {
+  const { username, password } = req.body;
+  if (!username || !password) {
+    throw new ApiError(400, "Username and password are required");
+  }
+  const user = await EventLoginUser.findOne({ username: username });
+
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
+  if (user.password !== password) {
+    throw new ApiError(401, "Invalid password");
+  }
+  // Send Access & Refresh Token
+  const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(
+    user._id
+  );
+
+  const loggedInUser = await EventLoginUser.findById(user._id).select('-__v -password -createdAt -updatedAt');
+  // cookies
+  const options = {
+    httpOnly: true,
+    secure: true,
+  };
+
+  return res
+    .status(200)
+    .cookie("accessToken", accessToken, options)
+    .cookie("refreshToken", refreshToken, options)
+    .json(
+      new ApiResponse(200, "User Logged in Successfully", {
+        user: loggedInUser,
+        accessToken,
+        refreshToken,
+      })
+    );
+
+
+
+
+});
+
 export {
   addEvent,
   getEvents,
@@ -1102,4 +1245,6 @@ export {
   getEventDropdown,
   getAllCancelledTickets,
   ticketExhaust,
+  registration,
+  loginEventUser
 };

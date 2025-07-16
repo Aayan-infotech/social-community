@@ -131,8 +131,6 @@ const productOrder = async (customerId, amount, currency, transferGroup) => {
       transfer_group: transferGroup,
     });
 
-    console.log(paymentIntent);
-
     return ({
       paymentIntent: paymentIntent.client_secret,
       ephemeralKey: ephemeralKey.secret,
@@ -167,7 +165,7 @@ const paymentSheet = async (customerId, amount, currency, AccountId) => {
       },
     });
 
-    console.log(paymentIntent);
+    // console.log(paymentIntent);
 
     return {
       paymentIntent: paymentIntent.client_secret,
