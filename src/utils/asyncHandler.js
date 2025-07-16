@@ -8,11 +8,15 @@ function asyncHandler(fn) {
             if (req.files) {
                 const keyNames = Object.keys(req.files)[0];
                 if (keyNames) {
-                    req.files[keyNames].forEach(file => {
-                        if (file.path) {
-                            fs.unlinkSync(file.path);
+                    for (const file of req.files[keyNames]) {
+                        if (file.path && fs.existsSync(file.path)) {
+                            try {
+                                fs.unlinkSync(file.path);
+                            } catch (unlinkErr) {
+                                console.warn("File deletion failed in asyncHandler:", unlinkErr.message);
+                            }
                         }
-                    });
+                    }
                 }
             }
             res.status(error.statusCode || 500).json({

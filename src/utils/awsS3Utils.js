@@ -28,8 +28,10 @@ const uploadImage = async (file) => {
     throw new ApiError(400, "Invalid file input");
   }
 
+  const filePath = file.path;
+
   try {
-    const fileContent = fs.readFileSync(file.path);
+    const fileContent = fs.readFileSync(filePath);
 
     const params = {
       Bucket: secret.AWS_BUCKET_NAME,
@@ -41,31 +43,22 @@ const uploadImage = async (file) => {
     const command = new PutObjectCommand(params);
     await s3.send(command);
 
-    // Clean up temp file
-    try {
-      if (fs.existsSync(file.path)) {
-        await fs.promises.unlink(file.path);
-      }
-    } catch (cleanupErr) {
-      console.warn("Failed to remove temp file:", cleanupErr.message);
-    }
-
     return {
       success: true,
       fileUrl: `https://${secret.AWS_BUCKET_NAME}.s3.${secret.AWS_REGION}.amazonaws.com/${file.filename}`,
     };
   } catch (error) {
-    // Attempt file cleanup even on failure
+    console.error("Error uploading file:", error);
+    throw new ApiError(500, "Failed to upload image to S3");
+  } finally {
+    // Always attempt cleanup
     try {
-      if (fs.existsSync(file.path)) {
-        await fs.promises.unlink(file.path);
+      if (fs.existsSync(filePath)) {
+        await fs.promises.unlink(filePath);
       }
     } catch (cleanupErr) {
-      console.warn("Cleanup on error failed:", cleanupErr.message);
+      console.warn("File cleanup failed:", cleanupErr.message);
     }
-
-    console.error("Error uploading file:", error);
-    throw new ApiError(500, error.message || "Error uploading file to S3");
   }
 };
 // Delete the image on the aws upload server using the imageURL
@@ -164,19 +157,19 @@ const compressVideo = (inputPath, outputFolder) => {
   return new Promise((resolve, reject) => {
     const compressedFilename = `compressed-${Date.now()}-${Math.round(Math.random() * 1e9)}.mp4`;
     const outputPath = path.join(outputFolder, compressedFilename);
- 
+
     ffmpeg(inputPath)
       .videoCodec("libx264")
       .audioCodec("aac")
       .size("480x360")
       .fps(30)
       .outputOptions([
-        "-preset slow",           
-        "-crf 28",                
-        "-profile:v main",       
-        "-level 3.1",             
-        "-pix_fmt yuv420p",       
-        "-movflags +faststart"    
+        "-preset slow",
+        "-crf 28",
+        "-profile:v main",
+        "-level 3.1",
+        "-pix_fmt yuv420p",
+        "-movflags +faststart"
       ])
       .on("end", () => resolve({ success: true, outputPath }))
       .on("error", (err) => reject(err))
