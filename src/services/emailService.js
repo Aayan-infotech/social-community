@@ -1,6 +1,7 @@
 import nodemailer from "nodemailer";
 import { loadConfig } from "../config/loadConfig.js";
 const config = await loadConfig();
+console.log("Email configuration loaded:", config.EMAIL_USER, config.EMAIL_PASS);
 
 const transporter = nodemailer.createTransport({
     // host: "sandbox.smtp.mailtrap.io",
