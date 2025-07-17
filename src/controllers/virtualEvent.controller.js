@@ -94,7 +94,7 @@ const addEvent = asyncHandler(async (req, res) => {
     eventTimeEnd,
     eventImage: eventImageUrl
       ? eventImageUrl
-      : "https://social-bucket-p8c1ayeq.s3.us-east-1.amazonaws.com/eventImage-1751519688680-594049422.png",
+      : "",
     userId: req.user.userId,
     noOfSlots: noOfSlots,
   });
@@ -401,7 +401,7 @@ const updateEvent = asyncHandler(async (req, res) => {
       eventTimeStart,
       eventImage: eventImageUrl
         ? eventImageUrl
-        : "https://social-bucket-p8c1ayeq.s3.us-east-1.amazonaws.com/eventImage-1751519688680-594049422.png",
+        : "",
       noOfSlots: noOfSlots,
     },
     { new: true }
