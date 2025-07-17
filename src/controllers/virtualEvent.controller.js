@@ -1137,7 +1137,6 @@ const registration = asyncHandler(async (req, res) => {
     "Virtual Event Login Credentials",
     sendEventLoginHtml
   );
-  console.log("Email sent to user: ", send);
 
   if (!send.success) {
     throw new ApiError(500, "Failed to send event login credentials email");
