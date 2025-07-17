@@ -1203,14 +1203,11 @@ const loginEventUser = asyncHandler(async (req, res) => {
     "eventName eventLocation eventStartDate eventEndDate eventTimeEnd eventTimeStart ticketPrice userId"
   );
 
-  // console.log("User: ", user);
-  // const eventEndDate = user?.eventId?.eventEndDate.split("T")[0];
-  // console.log("Event End Date: ", eventEndDate);
-  // const eventStartDateTime = new Date(`${eventStartDate}T${user?.eventId?.eventTimeStart}`);
-  // console.log("Event End Date Time: ", eventEndDateTime);
-  // if (eventEndDateTime < new Date()) {
-  //   throw new ApiError(400, "Event has already ended, cannot login");
-  // }
+  const eventEndDate = user?.eventId?.eventEndDate?.toISOString().split("T")[0];
+  const eventEndDateTime = new Date(`${eventEndDate}T${user?.eventId?.eventTimeEnd}`);
+  if (eventEndDateTime < new Date()) {
+    throw new ApiError(400, "Event has already ended, cannot login");
+  }
 
   if (!user) {
     throw new ApiError(404, "User not found");
