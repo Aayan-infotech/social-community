@@ -83,6 +83,9 @@ const addEvent = asyncHandler(async (req, res) => {
 
 
 
+
+  
+
   const newEvent = new VirtualEvent({
     eventName,
     eventDescription,
