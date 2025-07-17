@@ -19,6 +19,10 @@ import { getTimezoneDateProjection } from "../utils/timezoneProjector.js";
 import EventLoginUser from "../models/eventLoginUser.model.js";
 import { sendEventLoginCredentialEmail } from "../emails/eventLoginCredential.js";
 import { sendEmail } from "../services/emailService.js";
+import jwt from "jsonwebtoken";
+import { loadConfig } from "../config/loadConfig.js";
+
+const secret = await loadConfig();
 
 const addEvent = asyncHandler(async (req, res) => {
   const {
@@ -1194,7 +1198,19 @@ const loginEventUser = asyncHandler(async (req, res) => {
   if (!username || !password) {
     throw new ApiError(400, "Username and password are required");
   }
-  const user = await EventLoginUser.findOne({ username: username });
+  const user = await EventLoginUser.findOne({ username: username }).populate(
+    "eventId",
+    "eventName eventLocation eventStartDate eventEndDate eventTimeEnd eventTimeStart ticketPrice userId"
+  );
+
+  // console.log("User: ", user);
+  // const eventEndDate = user?.eventId?.eventEndDate.split("T")[0];
+  // console.log("Event End Date: ", eventEndDate);
+  // const eventStartDateTime = new Date(`${eventStartDate}T${user?.eventId?.eventTimeStart}`);
+  // console.log("Event End Date Time: ", eventEndDateTime);
+  // if (eventEndDateTime < new Date()) {
+  //   throw new ApiError(400, "Event has already ended, cannot login");
+  // }
 
   if (!user) {
     throw new ApiError(404, "User not found");
@@ -1226,9 +1242,52 @@ const loginEventUser = asyncHandler(async (req, res) => {
       })
     );
 
+});
 
+const refreshAccessToken = asyncHandler(async (req, res) => {
+  try {
+    const incomingRefreshToken = req.body.refreshToken;
 
+    if (!incomingRefreshToken) {
+      throw new ApiError(401, "Refresh token is required");
+    }
 
+    const decodedToken = jwt.verify(
+      incomingRefreshToken,
+      secret.REFRESH_TOKEN_SECRET
+    );
+
+    const user = await EventLoginUser.findById(decodedToken?._id);
+
+    if (!user) {
+      throw new ApiError(404, "Invalid Refresh Token");
+    }
+
+    if (incomingRefreshToken !== user?.refreshToken) {
+      throw new ApiError(401, "Refresh token is expired or used");
+    }
+    //Generate a new Access Token and update the refresh token of the user
+    const options = {
+      httpOnly: true,
+      secure: true,
+    };
+    const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(
+      user._id
+    );
+
+    return res
+      .status(200)
+      .cookie("accessToken", accessToken, options)
+      .cookie("refreshToken", refreshToken, options)
+      .json(
+        new ApiResponse(200, "Access Token refreshed Successfully", {
+          accessToken,
+          refreshToken,
+        })
+      );
+  } catch (error) {
+    throw new ApiError(401, error?.message || "Invalid Token");
+  }
 });
 
 export {
@@ -1246,5 +1305,6 @@ export {
   getAllCancelledTickets,
   ticketExhaust,
   registration,
-  loginEventUser
+  loginEventUser,
+  refreshAccessToken
 };

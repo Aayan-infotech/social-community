@@ -27,7 +27,8 @@ import {
     getAllCancelledTickets,
     ticketExhaust,
     registration,
-    loginEventUser
+    loginEventUser,
+    refreshAccessToken
 } from "../controllers/virtualEvent.controller.js";
 import { verifyEventAuth } from "../middlewares/eventAuth.middleware.js";
 
@@ -84,5 +85,6 @@ router.get('/getCancelledTickets/:eventId',verifyJWT,getAllCancelledTickets);
 router.post('/registration',verifyJWT,validateRequest(registrationSchema),registration);
 router.post('/eventlogin',validateRequest(EventLoginUserSchema),loginEventUser);
 router.post('/ticket-exhaust',verifyEventAuth,validateRequest(ticketExhaustSchema),ticketExhaust);
+router.post('/refresh-access-token',refreshAccessToken);
 
 export default router;
