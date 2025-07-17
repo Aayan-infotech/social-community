@@ -139,8 +139,7 @@ function generateTicketId() {
 }
 
 async function generateQRCodeData(data) {
-  const text = JSON.stringify(data);
-  const dataURL = await QRCode.toDataURL(text);
+  const dataURL = await QRCode.toDataURL(data);
   return dataURL;
 }
 

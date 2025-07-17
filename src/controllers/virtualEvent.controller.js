@@ -511,6 +511,8 @@ const bookTickets = asyncHandler(async (req, res) => {
       eventLocation: 1,
       eventStartDate: 1,
       eventEndDate: 1,
+      eventTimeStart: 1,
+      eventTimeEnd: 1,
       ticketPrice: 1,
       eventImage: 1,
       noOfSlots: 1,
@@ -547,8 +549,10 @@ const bookTickets = asyncHandler(async (req, res) => {
 
 
   const bookingDateTime = new Date(`${bookingDate}T${bookingTime}`);
-  const eventStartDateTime = new Date(eventDetails.eventStartDate);
-  const eventEndDateTime = new Date(eventDetails.eventEndDate);
+  const eventStartDate = eventDetails?.eventStartDate?.toISOString().split("T")[0];
+  const eventStartDateTime = new Date(`${eventStartDate}T${eventDetails?.eventTimeStart}`);
+  const eventEndDate = eventDetails?.eventEndDate?.toISOString().split("T")[0];
+  const eventEndDateTime = new Date(`${eventEndDate}T${eventDetails?.eventTimeEnd}`);
 
   if (
     bookingDateTime < eventStartDateTime ||
@@ -666,14 +670,13 @@ const updateBookingStatus = asyncHandler(async (req, res) => {
   const qrCodeData = {
     ticketId: booking.ticketId,
     eventId: booking.eventId._id,
-    eventName: booking.eventId.eventName,
-    date: bookingDate,
-    time: bookingTime,
-    venue: booking.eventId.eventLocation,
-    noOfTickets: booking.ticketCount,
-    attendeeName: req.user.name,
-    price: booking.totalPrice,
   };
+
+  // base 64 encode the qrCodeData
+  const qrCodeDataEncoded = Buffer.from(JSON.stringify(qrCodeData)).toString(
+    "base64"
+  );
+
   const eventDetails = {
     ticketId: booking.ticketId,
     eventId: booking.eventId._id,
@@ -684,7 +687,7 @@ const updateBookingStatus = asyncHandler(async (req, res) => {
     noOfTickets: booking.ticketCount,
     attendeeName: req.user.name,
     price: booking.totalPrice,
-    qrCodeData: qrCodeData,
+    qrCodeData: qrCodeDataEncoded,
   };
 
   const ticketFilePath = await generateAndSendTicket(
@@ -707,6 +710,12 @@ const updateBookingStatus = asyncHandler(async (req, res) => {
     new ApiResponse(200, "Booking status updated successfully", {
       updatedBooking,
       eventDetails,
+      user: {
+        userId: req.user.userId,
+        name: req.user.name,
+        email: req.user.email,
+        profile_image: req.user.profile_image,
+      }
     })
   );
 });
