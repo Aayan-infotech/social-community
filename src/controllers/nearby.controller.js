@@ -86,6 +86,67 @@ const getBusinessCategory = asyncHandler(async (req, res) => {
   );
 });
 
+
+const getAllBussinessesCategory = asyncHandler(async (req, res) => {
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.max(1, parseInt(req.query.limit) || 10);
+  const skip = (page - 1) * limit;
+  const { search, sortBy, sortOrder } = req.query;
+
+  const aggregation = [];
+
+  if (search) {
+    aggregation.push({
+      $match: {
+        category_name: { $regex: search, $options: "i" },
+      },
+    });
+  }
+
+  aggregation.push({
+    $sort: {
+      [sortBy || "createdAt"]: sortOrder === "asc" ? 1 : -1,
+    },
+  });
+
+  aggregation.push({
+    $facet: {
+      totalCount: [{ $count: "count" }],
+      categories: [
+        { $skip: skip },
+        { $limit: limit },
+        {
+          $project: {
+            _id: 1,
+            category_name: 1,
+            category_image: 1,
+          },
+        },
+      ],
+    },
+  });
+
+  const result = await BusinessCategory.aggregate(aggregation);
+  const categories = result[0]?.categories || [];
+  const totalCount = result[0]?.totalCount[0]?.count || 0;
+  const totalPages = Math.ceil(totalCount / limit);
+
+  res.json(
+    new ApiResponse(
+      200,
+      categories.length > 0 ? "Business categories fetched successfully" : "No business categories found",
+      categories.length > 0 ? {
+        categories,
+        total_page: totalPages,
+        current_page: page,
+        total_records: totalCount,
+        per_page: limit,
+      } : null
+    )
+  );
+});
+
+
 const addBusiness = asyncHandler(async (req, res) => {
   const {
     categoryId,
@@ -214,7 +275,7 @@ const getAllBussinesses = asyncHandler(async (req, res) => {
             businessImage: 1,
             categoryId: 1,
             category_name: "$category.category_name",
-            userName : "$user.name",
+            userName: "$user.name",
           },
         },
       ],
@@ -313,4 +374,5 @@ export {
   getNearByBusiness,
   deleteBussinessCategory,
   getAllBussinesses,
+  getAllBussinessesCategory
 };

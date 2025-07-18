@@ -217,6 +217,10 @@ const loginUser = asyncHandler(async (req, res) => {
     throw new ApiError(404, "User Doesn't Exist Or Invalid Email Or Mobile No");
   }
 
+  if(user.isDeleted){
+    throw new ApiError(400, "Your account is suspended. Please contact support for more information.");
+  }
+
   if(user.googleId){
     throw new ApiError(400, "You have registered with Google. Please login with Google.");
   }

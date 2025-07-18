@@ -40,7 +40,9 @@ import {
   getMatrimonialProfileSuggestions,
   sendInterest,
   acceptRejectInterest,
-  getInterrestedProfiles
+  getInterrestedProfiles,
+  updateUserDetails,
+  updateUserDeleteStatus
 } from "../controllers/users.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { validateRequest } from "../middlewares/validation.middleware.js";
@@ -57,6 +59,7 @@ import {
   saveFAQSchema,
   updateMatrimonialProfileSchema,
   sendNotificationSchema,
+  updateUserDetailsSchema
 } from "../validators/userValidator.js";
 import errorHandler from "../middlewares/errorhandler.middleware.js";
 
@@ -144,6 +147,8 @@ router.post("/delete-account-request", verifyJWT, deleteAccountRequest);
 
 // web apis
 router.get("/get-all-users", verifyJWT, getAllUsers);
+router.put('/update-user/:userId',verifyJWT,validateRequest(updateUserDetailsSchema),updateUserDetails);
+router.put('/update-user-status/:userId',verifyJWT,updateUserDeleteStatus);
 router.get("/get-all-delete-request", verifyJWT, getAllDeleteRequest);
 router.put(
   "/update-delete-request",

@@ -16,6 +16,7 @@ import {
   getNearByBusiness,
   deleteBussinessCategory,
   getAllBussinesses,
+  getAllBussinessesCategory
 } from "../controllers/nearby.controller.js";
 const router = Router();
 
@@ -33,6 +34,7 @@ router.post(
   upsertBussinessCategory
 );
 router.get("/get-business-category", verifyJWT, getBusinessCategory);
+router.get('/getAllBussinessCategory',verifyJWT,getAllBussinessesCategory);
 router.post(
   "/add-business",
   verifyJWT,

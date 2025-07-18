@@ -16,6 +16,8 @@ import {
   getShortsVideo,
   getHomeFeed,
   deletePost,
+  reportPost,
+  getAllReportedPosts,
 } from "../controllers/posts.controller.js";
 import { validateRequest } from "../middlewares/validation.middleware.js";
 import {
@@ -26,6 +28,7 @@ import {
   postReplySchema,
   postEditReplySchema,
   updatePostSchema,
+  reportPostSchema,
 } from "../validators/postValidator.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import errorHandler from "../middlewares/errorhandler.middleware.js";
@@ -99,5 +102,8 @@ router.get("/post-details/:postId", verifyJWT, getPostDetails);
 router.get("/get-post-likedby/:postId", verifyJWT, getPostLikedBy);
 router.get("/get-shorts",verifyJWT,getShortsVideo);
 router.get("/get-home-feed",verifyJWT,getHomeFeed);
+router.post('/report',verifyJWT,validateRequest(reportPostSchema),reportPost);
+router.get('/getAllReportedPosts',verifyJWT,getAllReportedPosts);
 
 export default router;
+ 

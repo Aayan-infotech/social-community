@@ -496,12 +496,12 @@ const getFriendRequestList = asyncHandler(async (req, res) => {
         : "No friend requests found",
       friendRequests.length > 0
         ? {
-            friendRequests,
-            total_page: totalPages,
-            current_page: page,
-            total_records: totalCount,
-            per_page: limit,
-          }
+          friendRequests,
+          total_page: totalPages,
+          current_page: page,
+          total_records: totalCount,
+          per_page: limit,
+        }
         : null
     )
   );
@@ -575,12 +575,12 @@ const getFriendList = asyncHandler(async (req, res) => {
         : "No friends found",
       friends.length > 0
         ? {
-            friends,
-            total_page: totalPages,
-            current_page: page,
-            total_records: totalCount,
-            per_page: limit,
-          }
+          friends,
+          total_page: totalPages,
+          current_page: page,
+          total_records: totalCount,
+          per_page: limit,
+        }
         : null
     )
   );
@@ -1264,6 +1264,7 @@ const getAllUsers = asyncHandler(async (req, res) => {
         {
           $project: {
             _id: 0,
+            userId: 1,
             name: 1,
             email: 1,
             mobile: 1,
@@ -1341,6 +1342,13 @@ const getAllDeleteRequest = asyncHandler(async (req, res) => {
   const limit = Math.max(1, parseInt(req.query.limit) || 10);
   const skip = (page - 1) * limit;
 
+  let { search, sortBy } = req.query;
+  const sortOrder = req.query.sortOrder === "asc" ? 1 : -1;
+
+  if (sortBy === "userInfo") {
+    sortBy = "user.name";
+  }
+
   const aggregation = [];
   aggregation.push({
     $match: { status: "pending" },
@@ -1367,6 +1375,25 @@ const getAllDeleteRequest = asyncHandler(async (req, res) => {
     },
   });
 
+  if (search) {
+    aggregation.push({
+      $match: {
+        $or: [
+          { "user.name": { $regex: search, $options: "i" } },
+          { "user.email": { $regex: search, $options: "i" } },
+          { "user.userId": { $regex: search, $options: "i" } },
+          { reason: { $regex: search, $options: "i" } },
+        ],
+      },
+    });
+  }
+
+  aggregation.push({
+    $sort: {
+      [sortBy || "createdAt"]: sortOrder,
+    },
+  });
+
   aggregation.push({
     $project: {
       _id: 1,
@@ -1376,6 +1403,7 @@ const getAllDeleteRequest = asyncHandler(async (req, res) => {
       profile_image: 1,
       name: "$user.name",
       email: "$user.email",
+      createdAt: 1,
     },
   });
 
@@ -1814,12 +1842,12 @@ const getMatrimonialProfileSuggestions = asyncHandler(async (req, res) => {
         : "No matrimonial profile suggestions found",
       suggestions.length > 0
         ? {
-            suggestions,
-            total_page: totalPages,
-            current_page: page,
-            total_records: totalCount,
-            per_page: limit,
-          }
+          suggestions,
+          total_page: totalPages,
+          current_page: page,
+          total_records: totalCount,
+          per_page: limit,
+        }
         : null
     )
   );
@@ -2000,12 +2028,12 @@ const getInterrestedProfiles = asyncHandler(async (req, res) => {
         : "No interests found",
       interestedProfiles.length > 0
         ? {
-            interestedProfiles,
-            total_page: totalPages,
-            current_page: page,
-            total_records: totalCount,
-            per_page: limit,
-          }
+          interestedProfiles,
+          total_page: totalPages,
+          current_page: page,
+          total_records: totalCount,
+          per_page: limit,
+        }
         : null
     )
   );
@@ -2133,12 +2161,12 @@ const searchAllUsers = asyncHandler(async (req, res) => {
       users.length > 0 ? "Users fetched successfully" : "No users found",
       users.length > 0
         ? {
-            users,
-            total_page: totalPages,
-            current_page: page,
-            total_records: totalCount,
-            per_page: limit,
-          }
+          users,
+          total_page: totalPages,
+          current_page: page,
+          total_records: totalCount,
+          per_page: limit,
+        }
         : null
     )
   );
@@ -2234,6 +2262,57 @@ const removeFriend = asyncHandler(async (req, res) => {
   res.json(new ApiResponse(200, "Friend removed successfully"));
 });
 
+
+const updateUserDetails = asyncHandler(async (req, res) => {
+  const { name, email, mobile, gender, city, state, country, aboutMe } = req.body;
+  const { userId } = req.params;
+
+  if (!userId) {
+    throw new ApiError(400, "User ID is required");
+  }
+
+  const user = await User.findOneAndUpdate(
+    { userId },
+    {
+      $set: {
+        name,
+        email,
+        mobile,
+        gender,
+        city,
+        state,
+        country,
+        aboutMe
+      }
+    }
+  );
+
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
+
+  res.json(new ApiResponse(200, "User details updated successfully"));
+});
+
+const updateUserDeleteStatus = asyncHandler(async (req, res) => {
+  const { isDeleted } = req.body;
+  const { userId } = req.params;
+
+  if (!userId || typeof isDeleted !== "boolean") {
+    throw new ApiError(400, "User ID and isDeleted status are required");
+  }
+
+  const user = await User.findOneAndUpdate(
+    { userId: userId },
+    { $set: { isDeleted: isDeleted } }
+  );
+  console.log(user);
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
+  res.json(new ApiResponse(200, "User delete status updated successfully"));
+});
+
 export {
   getUserProfile,
   updateUserProfile,
@@ -2275,4 +2354,6 @@ export {
   sendInterest,
   acceptRejectInterest,
   getInterrestedProfiles,
+  updateUserDetails,
+  updateUserDeleteStatus
 };

@@ -19,6 +19,7 @@ import { url } from "inspector";
 import { Education } from "../models/education.model.js";
 import { Experience } from "../models/experience.model.js";
 import mongoose from "mongoose";
+import ReportedPost from "../models/reportedPost.model.js";
 
 const createPost = asyncHandler(async (req, res) => {
   const { title, description, type } = req.body;
@@ -881,10 +882,16 @@ const getHomeFeed = asyncHandler(async (req, res) => {
 
   // add isLiked boolean field that logged in user liked the post or not
 
+  const reportedPosts = await ReportedPost.find({
+    reportedBy: req.user.userId,
+  }).distinct("postId");
+
+
   const aggregation = [];
   aggregation.push({
-    $match: { type: type },
+    $match: { type: type, _id: { $nin: reportedPosts } },
   });
+
 
   aggregation.push({
     $lookup: {
@@ -948,6 +955,7 @@ const getHomeFeed = asyncHandler(async (req, res) => {
       },
     },
   });
+
 
   aggregation.push({
     $facet: {
@@ -1026,6 +1034,132 @@ const deletePost = asyncHandler(async (req, res) => {
   res.json(new ApiResponse(200, "Post deleted successfully"));
 });
 
+
+const reportPost = asyncHandler(async (req, res) => {
+  const { postId, reason } = req.body;
+  if (!postId) {
+    throw new ApiError(400, "Post ID is required");
+  }
+
+  if (!isValidObjectId(postId)) {
+    throw new ApiError(400, "Invalid post ID");
+  }
+
+
+  const post = await PostModel.findById(postId);
+  if (!post) {
+    throw new ApiError(404, "Post not found");
+  }
+
+  const reportedPostExists = await ReportedPost.findOne({
+    postId,
+    reportedBy: req.user.userId,
+  });
+
+  if (reportedPostExists) {
+    throw new ApiError(400, "You have already reported this post");
+  }
+
+
+  const reportedPost = new ReportedPost({
+    postId,
+    reportedBy: req.user.userId,
+    reason,
+  });
+  await reportedPost.save();
+  res.json(new ApiResponse(200, "Post reported successfully", reportedPost));
+});
+
+
+
+const getAllReportedPosts = asyncHandler(async (req, res) => {
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.max(1, parseInt(req.query.limit) || 10);
+
+  const skip = (page - 1) * limit;
+
+  const aggregation = [];
+
+  aggregation.push({
+    sort: { createdAt: -1 },
+  });
+
+  aggregation.push({
+    $lookup: {
+      from: "posts",
+      localField: "postId",
+      foreignField: "_id",
+      as: "post",
+    }
+  });
+
+  aggregation.push({
+    $unwind: "$post",
+  });
+
+  aggregation.push({
+    $lookup: {
+      from: "users",
+      localField: "reportedBy",
+      foreignField: "_id",
+      as: "user",
+    }
+  });
+  aggregation.push({
+    $unwind: "$user",
+  });
+
+  aggregation.push({
+    $facet: {
+      reportedPosts: [
+        { $skip: skip },
+        { $limit: limit },
+        {
+          $project: {
+            _id: 1,
+            postId: 1,
+            reportedBy: 1,
+            reason: 1,
+            createdAt: 1,
+            updatedAt: 1,
+            post: {
+              _id: "$post._id",
+              title: "$post.title",
+              content: "$post.content",
+              media: "$post.media",
+              createdAt: "$post.createdAt",
+              updatedAt: "$post.updatedAt",
+              user: {
+                _id: "$user._id",
+                name: "$user.name",
+                email: "$user.email",
+              }
+            }
+          }
+        },
+      ],
+      totalCount: [{ $count: "count" }],
+    }
+  });
+
+
+
+  const result = await ReportedPost.aggregate(aggregation);
+
+  const reportedPosts = result[0]?.reportedPosts || [];
+  const totalCount = result[0]?.totalCount[0]?.count || 0;
+  const totalPages = Math.ceil(totalCount / limit);
+
+  return res.json(new ApiResponse(200, reportedPosts.length > 0 ? "Reported posts fetched successfully" : "No reported posts found", reportedPosts.length > 0 ? {
+    reportedPosts,
+    total_page: totalPages,
+    current_page: page, 
+    total_records: totalCount,
+    per_page: limit,
+  } : null));
+
+});
+
 export {
   createPost,
   getPosts,
@@ -1042,4 +1176,6 @@ export {
   getShortsVideo,
   getHomeFeed,
   deletePost,
+  reportPost,
+  getAllReportedPosts
 };

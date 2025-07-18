@@ -198,6 +198,11 @@ const userSchema = new mongoose.Schema(
       default: false,
       required: true,
     },
+    isDeleted: {
+      type: Boolean,
+      default: false,
+      required: true,
+    },
   },
   {
     timestamps: true,

@@ -544,6 +544,46 @@ const sendNotificationSchema = Joi.object({
   }),
 });
 
+
+const updateUserDetailsSchema = Joi.object({
+  name: Joi.string().min(3).max(50).trim().messages({
+    "string.min": "Name should have at least 3 characters",
+    "string.max": "Name should not exceed 50 characters",
+  }),
+  email: Joi.string().email().trim().messages({
+    "string.email": "Email must be a valid email",
+  }),
+  mobile: Joi.string().min(10).max(15).trim().messages({
+    "string.min": "Mobile number must be at least 10 digits",
+    "string.max": "Mobile number must be at most 15 digits",
+  }),
+  gender: Joi.string().valid("male", "female", "other").messages({
+    "string.base": "Gender must be a string.",
+    "any.only": "Gender must be one of the following values: male, female, other.",
+  }),
+  country: Joi.string().optional().allow("").messages({
+    "string.base": "Country must be a string.",
+  }),
+  state: Joi.string().optional().allow("").messages({
+    "string.base": "State must be a string.",
+  }),
+  city: Joi.string().optional().allow("").messages({
+    "string.base": "City must be a string.",
+  }),
+  profile_image: Joi.string().optional().allow("").messages({
+    "string.base": "Profile image must be a string.",
+  }),
+  aboutMe: Joi.string()
+    .min(10)
+    .max(200)
+    .messages({
+      "string.base": "About Me must be a string.",
+      "string.empty": "About Me is required.",
+      "string.min": "About Me must be at least 10 characters long.",
+      "string.max": "About Me must be at most 200 characters long.",
+    }),
+});
+
 export {
   userValidationSchema,
   loginValidationSchema,
@@ -563,4 +603,5 @@ export {
   saveFAQSchema,
   updateMatrimonialProfileSchema,
   sendNotificationSchema,
+  updateUserDetailsSchema,
 };

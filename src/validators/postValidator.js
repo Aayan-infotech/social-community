@@ -135,6 +135,19 @@ const updatePostSchema = Joi.object({
   }),
 });
 
+const reportPostSchema = Joi.object({
+  postId: Joi.string().required().messages({
+    "string.base": "Post ID must be a string.",
+    "string.empty": "Post ID is required.",
+    "any.required": "Post ID is required to report a post.",
+  }),
+  reason: Joi.string().required().messages({
+    "string.base": "Reason must be a string.",
+    "string.empty": "Reason is required.",
+    "any.required": "Reason is required to report a post.",
+  }),
+});
+
 export {
   postValidationSchema,
   postLikeDislikeSchema,
@@ -143,4 +156,5 @@ export {
   postReplySchema,
   postEditReplySchema,
   updatePostSchema,
+  reportPostSchema
 };
