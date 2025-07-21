@@ -1501,9 +1501,10 @@ const getResources = asyncHandler(async (req, res) => {
   const { type } = req.body;
   const userId = req.user.userId;
 
-  console.log("type", type);
-
-
+  const validTypes = ["job", "post", "health_wellness", "event"];
+  if (!validTypes.includes(type)) {
+    throw new ApiError(400, "Invalid resource type provided");
+  }
 
   const aggregation = [];
 
