@@ -60,7 +60,7 @@ const getUserProfile = asyncHandler(async (req, res) => {
       profile_image: {
         $ifNull: [
           "$profile_image",
-          `${req.protocol}://${req.hostname}:${process.env.PORT}/placeholder/person.png`,
+          `${req.protocol}://${req.hostname}:${process.env.PORT}/placeholder/image_place.png`,
         ],
       },
       friendsCount: { $size: { $ifNull: ["$friendsData.friends", []] } },
@@ -242,7 +242,7 @@ const getProfessionalProfile = asyncHandler(async (req, res) => {
       professional_image: {
         $ifNull: [
           "$professional_image",
-          `${req.protocol}://${req.hostname}:${process.env.PORT}/placeholder/person.png`,
+          `${req.protocol}://${req.hostname}:${process.env.PORT}/placeholder/image_place.png`,
         ],
       },
       friendsCount: { $size: { $ifNull: ["$friendsData.friends", []] } },
@@ -472,7 +472,7 @@ const getFriendRequestList = asyncHandler(async (req, res) => {
             profile_image: {
               $ifNull: [
                 "$senderDetails.profile_image",
-                `${req.protocol}://${req.hostname}:${process.env.PORT}/placeholder/person.png`,
+                `${req.protocol}://${req.hostname}:${process.env.PORT}/placeholder/image_place.png`,
               ],
             },
           },
@@ -550,7 +550,7 @@ const getFriendList = asyncHandler(async (req, res) => {
               profile_image: {
                 $ifNull: [
                   "$profile_image",
-                  `${req.protocol}://${req.hostname}:${process.env.PORT}/placeholder/person.png`,
+                  `${req.protocol}://${req.hostname}:${process.env.PORT}/placeholder/image_place.png`,
                 ],
               },
             },
@@ -688,7 +688,7 @@ const getFriendSuggestionList = asyncHandler(async (req, res) => {
       profile_image: {
         $ifNull: [
           "$profile_image",
-          `${req.protocol}://${req.hostname}:${process.env.PORT}/placeholder/person.png`,
+          `${req.protocol}://${req.hostname}:${process.env.PORT}/placeholder/image_place.png`,
         ],
       },
       followedBy: {
@@ -862,7 +862,7 @@ const getUserPosts = asyncHandler(async (req, res) => {
       "user.profile_image": {
         $ifNull: [
           "$user.profile_image",
-          `${req.protocol}://${req.hostname}:${process.env.PORT}/placeholder/person.png`,
+          `${req.protocol}://${req.hostname}:${process.env.PORT}/placeholder/image_place.png`,
         ],
       },
     },
@@ -1219,7 +1219,7 @@ const getStories = asyncHandler(async (req, res) => {
       name: req.user.name,
       profile_image:
         req.user.profile_image ||
-        `${req.protocol}://${req.hostname}:${process.env.PORT}/placeholder/person.png`,
+        `${req.protocol}://${req.hostname}:${process.env.PORT}/placeholder/image_place.png`,
     });
   }
 
@@ -1369,7 +1369,7 @@ const getAllDeleteRequest = asyncHandler(async (req, res) => {
       profile_image: {
         $ifNull: [
           "$user.profile_image",
-          `${req.protocol}://${req.hostname}:${process.env.PORT}/placeholder/person.png`,
+          `${req.protocol}://${req.hostname}:${process.env.PORT}/placeholder/image_place.png`,
         ],
       },
     },
@@ -1643,7 +1643,7 @@ const getMatrimonialProfile = asyncHandler(async (req, res) => {
       profile_image: {
         $ifNull: [
           "$profile_image",
-          `${req.protocol}://${req.hostname}:${process.env.PORT}/placeholder/person.png`,
+          `${req.protocol}://${req.hostname}:${process.env.PORT}/placeholder/image_place.png`,
         ],
       },
       friendsCount: { $size: { $ifNull: ["$friendsData.friends", []] } },
@@ -1806,7 +1806,7 @@ const getMatrimonialProfileSuggestions = asyncHandler(async (req, res) => {
             profile_image: {
               $ifNull: [
                 "$profile_image",
-                `${req.protocol}://${req.hostname}:${process.env.PORT}/placeholder/person.png`,
+                `${req.protocol}://${req.hostname}:${process.env.PORT}/placeholder/image_place.png`,
               ],
             },
             matrimonialAboutMe: 1,
@@ -2003,7 +2003,7 @@ const getInterrestedProfiles = asyncHandler(async (req, res) => {
             senderProfileImage: {
               $ifNull: [
                 "$senderInfo.profile_image",
-                `${req.protocol}://${req.hostname}:${process.env.PORT}/placeholder/person.png`,
+                `${req.protocol}://${req.hostname}:${process.env.PORT}/placeholder/image_place.png`,
               ],
             },
             createdAt: 1,
@@ -2131,7 +2131,7 @@ const searchAllUsers = asyncHandler(async (req, res) => {
             profile_image: {
               $ifNull: [
                 "$profile_image",
-                `${req.protocol}://${req.hostname}:${process.env.PORT}/placeholder/person.png`,
+                `${req.protocol}://${req.hostname}:${process.env.PORT}/placeholder/image_place.png`,
               ],
             },
             hasFriend: 1,
@@ -2304,7 +2304,7 @@ const updateUserDeleteStatus = asyncHandler(async (req, res) => {
 
   const user = await User.findOneAndUpdate(
     { userId: userId },
-    { $set: { isDeleted: isDeleted } }
+    { $set: { isDeleted: isDeleted , refreshToken: null } }
   );
   console.log(user);
   if (!user) {

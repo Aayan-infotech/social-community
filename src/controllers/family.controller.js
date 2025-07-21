@@ -149,7 +149,7 @@ export const getFamilyMembersRequest = asyncHandler(async (req, res) => {
           profile_image: {
             $ifNull: [
               "$senderDetails.profile_image",
-              `${req.protocol}://${req.hostname}:${process.env.PORT}/placeholder/person.png`,
+              `${req.protocol}://${req.hostname}:${process.env.PORT}/placeholder/image_place.png`,
             ],
           },
         },
@@ -278,7 +278,7 @@ export const getFamilyTree = asyncHandler(async (req, res) => {
       profile_image: {
         $ifNull: [
           "$relationWithUserDetails.profile_image",
-          `${req.protocol}://${req.hostname}:${process.env.PORT}/placeholder/person.png`,
+          `${req.protocol}://${req.hostname}:${process.env.PORT}/placeholder/image_place.png`,
         ],
       },
     },

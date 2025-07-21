@@ -282,7 +282,7 @@ export const getApplicantList = asyncHandler(async (req, res) => {
         profile_image: {
           $ifNull: [
             "$user.profile_image",
-            `${req.protocol}://${req.hostname}:${process.env.PORT}/placeholder/person.png`,
+            `${req.protocol}://${req.hostname}:${process.env.PORT}/placeholder/image_place.png`,
           ],
         },
         userId: "$user.userId",
@@ -434,7 +434,7 @@ export const getApplicantDetails = asyncHandler(async (req, res) => {
         profile_image: {
           $ifNull: [
             "$user.profile_image",
-            `${req.protocol}://${req.hostname}:${process.env.PORT}/placeholder/person.png`,
+            `${req.protocol}://${req.hostname}:${process.env.PORT}/placeholder/image_place.png`,
           ],
         },
         userId: "$user.userId",

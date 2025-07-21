@@ -606,7 +606,7 @@ const getPostDetails = asyncHandler(async (req, res) => {
       "user.profile_image": {
         $ifNull: [
           "$user.profile_image",
-          `${req.protocol}://${req.hostname}:${process.env.PORT}/placeholder/person.png`,
+          `${req.protocol}://${req.hostname}:${process.env.PORT}/placeholder/image_place.png`,
         ],
       },
     },

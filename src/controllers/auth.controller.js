@@ -531,7 +531,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
     const incomingRefreshToken = req.body.refreshToken;
 
     if (!incomingRefreshToken) {
-      throw new ApiError(401, "Invalid Token");
+      throw new ApiError(404, "Invalid Token");
     }
 
     const decodedToken = jwt.verify(
@@ -546,7 +546,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
     }
 
     if (incomingRefreshToken !== user?.refreshToken) {
-      throw new ApiError(401, "Refresh token is expired or used");
+      throw new ApiError(404, "Refresh token is expired or used");
     }
     //Generate a new Access Token and update the refresh token of the user
     const option = {
@@ -568,7 +568,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
         })
       );
   } catch (error) {
-    throw new ApiError(401, error?.message || "Invalid Token");
+    throw new ApiError(404, error?.message || "Invalid Token");
   }
 });
 
