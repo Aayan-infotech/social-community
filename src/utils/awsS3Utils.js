@@ -16,10 +16,10 @@ const secret = await loadConfig();
 // Initialize the S3 client
 const s3 = new S3Client({
   region: secret.AWS_REGION,
-  // credentials: {
-  //   accessKeyId: secret.AWS_ACCESS_KEY_ID,
-  //   secretAccessKey: secret.AWS_SECRET_ACCESS_KEY,
-  // },
+  credentials: {
+    accessKeyId: secret.AWS_ACCESS_KEY_ID,
+    secretAccessKey: secret.AWS_SECRET_ACCESS_KEY,
+  },
 });
 
 // Function to upload an image to S3
