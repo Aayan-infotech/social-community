@@ -663,6 +663,11 @@ const getShortsVideo = asyncHandler(async (req, res) => {
         localField: "userId",
         foreignField: "userId",
         as: "user",
+        pipeline: [
+          {
+            $match: { isDeleted: { $ne: true } },
+          },
+        ],
       },
     },
     {
@@ -741,7 +746,7 @@ const getHomeFeed = asyncHandler(async (req, res) => {
 
   const [education, experience] = await Promise.all([
     Education.aggregate([
-      { $match: { userId: req.user.userId } },
+      { $match: { userId: req.user.userId, isDeleted: { $ne: true }, role: "user" } },
       {
         $group: {
           _id: null,
@@ -753,7 +758,7 @@ const getHomeFeed = asyncHandler(async (req, res) => {
       },
     ]),
     Experience.aggregate([
-      { $match: { userId: req.user.userId } },
+      { $match: { userId: req.user.userId, isDeleted: { $ne: true }, role: "user" } },
       {
         $group: {
           _id: null,
@@ -892,13 +897,20 @@ const getHomeFeed = asyncHandler(async (req, res) => {
     $match: { type: type, _id: { $nin: reportedPosts } },
   });
 
-
+  // remove the post who isDeleted is true
   aggregation.push({
     $lookup: {
       from: "users",
       localField: "userId",
       foreignField: "userId",
       as: "user",
+      pipeline: [
+        {
+          $match: {
+            isDeleted: { $ne: true },
+          },
+        },
+      ],
     },
   });
   aggregation.push({
@@ -1072,93 +1084,208 @@ const reportPost = asyncHandler(async (req, res) => {
 
 
 
+// const getAllReportedPosts = asyncHandler(async (req, res) => {
+//   const page = Math.max(1, parseInt(req.query.page) || 1);
+//   const limit = Math.max(1, parseInt(req.query.limit) || 10);
+//   const skip = (page - 1) * limit;
+
+
+//   const role = req.user.role;
+//   if (!role.includes("admin")) {
+//     throw new ApiError(403, "You are not authorized to access this resource");
+//   }
+
+//   const aggregation = [];
+
+//   aggregation.push({ $sort: { createdAt: -1 } });
+
+
+//   aggregation.push({
+//     $lookup: {
+//       from: "posts",
+//       localField: "postId",
+//       foreignField: "_id",
+//       as: "post",
+//     },
+//   });
+//   aggregation.push({ $unwind: { path: "$post", preserveNullAndEmptyArrays: true } });
+
+
+//   aggregation.push({
+//     $lookup: {
+//       from: "users",
+//       localField: "reportedBy",
+//       foreignField: "userId",
+//       as: "user",
+//     },
+//   });
+//   aggregation.push({ $unwind: { path: "$user", preserveNullAndEmptyArrays: true } });
+
+//   aggregation.push({
+//     $facet: {
+//       reportedPosts: [
+//         { $skip: skip },
+//         { $limit: limit },
+//         {
+//           $project: {
+//             _id: 1,
+//             postId: 1,
+//             reportedBy: 1,
+//             reason: 1,
+//             createdAt: 1,
+//             updatedAt: 1,
+//             post: {
+//               _id: "$post._id",
+//               title: "$post.title",
+//               content: "$post.content",
+//               media: "$post.media",
+//               createdAt: "$post.createdAt",
+//               updatedAt: "$post.updatedAt",
+//             },
+//             user: {
+//               _id: "$user._id",
+//               name: "$user.name",
+//               email: "$user.email",
+//               profile_image: {
+//                 $ifNull: [
+//                   "$user.profile_image",
+//                   `${req.protocol}://${req.get("host")}/placeholder/image_place.png`,
+//                 ],
+//               },
+//             },
+//           },
+//         },
+//       ],
+//       totalCount: [{ $count: "count" }],
+//     },
+//   });
+
+
+//   const result = await ReportedPost.aggregate(aggregation);
+
+//   const reportedPosts = result?.[0]?.reportedPosts || [];
+//   const totalCount = result?.[0]?.totalCount?.[0]?.count || 0;
+//   const totalPages = Math.ceil(totalCount / limit);
+
+//   return res.json(
+//     new ApiResponse(
+//       200,
+//       reportedPosts.length > 0 ? "Reported posts fetched successfully" : "No reported posts found",
+//       reportedPosts.length > 0
+//         ? {
+//           reportedPosts,
+//           total_page: totalPages,
+//           current_page: page,
+//           total_records: totalCount,
+//           per_page: limit,
+//         }
+//         : null
+//     )
+//   );
+// });
+
 const getAllReportedPosts = asyncHandler(async (req, res) => {
   const page = Math.max(1, parseInt(req.query.page) || 1);
   const limit = Math.max(1, parseInt(req.query.limit) || 10);
-
   const skip = (page - 1) * limit;
+
+  const role = req.user.role;
+  if (!role.includes("admin")) {
+    throw new ApiError(403, "You are not authorized to access this resource");
+  }
 
   const aggregation = [];
 
+  // Group reports by postId
   aggregation.push({
-    sort: { createdAt: -1 },
+    $group: {
+      _id: "$postId",
+      totalReports: { $sum: 1 },
+      // reasons: { $push: "$reason" },
+      // reporters: { $push: "$reportedBy" },
+      latestReportTime: { $max: "$createdAt" },
+    },
   });
 
+  // Join with posts
   aggregation.push({
     $lookup: {
       from: "posts",
-      localField: "postId",
+      localField: "_id",
       foreignField: "_id",
       as: "post",
-    }
+    },
+  });
+  aggregation.push({ $unwind: { path: "$post", preserveNullAndEmptyArrays: true } });
+
+  // Sort by latest report or total reports
+  aggregation.push({ $sort: { latestReportTime: -1 } });
+
+  // Pagination
+  aggregation.push({ $skip: skip });
+  aggregation.push({ $limit: limit });
+
+  // Final shape
+  aggregation.push({
+    $project: {
+      postId: "$_id",
+      totalReports: 1,
+      reasons: 1,
+      reporters: 1,
+      latestReportTime: 1,
+      post: {
+        _id: "$post._id",
+        title: "$post.title",
+        content: "$post.content",
+        media: "$post.media",
+        createdAt: "$post.createdAt",
+        updatedAt: "$post.updatedAt",
+        userId: "$post.userId",
+        type: "$post.type",
+        media:"$post.media",
+        mediaType: "$post.mediaType",
+        likes: "$post.likes",
+        comments: "$post.comments",
+      },
+    },
   });
 
-  aggregation.push({
-    $unwind: "$post",
-  });
-
-  aggregation.push({
-    $lookup: {
-      from: "users",
-      localField: "reportedBy",
-      foreignField: "_id",
-      as: "user",
-    }
-  });
-  aggregation.push({
-    $unwind: "$user",
-  });
-
-  aggregation.push({
-    $facet: {
-      reportedPosts: [
-        { $skip: skip },
-        { $limit: limit },
-        {
-          $project: {
-            _id: 1,
-            postId: 1,
-            reportedBy: 1,
-            reason: 1,
-            createdAt: 1,
-            updatedAt: 1,
-            post: {
-              _id: "$post._id",
-              title: "$post.title",
-              content: "$post.content",
-              media: "$post.media",
-              createdAt: "$post.createdAt",
-              updatedAt: "$post.updatedAt",
-              user: {
-                _id: "$user._id",
-                name: "$user.name",
-                email: "$user.email",
-              }
-            }
-          }
+  // For total count
+  const [groupedData, totalCountData] = await Promise.all([
+    ReportedPost.aggregate(aggregation),
+    ReportedPost.aggregate([
+      {
+        $group: {
+          _id: "$postId",
         },
-      ],
-      totalCount: [{ $count: "count" }],
-    }
-  });
+      },
+      { $count: "count" },
+    ]),
+  ]);
 
-
-
-  const result = await ReportedPost.aggregate(aggregation);
-
-  const reportedPosts = result[0]?.reportedPosts || [];
-  const totalCount = result[0]?.totalCount[0]?.count || 0;
+  const reportedPosts = groupedData;
+  const totalCount = totalCountData?.[0]?.count || 0;
   const totalPages = Math.ceil(totalCount / limit);
 
-  return res.json(new ApiResponse(200, reportedPosts.length > 0 ? "Reported posts fetched successfully" : "No reported posts found", reportedPosts.length > 0 ? {
-    reportedPosts,
-    total_page: totalPages,
-    current_page: page, 
-    total_records: totalCount,
-    per_page: limit,
-  } : null));
-
+  return res.json(
+    new ApiResponse(
+      200,
+      reportedPosts.length > 0 ? "Grouped reported posts fetched successfully" : "No reports found",
+      reportedPosts.length > 0
+        ? {
+          reportedPosts,
+          total_page: totalPages,
+          current_page: page,
+          total_records: totalCount,
+          per_page: limit,
+        }
+        : null
+    )
+  );
 });
+
+
+
 
 export {
   createPost,

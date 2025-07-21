@@ -431,6 +431,7 @@ const getFriendRequestList = asyncHandler(async (req, res) => {
     $match: {
       receiverId: userId,
       status: "pending",
+      isDeleted: { $ne: true },
     },
   });
 
@@ -529,6 +530,8 @@ const getFriendList = asyncHandler(async (req, res) => {
     {
       $match: {
         userId: { $in: friendListDoc.friends },
+        role: "user",
+        isDeleted: { $ne: true },
       },
     },
     {
@@ -606,6 +609,7 @@ const getFriendSuggestionList = asyncHandler(async (req, res) => {
     { $match: { role: "user" } },
     { $match: { userId: { $ne: userId } } },
     { $match: { userId: { $nin: friends } } },
+    { $match: { isDeleted: { $ne: true } } },
   ];
 
   const aggregation = [];
@@ -1156,6 +1160,7 @@ const getStories = asyncHandler(async (req, res) => {
     {
       $match: {
         userId: { $in: userIdsToFetch },
+        isDeleted: { $ne: true },
         createdAt: { $gte: twentyFourHoursAgo },
       },
     },
@@ -1496,16 +1501,76 @@ const getResources = asyncHandler(async (req, res) => {
   const { type } = req.body;
   const userId = req.user.userId;
 
-  const resources = await saveResourceModel
-    .find({ userId, type })
-    .populate("resourceId")
-    .select("-_id -__v -createdAt -updatedAt");
+  console.log("type", type);
 
-  if (!resources) {
+
+
+  const aggregation = [];
+
+  aggregation.push({
+    $match: { userId, type },
+  });
+
+  if (type === "job") {
+    aggregation.push({
+      $lookup: {
+        from: "jobs",
+        localField: "resourceId",
+        foreignField: "_id",
+        as: "resourceDetails",
+      },
+    });
+  } else if (type === "post") {
+    aggregation.push({
+      $lookup: {
+        from: "posts",
+        localField: "resourceId",
+        foreignField: "_id",
+        as: "resourceDetails",
+      },
+    });
+  } else if (type === "health_wellness") {
+    aggregation.push({
+      $lookup: {
+        from: "health_wellness",
+        localField: "resourceId",
+        foreignField: "_id",
+        as: "resourceDetails",
+      },
+    });
+  } else if (type === "event") {
+    aggregation.push({
+      $lookup: {
+        from: "events",
+        localField: "resourceId",
+        foreignField: "_id",
+        as: "resourceDetails",
+      },
+    });
+  }
+
+  aggregation.push({
+    $unwind: { path: "$resourceDetails", preserveNullAndEmptyArrays: true },
+  });
+  aggregation.push({
+    $project: {
+      _id: 0,
+      userId: 1,
+      type: 1,
+      resourceId: 1,
+      resourceDetails: 1,
+    },
+  });
+
+
+  const resources = await saveResourceModel.aggregate(aggregation);
+  if (!resources || resources.length === 0) {
     throw new ApiError(404, "Resources not found");
   }
 
-  res.json(new ApiResponse(200, "Resources fetched successfully", resources));
+  res.json(
+    new ApiResponse(200, "Resources fetched successfully", resources)
+  );
 });
 
 const addPages = asyncHandler(async (req, res) => {
@@ -1620,7 +1685,7 @@ const getMatrimonialProfile = asyncHandler(async (req, res) => {
   const userId = req.query.user_id || req.user.userId;
 
   const aggregation = [];
-  aggregation.push({ $match: { userId } });
+  aggregation.push({ $match: { userId, role: "user", isDeleted: { $ne: true } } });
 
   aggregation.push({
     $lookup: {
@@ -1718,9 +1783,7 @@ const getMatrimonialProfileSuggestions = asyncHandler(async (req, res) => {
   caste = caste ? caste.split(",") : [];
 
   const baseMatchPipeline = [
-    { $match: { role: "user", matrimonialAboutMe: { $ne: null } } },
-    { $match: { userId: { $ne: userId } } },
-    { $match: { gender: { $ne: req.user.gender } } },
+    { $match: { role: "user", matrimonialAboutMe: { $ne: null }, userId: { $ne: userId }, gender: { $ne: req.user.gender }, isDeleted: { $ne: true } } },
   ];
 
   const aggregation = [];
@@ -2059,6 +2122,7 @@ const searchAllUsers = asyncHandler(async (req, res) => {
     $match: {
       role: "user",
       userId: { $ne: userId },
+      isDeleted: { $ne: true },
     },
   });
   aggregation.push({
@@ -2304,7 +2368,7 @@ const updateUserDeleteStatus = asyncHandler(async (req, res) => {
 
   const user = await User.findOneAndUpdate(
     { userId: userId },
-    { $set: { isDeleted: isDeleted , refreshToken: null } }
+    { $set: { isDeleted: isDeleted, refreshToken: null } }
   );
   console.log(user);
   if (!user) {
