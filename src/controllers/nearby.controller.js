@@ -215,17 +215,16 @@ const getAllBussinesses = asyncHandler(async (req, res) => {
   const page = Math.max(1, parseInt(req.query.page) || 1);
   const limit = Math.max(1, parseInt(req.query.limit) || 10);
   const skip = (page - 1) * limit;
-  const { search } = req.query;
+  const { search, sortBy, sortOrder } = req.query;
+
+  console.log("Search:", search);
+  console.log("Sort By:", sortBy);
+  console.log("Sort Order:", sortOrder);
+
 
   const aggregation = [];
 
-  if (search) {
-    aggregation.push({
-      $match: {
-        businessName: { $regex: search, $options: "i" },
-      },
-    });
-  }
+
 
   aggregation.push({
     $lookup: {
@@ -253,6 +252,25 @@ const getAllBussinesses = asyncHandler(async (req, res) => {
     $unwind: {
       path: "$user",
       preserveNullAndEmptyArrays: true,
+    },
+  });
+
+  if (search) {
+    aggregation.push({
+      $match: {
+        $or: [
+          { businessName: { $regex: search, $options: "i" } },
+          { "category.category_name": { $regex: search, $options: "i" } },
+          { "user.name": { $regex: search, $options: "i" } },
+          { address: { $regex: search, $options: "i" } },
+        ],
+      },
+    });
+  }
+
+  aggregation.push({
+    $sort: {
+      [sortBy || "createdAt"]: sortOrder === "asc" ? 1 : -1,
     },
   });
 
