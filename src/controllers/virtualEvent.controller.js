@@ -134,7 +134,7 @@ const getEvents = asyncHandler(async (req, res) => {
       eventStartDate: { $gte: new Date() },
       eventEndDate: { $gte: new Date() },
     },
-    $match:{
+    $match: {
       userId: { $ne: userId }
     }
   });
@@ -1302,6 +1302,108 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
   }
 });
 
+const getAllEvents = asyncHandler(async (req, res) => {
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.max(1, parseInt(req.query.limit) || 10);
+  const skip = (page - 1) * limit;
+
+  const { search, sortBy, sortOrder } = req.query;
+  const aggregation = [];
+
+  const role = req.user.role;
+
+  if (!role.includes("admin")) {
+    throw new ApiError(403, "You are not authorized to access this resource");
+  }
+
+  aggregation.push({
+    $lookup: {
+      from: "users",
+      localField: "userId",
+      foreignField: "userId",
+      as: "userDetails",
+    }
+  });
+
+  aggregation.push({
+    $unwind: {
+      path: "$userDetails",
+      preserveNullAndEmptyArrays: true
+    }
+  });
+
+  aggregation.push({
+    $match: {
+      ...(search && {
+        $or: [
+          { eventName: { $regex: search, $options: "i" } },
+          { "userDetails.name": { $regex: search, $options: "i" } },
+          { "userDetails.email": { $regex: search, $options: "i" } },
+        ],
+      }),
+    },
+  });
+
+  aggregation.push({
+    $sort: {
+      [sortBy || "createdAt"]: sortOrder === "desc" ? -1 : 1,
+    },
+  });
+
+
+  aggregation.push({
+    $facet: {
+      events: [
+        { $skip: skip },
+        { $limit: limit },
+        {
+          $project: {
+            _id: 1,
+            eventName: 1,
+            eventDescription: 1,
+            eventLocation: 1,
+            eventStartDate: 1,
+            eventEndDate: 1,
+            eventTimeStart: 1,
+            eventTimeEnd: 1,
+            ticketPrice: 1,
+            eventImage: 1,
+            userId: 1,
+            userDetails: {
+              userId: "$userDetails.userId",
+              name: "$userDetails.name",
+              email: "$userDetails.email",
+              profile_image: "$userDetails.profile_image",
+            },
+          },
+        },
+      ],
+      totalCount: [{ $count: "count" }],
+    },
+  });
+
+
+  const result = await VirtualEvent.aggregate(aggregation);
+
+  const events = result[0]?.events || [];
+  const totalCount = result[0]?.totalCount[0]?.count || 0;
+  const totalPages = Math.ceil(totalCount / limit);
+
+  res.json(
+    new ApiResponse(
+      200,
+      events.length ? "Events fetched successfully" : "No Events found",
+      {
+        events,
+        total_page: totalPages,
+        current_page: page,
+        total_records: totalCount,
+        per_page: limit,
+      }
+    )
+  );
+});
+
 export {
   addEvent,
   getEvents,
@@ -1318,5 +1420,6 @@ export {
   ticketExhaust,
   registration,
   loginEventUser,
-  refreshAccessToken
+  refreshAccessToken,
+  getAllEvents
 };

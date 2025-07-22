@@ -28,7 +28,8 @@ import {
     ticketExhaust,
     registration,
     loginEventUser,
-    refreshAccessToken
+    refreshAccessToken,
+    getAllEvents
 } from "../controllers/virtualEvent.controller.js";
 import { verifyEventAuth } from "../middlewares/eventAuth.middleware.js";
 
@@ -86,5 +87,9 @@ router.post('/registration',verifyJWT,validateRequest(registrationSchema),regist
 router.post('/eventlogin',validateRequest(EventLoginUserSchema),loginEventUser);
 router.post('/ticket-exhaust',verifyEventAuth,validateRequest(ticketExhaustSchema),ticketExhaust);
 router.post('/refresh-access-token',refreshAccessToken);
+
+
+// Get all events for admin
+router.get('/getAllEvents', verifyJWT, getAllEvents);
 
 export default router;

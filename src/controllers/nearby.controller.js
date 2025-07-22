@@ -217,14 +217,8 @@ const getAllBussinesses = asyncHandler(async (req, res) => {
   const skip = (page - 1) * limit;
   const { search, sortBy, sortOrder } = req.query;
 
-  console.log("Search:", search);
-  console.log("Sort By:", sortBy);
-  console.log("Sort Order:", sortOrder);
-
 
   const aggregation = [];
-
-
 
   aggregation.push({
     $lookup: {
