@@ -8,6 +8,7 @@ dotenv.config({
 
 const init = async () => {
   const config = await loadConfig();
+
   Object.entries(config).forEach(([key, value]) => {
     if (!process.env[key]) {
       process.env[key] = value;
