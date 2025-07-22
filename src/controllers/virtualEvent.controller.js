@@ -84,7 +84,7 @@ const addEvent = asyncHandler(async (req, res) => {
 
 
 
-  
+
 
   const newEvent = new VirtualEvent({
     eventName,
@@ -133,6 +133,7 @@ const getEvents = asyncHandler(async (req, res) => {
     $match: {
       eventStartDate: { $gte: new Date() },
       eventEndDate: { $gte: new Date() },
+      userId: { $ne: req.user.userId },
     },
   });
 
