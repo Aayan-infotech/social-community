@@ -2371,7 +2371,7 @@ const updateUserDeleteStatus = asyncHandler(async (req, res) => {
     { userId: userId },
     { $set: { isDeleted: isDeleted, refreshToken: null } }
   );
-  console.log(user);
+  
   if (!user) {
     throw new ApiError(404, "User not found");
   }
