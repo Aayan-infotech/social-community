@@ -133,8 +133,10 @@ const getEvents = asyncHandler(async (req, res) => {
     $match: {
       eventStartDate: { $gte: new Date() },
       eventEndDate: { $gte: new Date() },
-      userId: { $ne: req.user.userId },
     },
+    $match:{
+      userId: { $ne: userId }
+    }
   });
 
   aggregation.push({
