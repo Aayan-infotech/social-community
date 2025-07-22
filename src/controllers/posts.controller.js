@@ -977,7 +977,12 @@ const getHomeFeed = asyncHandler(async (req, res) => {
         {
           $project: {
             "user.name": 1,
-            "user.profile_image": 1,
+            "user.profile_image": {
+              $ifNull: [
+                "$user.profile_image",
+                `${req.protocol}://${req.get("host")}/placeholder/image_place.png`,
+              ],
+            },
             "user.userId": 1,
             title: 1,
             description: 1,
