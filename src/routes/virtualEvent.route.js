@@ -29,7 +29,9 @@ import {
     registration,
     loginEventUser,
     refreshAccessToken,
-    getAllEvents
+    getAllEvents,
+    getEventDetails,
+    udpateEventStatus
 } from "../controllers/virtualEvent.controller.js";
 import { verifyEventAuth } from "../middlewares/eventAuth.middleware.js";
 
@@ -91,5 +93,7 @@ router.post('/refresh-access-token',refreshAccessToken);
 
 // Get all events for admin
 router.get('/getAllEvents', verifyJWT, getAllEvents);
+router.get('/getEventDetails/:eventId',verifyJWT,getEventDetails);
+router.put('/updateEvent/:eventId',verifyJWT,udpateEventStatus);
 
 export default router;

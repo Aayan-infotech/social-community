@@ -136,6 +136,9 @@ const getEvents = asyncHandler(async (req, res) => {
     },
     $match: {
       userId: { $ne: userId }
+    },
+    $match: {
+      status: "approved"
     }
   });
 
@@ -293,6 +296,7 @@ const myEvenets = asyncHandler(async (req, res) => {
             ticketPrice: 1,
             eventImage: 1,
             userId: 1,
+            status: 1,
             userDetails: {
               userId: "$userDetails.userId",
               name: "$userDetails.name",
@@ -1321,32 +1325,44 @@ const getAllEvents = asyncHandler(async (req, res) => {
       from: "users",
       localField: "userId",
       foreignField: "userId",
-      as: "userDetails",
+      as: "user",
     }
   });
 
   aggregation.push({
     $unwind: {
-      path: "$userDetails",
+      path: "$user",
       preserveNullAndEmptyArrays: true
     }
   });
 
+
   aggregation.push({
-    $match: {
-      ...(search && {
+    $lookup: {
+      from: "eventloginusers",
+      localField: "_id",
+      foreignField: "eventId",
+      as: "eventManager",
+    }
+  });
+
+
+
+  if(search){
+    aggregation.push({
+      $match: {
         $or: [
           { eventName: { $regex: search, $options: "i" } },
-          { "userDetails.name": { $regex: search, $options: "i" } },
-          { "userDetails.email": { $regex: search, $options: "i" } },
-        ],
-      }),
-    },
-  });
+          {eventLocation: { $regex: search, $options: "i" } },
+          { "user.name": { $regex: search, $options: "i" } },
+        ]
+      }
+    });
+  }
 
   aggregation.push({
     $sort: {
-      [sortBy || "createdAt"]: sortOrder === "desc" ? -1 : 1,
+      [sortBy || "createdAt"]: sortOrder === "asc" ? 1 : -1,
     },
   });
 
@@ -1369,11 +1385,26 @@ const getAllEvents = asyncHandler(async (req, res) => {
             ticketPrice: 1,
             eventImage: 1,
             userId: 1,
-            userDetails: {
-              userId: "$userDetails.userId",
-              name: "$userDetails.name",
-              email: "$userDetails.email",
-              profile_image: "$userDetails.profile_image",
+            status: 1,
+            eventManager: {
+              $map: {
+                input: "$eventManager",
+                as: "manager",
+                in: {
+                  userId: "$$manager.userId",
+                  name: "$$manager.name",
+                  email: "$$manager.email",
+                  username: "$$manager.username",
+                  password: "$$manager.password",
+                },
+              },
+            },
+            user: {
+              userId: "$user.userId",
+              name: "$user.name",
+              email: "$user.email",
+              mobile: "$user.mobile",
+              profile_image: "$user.profile_image",
             },
           },
         },
@@ -1404,6 +1435,54 @@ const getAllEvents = asyncHandler(async (req, res) => {
   );
 });
 
+const getEventDetails = asyncHandler(async (req, res) => {
+  const { eventId } = req.params;
+
+  console.log()
+
+  // const event = await VirtualEvent.findById(eventId).populate("userId", "name email mobile profile_image");
+
+  // if (!event) {
+  //   throw new ApiError(404, "Event not found");
+  // }
+
+  // res.json(
+  //   new ApiResponse(200, "Event details fetched successfully", {
+  //     event,
+  //   })
+  // );
+});
+
+
+const udpateEventStatus = asyncHandler(async (req, res) => {
+  const { eventId} = req.params;
+  const { status } = req.body;
+  if (!isValidObjectId(eventId)) {
+    throw new ApiError(400, "Invalid event ID");
+  }
+
+  const event = await VirtualEvent.findById(eventId);
+  if (!event) {
+    throw new ApiError(404, "Event not found");
+  }
+  if (!["approved","rejected"].includes(status)) {
+    throw new ApiError(400, "Invalid status. Must be 'approved' or 'rejected'");
+  }
+
+  const role = req.user.role;
+  if (!role.includes("admin")) {
+    throw new ApiError(403, "You are not authorized to update this event status");
+  }
+  event.status = status;
+  const updatedEvent = await event.save();  
+
+  res.json(
+    new ApiResponse(200, "Event status updated successfully", {
+      event: updatedEvent,
+    })
+  );
+});
+
 export {
   addEvent,
   getEvents,
@@ -1421,5 +1500,7 @@ export {
   registration,
   loginEventUser,
   refreshAccessToken,
-  getAllEvents
+  getAllEvents,
+  getEventDetails,
+  udpateEventStatus
 };

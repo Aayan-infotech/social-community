@@ -49,6 +49,11 @@ const virtualEventSchema = new mongoose.Schema(
       type: Number,
       required: false,
     },
+    status: {
+      type: String,
+      enum: ["pending", "approved", "rejected", "cancelled", "completed"],
+      default: "pending",
+    },
   },
   {
     timestamps: true,
