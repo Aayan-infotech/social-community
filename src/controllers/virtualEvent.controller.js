@@ -40,7 +40,7 @@ const addEvent = asyncHandler(async (req, res) => {
   const isKYCCompleted = req.user?.isKYCVerified;
   if (!isKYCCompleted) {
     throw new ApiError(
-      403,
+      400,
       "KYC verification is required to create a virtual event"
     );
   }
