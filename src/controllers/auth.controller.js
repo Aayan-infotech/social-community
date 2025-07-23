@@ -142,6 +142,8 @@ const signup = asyncHandler(async (req, res) => {
   }
   const stripeAccountId = stripeAccount.id;
 
+  
+
   const user = new User({
     userId,
     name,

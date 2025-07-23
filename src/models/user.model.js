@@ -8,6 +8,7 @@ const userSchema = new mongoose.Schema(
       type: String,
       unique: true,
       index: true,
+      message: "User Already exists",
     },
     name: {
       type: String,
