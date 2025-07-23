@@ -1,11 +1,11 @@
 import Joi from "joi";
 
 const virtualEventSchema = Joi.object({
-  eventName: Joi.string().required().messages({
+  eventName: Joi.string().min(3).max(30).required().messages({
     "string.empty": "Event name is required",
     "any.required": "Event name is required",
   }),
-  eventDescription: Joi.string().optional().allow(""),
+  eventDescription: Joi.string().min(10).max(500).optional().allow(""),
   eventLocation: Joi.string().required().messages({
     "string.empty": "Event location is required",
     "any.required": "Event location is required",
