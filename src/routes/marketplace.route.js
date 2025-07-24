@@ -50,6 +50,7 @@ import {
 
   checkKYCStatus,
   loginExpress,
+  getAllCategorires,
 } from "../controllers/marketplace.controller.js";
 
 const router = Router();
@@ -76,6 +77,7 @@ router.delete(
 );
 
 router.get("/get-category", verifyJWT, getCategory);
+router.get('/get-all-category',verifyJWT, getAllCategorires);
 router.post(
   "/upsert-subcategory",
   verifyJWT,

@@ -1437,20 +1437,21 @@ const getAllEvents = asyncHandler(async (req, res) => {
 
 const getEventDetails = asyncHandler(async (req, res) => {
   const { eventId } = req.params;
+  if (!isValidObjectId(eventId)) {
+    throw new ApiError(400, "Invalid event ID");
+  }
 
-  console.log()
+  const event = await VirtualEvent.findById(eventId).populate("userId", "name email mobile profile_image");
 
-  // const event = await VirtualEvent.findById(eventId).populate("userId", "name email mobile profile_image");
+  if (!event) {
+    throw new ApiError(404, "Event not found");
+  }
 
-  // if (!event) {
-  //   throw new ApiError(404, "Event not found");
-  // }
-
-  // res.json(
-  //   new ApiResponse(200, "Event details fetched successfully", {
-  //     event,
-  //   })
-  // );
+  res.json(
+    new ApiResponse(200, "Event details fetched successfully", {
+      event,
+    })
+  );
 });
 
 

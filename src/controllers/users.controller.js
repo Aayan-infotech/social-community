@@ -2371,11 +2371,92 @@ const updateUserDeleteStatus = asyncHandler(async (req, res) => {
     { userId: userId },
     { $set: { isDeleted: isDeleted, refreshToken: null } }
   );
-  
+
   if (!user) {
     throw new ApiError(404, "User not found");
   }
   res.json(new ApiResponse(200, "User delete status updated successfully"));
+});
+
+
+const getAllEventOrganizers = asyncHandler(async (req, res) => {
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.max(1, parseInt(req.query.limit) || 10);
+  const skip = (page - 1) * limit;
+
+  const role = req.user.role;
+  if (!role.includes("admin")) {
+    throw new ApiError(403, "You do not have permission to access this resource");
+  }
+
+  const { sortBy = "createdAt", sortOrder = "desc", search } = req.query;
+
+
+  const aggregation = [];
+  aggregation.push({
+    $match: { role: "event_manager", isDeleted: { $ne: true } },
+  });
+  if (search) {
+    aggregation.push({
+      $match: {
+        $or: [
+          { name: { $regex: search, $options: "i" } },
+          { email: { $regex: search, $options: "i" } },
+          { mobile: { $regex: search, $options: "i" } },
+        ],
+      },
+    });
+  }
+
+  aggregation.push({ $sort: { [sortBy]: sortOrder === "asc" ? 1 : -1 } });
+
+  aggregation.push({
+    $facet: {
+      data: [
+        { $skip: skip },
+        { $limit: limit },
+        {
+          $project: {
+            _id: 0,
+            userId: 1,
+            name: 1,
+            email: 1,
+            mobile: 1,
+            profile_image: {
+              $ifNull: [
+                "$profile_image",
+                `${req.protocol}://${req.hostname}:${process.env.PORT}/placeholder/image_place.png`,
+              ],
+            },
+            city: 1,
+            state: 1,
+            country: 1,
+            gender: 1,
+            role: 1,
+          },
+        },
+      ],
+      totalCount: [{ $count: "count" }],
+    }
+  });
+
+
+  const result = await User.aggregate(aggregation);
+  const eventOrganizers = result[0].data;
+  const totalCount = result[0].totalCount[0]?.count || 0;
+  const totalPages = Math.ceil(totalCount / limit);
+
+  res.json(
+    new ApiResponse(200, "Fetched all event organizers successfully", {
+      eventOrganizers,
+      total_page: totalPages,
+      current_page: page,
+      total_records: totalCount,
+      per_page: limit,
+    })
+  );
+
+
 });
 
 export {
@@ -2420,5 +2501,6 @@ export {
   acceptRejectInterest,
   getInterrestedProfiles,
   updateUserDetails,
-  updateUserDeleteStatus
+  updateUserDeleteStatus,
+  getAllEventOrganizers
 };

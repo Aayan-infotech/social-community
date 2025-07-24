@@ -111,6 +111,66 @@ const getCategory = asyncHandler(async (req, res) => {
   );
 });
 
+const getAllCategorires = asyncHandler(async (req, res) => {
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.max(1, parseInt(req.query.limit) || 10);
+  const skip = (page - 1) * limit;
+
+  const role = req.user.role;
+  if (!role.includes("admin")) {
+    throw new ApiError(403, "You do not have permission to access this resource");
+  }
+  const { sortBy = "createdAt", sortOrder = "desc", search } = req.query;
+
+
+  const aggregation = [];
+  if (search) {
+    aggregation.push({
+      $match: {
+        category_name: { $regex: search, $options: "i" },
+      },
+    });
+  }
+
+  aggregation.push({
+    $sort: { [sortBy]: sortOrder === "asc" ? 1 : -1 },
+  });
+
+  aggregation.push({
+    $facet: {
+      categories: [
+        { $skip: skip },
+        { $limit: limit },
+        {
+          $project: {
+            _id: 1,
+            category_name: 1,
+            category_image: 1,
+            createdAt: 1,
+            updatedAt: 1,
+          },
+        },
+      ],
+      totalCount: [{ $count: "count" }],
+    },
+  });
+
+  const categoryList = await MarketPlaceCategory.aggregate(aggregation);
+  const categories = categoryList[0]?.categories || [];
+  const totalCount = categoryList[0]?.totalCount[0]?.count || 0;
+  const totalPages = Math.ceil(totalCount / limit);
+
+  res.json(
+    new ApiResponse(200, "Categories fetched successfully", {
+      categories,
+      total_page: totalPages,
+      current_page: page,
+      total_records: totalCount,
+      per_page: limit,
+    })
+  );
+});
+
 const upsertSubcategory = asyncHandler(async (req, res) => {
   const { id, category_id, subcategory_name } = req.body;
   const userId = req.user.userId;
@@ -769,17 +829,82 @@ const getCards = asyncHandler(async (req, res) => {
 });
 
 const getSubCategories = asyncHandler(async (req, res) => {
-  const { search } = req.query;
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.max(1, parseInt(req.query.limit) || 10);
+  const skip = (page - 1) * limit;
 
-  const subCategory = await MarketPlaceSubCategory.find({
-    subcategory_name: { $regex: search ? search : "", $options: "i" },
-  }).select("-__v -userId");
-  if (!subCategory) {
-    throw new ApiError(404, "No business category found");
+  const role = req.user.role;
+  if (!role.includes("admin")) {
+    throw new ApiError(403, "You do not have permission to access this resource");
   }
+  const { sortBy = "createdAt", sortOrder = "desc", search } = req.query;
+
+  const aggregation = [];
+  aggregation.push({
+    $lookup: {
+      from: "marketplacecategories",
+      localField: "category_id",
+      foreignField: "_id",
+      as: "category",
+    },
+  });
+  aggregation.push({
+    $unwind: {
+      path: "$category",
+      preserveNullAndEmptyArrays: true,
+    },
+  });
+  if (search) {
+    aggregation.push({
+      $match: {
+        $or: [
+          { subcategory_name: { $regex: search, $options: "i" } },
+          { "category.category_name": { $regex: search, $options: "i" } }
+        ]
+      },
+    });
+  }
+
+  aggregation.push({
+    $sort: { [sortBy]: sortOrder === "asc" ? 1 : -1 },
+  });
+
+  aggregation.push({
+    $facet: {
+      subcategories: [
+        { $skip: skip },
+        { $limit: limit },
+        {
+          $project: {
+            _id: 1,
+            subcategory_name: 1,
+            subcategory_image: 1,
+            category_id: 1,
+            category_name: "$category.category_name",
+            createdAt: 1,
+            updatedAt: 1,
+          },
+        },
+      ],
+      totalCount: [{ $count: "count" }],
+    },
+  });
+
+  const subCategoryList = await MarketPlaceSubCategory.aggregate(aggregation);
+  const subcategories = subCategoryList[0]?.subcategories || [];
+  const totalCount = subCategoryList[0]?.totalCount[0]?.count || 0;
+  const totalPages = Math.ceil(totalCount / limit);
+
   res.json(
-    new ApiResponse(200, "Business category fetched successfully", subCategory)
+    new ApiResponse(200, "Subcategories fetched successfully", {
+      subcategories,
+      total_page: totalPages,
+      current_page: page,
+      total_records: totalCount,
+      per_page: limit,
+    })
   );
+
 });
 
 const deleteMarketplaceSubCategory = asyncHandler(async (req, res) => {
@@ -1249,7 +1374,7 @@ const updateOrderStatus = asyncHandler(async (req, res) => {
   }
 
 
- 
+
   const updateOrder = await Order.updateMany(
     { orderId: orderId, buyerId: userId },
     { $set: { status, paymentStatus } },
@@ -1414,4 +1539,5 @@ export {
   loginExpress,
   updateOrderStatus,
   getAllOrders,
+  getAllCategorires
 };

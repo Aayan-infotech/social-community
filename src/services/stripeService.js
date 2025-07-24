@@ -165,7 +165,6 @@ const paymentSheet = async (customerId, amount, currency, AccountId) => {
       },
     });
 
-    // console.log(paymentIntent);
 
     return {
       paymentIntent: paymentIntent.client_secret,

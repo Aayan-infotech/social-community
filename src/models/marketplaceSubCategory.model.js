@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 
 const marketplaceSubCategorySchema = new mongoose.Schema({
   category_id: {
-    type: String,
+    type: mongoose.Schema.Types.ObjectId,
     ref: "MarketPlaceCategory",
     required: true,
   },

@@ -42,7 +42,8 @@ import {
   acceptRejectInterest,
   getInterrestedProfiles,
   updateUserDetails,
-  updateUserDeleteStatus
+  updateUserDeleteStatus,
+  getAllEventOrganizers
 } from "../controllers/users.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { validateRequest } from "../middlewares/validation.middleware.js";
@@ -193,5 +194,7 @@ router.post('/upload-chat-document', verifyJWT, upload.fields([
 ]), errorHandler, uploadChatDocument);
 
 router.post('/remove-friend',verifyJWT,removeFriend);
+
+router.get('/get-all-event-organizers', verifyJWT, getAllEventOrganizers);
 
 export default router;
