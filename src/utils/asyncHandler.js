@@ -19,6 +19,10 @@ function asyncHandler(fn) {
                     }
                 }
             }
+            if (error.code === 11000) {
+                error.statusCode = 409;
+                error.message = "Duplicate Data Found , Please try again Later";
+            }
             res.status(error.statusCode || 500).json({
                 statusCode: error.statusCode || 500,
                 data: null,

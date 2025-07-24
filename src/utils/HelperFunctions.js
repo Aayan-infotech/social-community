@@ -34,6 +34,7 @@ const generateUniqueUserId = async () => {
   return formattedId;
 };
 
+
 const handleReferral = async (referralCode, newUserId) => {
   console.error("handleReferral", referralCode, newUserId);
   const referrer = await User.findOne({ referralCode });
