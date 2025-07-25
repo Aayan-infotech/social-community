@@ -453,6 +453,7 @@ const getProductList = asyncHandler(async (req, res) => {
             product_quantity: 1,
             category_name: "$category.category_name",
             subcategory_name: "$subcategory.subcategory_name",
+            status: 1,
           },
         },
       ],
@@ -499,6 +500,11 @@ const getMarketplaceProducts = asyncHandler(async (req, res) => {
   }
 
   const aggregation = [];
+  aggregation.push({
+    $match: {
+      status: "approved",
+    }
+  });
   // get the category or subcategory id from the query
 
   if (category_id && subcategory_id) {
@@ -1516,8 +1522,16 @@ const getAllProducts = asyncHandler(async (req, res) => {
   const page = Math.max(1, parseInt(req.query.page) || 1);
   const limit = Math.max(1, parseInt(req.query.limit) || 10);
   const skip = (page - 1) * limit;
+  const role = req.user.role;
+  if (!role.includes("admin")) {
+    throw new ApiError(403, "You do not have permission to access this resource");
+  }
+
+  const { sortBy = "createdAt", sortOrder = "desc", search } = req.query;
 
   const aggregation = [];
+
+
 
   aggregation.push({
     $lookup: {
@@ -1567,6 +1581,24 @@ const getAllProducts = asyncHandler(async (req, res) => {
     },
   });
 
+
+  if (search) {
+    aggregation.push({
+      $match: {
+        $or: [
+          { product_name: { $regex: search, $options: "i" } },
+          { product_description: { $regex: search, $options: "i" } },
+          { "category.category_name": { $regex: search, $options: "i" } },
+          { "subcategory.subcategory_name": { $regex: search, $options: "i" } },
+        ],
+      },
+    });
+  }
+
+  aggregation.push({
+    $sort: { [sortBy]: sortOrder === "asc" ? 1 : -1 },
+  });
+
   aggregation.push({
     $facet: {
       data: [
@@ -1587,6 +1619,7 @@ const getAllProducts = asyncHandler(async (req, res) => {
             user_name: "$user.name",
             user_email: "$user.email",
             profile_image: "$user.profile_image",
+            status: 1,
           },
         },
       ],
@@ -1609,6 +1642,36 @@ const getAllProducts = asyncHandler(async (req, res) => {
     })
   );
 });
+
+const updateProductStatus = asyncHandler(async (req, res) => {
+  const { status } = req.body;
+  const { productId } = req.params;
+  console.log("Product ID:", productId, "Status:", status);
+
+  const role = req.user.role;
+  if (!role.includes("admin")) {
+    throw new ApiError(403, "You do not have permission to access this resource");
+  }
+  if (!isValidObjectId(productId)) {
+    throw new ApiError(400, "Invalid product ID");
+  }
+  if (!["approved", "rejected"].includes(status)) {
+    throw new ApiError(400, "Invalid status");
+  }
+  const product = await Product.findByIdAndUpdate(
+    productId,
+    { status },
+    { new: true }
+  );
+  if (!product) {
+    throw new ApiError(404, "Product not found");
+  }
+
+  return res.json(new ApiResponse(200, "Product status updated successfully", product));
+
+
+});
+
 
 export {
   upsertCategory,
@@ -1646,5 +1709,6 @@ export {
   updateOrderStatus,
   getAllOrders,
   getAllCategorires,
-  getAllProducts
+  getAllProducts,
+  updateProductStatus
 };

@@ -79,7 +79,8 @@ const deleteObject = async (imageUrl) => {
     await s3.send(new DeleteObjectCommand(params));
     return `${fileName} deleted successfully from S3`;
   } catch (error) {
-    throw new ApiError(500, error.message);
+    return 'Failed to delete image from S3: ' + error.message;
+    // throw new ApiError(500, error.message);
   }
 };
 

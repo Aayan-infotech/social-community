@@ -47,11 +47,11 @@ import {
   myOrders,
   updateOrderStatus,
   getAllOrders,
-
   checkKYCStatus,
   loginExpress,
   getAllCategorires,
-  getAllProducts
+  getAllProducts,
+  updateProductStatus,
 } from "../controllers/marketplace.controller.js";
 
 const router = Router();
@@ -181,6 +181,7 @@ router.get('/login-express', verifyJWT, loginExpress);
 
 // web apis
 router.get('/get-all-products',verifyJWT,getAllProducts);
+router.put('/updateProduct/:productId',verifyJWT,updateProductStatus);
 
 
 export default router;
