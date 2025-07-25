@@ -503,7 +503,10 @@ const getMarketplaceProducts = asyncHandler(async (req, res) => {
   aggregation.push({
     $match: {
       status: "approved",
-    }
+    },
+    $match: {
+      userId: { $ne: req.user.userId }, 
+    },
   });
   // get the category or subcategory id from the query
 
