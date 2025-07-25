@@ -272,6 +272,13 @@ const addProduct = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Invalid subcategory ID");
   }
 
+  const role = req.user?.role;
+
+  if (!role.includes("vendor")) {
+    req.user.role.push("vendor");
+    await req.user.save();
+  }
+
   let product_image = [];
   if (req.files && req.files.product_image) {
     const files = req.files.product_image;
@@ -1504,6 +1511,105 @@ const getAllOrders = asyncHandler(async (req, res) => {
 
 });
 
+
+const getAllProducts = asyncHandler(async (req, res) => {
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.max(1, parseInt(req.query.limit) || 10);
+  const skip = (page - 1) * limit;
+
+  const aggregation = [];
+
+  aggregation.push({
+    $lookup: {
+      from: "marketplacecategories",
+      localField: "category_id",
+      foreignField: "_id",
+      as: "category",
+    },
+  });
+
+  aggregation.push({
+    $unwind: {
+      path: "$category",
+      preserveNullAndEmptyArrays: true,
+    },
+  });
+
+  aggregation.push({
+    $lookup: {
+      from: "users",
+      localField: "userId",
+      foreignField: "userId",
+      as: "user",
+    },
+  });
+
+  aggregation.push({
+    $unwind: {
+      path: "$user",
+      preserveNullAndEmptyArrays: true,
+    },
+  });
+
+  aggregation.push({
+    $lookup: {
+      from: "marketplacesubcategories",
+      localField: "subcategory_id",
+      foreignField: "_id",
+      as: "subcategory",
+    },
+  });
+
+  aggregation.push({
+    $unwind: {
+      path: "$subcategory",
+      preserveNullAndEmptyArrays: true,
+    },
+  });
+
+  aggregation.push({
+    $facet: {
+      data: [
+        { $skip: skip },
+        { $limit: limit },
+        {
+          $project: {
+            _id: 1,
+            product_name: 1,
+            product_image: 1,
+            product_price: 1,
+            product_discount: 1,
+            product_description: 1,
+            product_quantity: 1,
+            category_name: "$category.category_name",
+            subcategory_name: "$subcategory.subcategory_name",
+            user_id: "$user.userId",
+            user_name: "$user.name",
+            user_email: "$user.email",
+            profile_image: "$user.profile_image",
+          },
+        },
+      ],
+      totalCount: [{ $count: "count" }],
+    },
+  });
+
+  const result = await Product.aggregate(aggregation);
+  const products = result[0].data;
+  const totalCount = result[0].totalCount[0]?.count || 0;
+  const totalPages = Math.ceil(totalCount / limit);
+
+  res.json(
+    new ApiResponse(200, "Fetched all products successfully", {
+      products,
+      total_page: totalPages,
+      current_page: page,
+      total_records: totalCount,
+      per_page: limit,
+    })
+  );
+});
+
 export {
   upsertCategory,
   getCategory,
@@ -1539,5 +1645,6 @@ export {
   loginExpress,
   updateOrderStatus,
   getAllOrders,
-  getAllCategorires
+  getAllCategorires,
+  getAllProducts
 };

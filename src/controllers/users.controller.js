@@ -1498,12 +1498,11 @@ const saveResources = asyncHandler(async (req, res) => {
 });
 
 const getResources = asyncHandler(async (req, res) => {
-  const { type } = req.body;
+  const { type } = req.query;
   const userId = req.user.userId;
-
   const validTypes = ["job", "post", "health_wellness", "event"];
   if (!validTypes.includes(type)) {
-    throw new ApiError(400, "Invalid resource type provided");
+    throw new ApiError(400, "Invalid resource type provided");zs
   }
 
   const aggregation = [];
@@ -2459,6 +2458,82 @@ const getAllEventOrganizers = asyncHandler(async (req, res) => {
 
 });
 
+const getAllVendors = asyncHandler(async (req, res) => {
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.max(1, parseInt(req.query.limit) || 10);
+  const skip = (page - 1) * limit;
+
+  const role = req.user.role;
+  if (!role.includes("admin")) {
+    throw new ApiError(403, "You do not have permission to access this resource");
+  }
+
+  const { sortBy = "createdAt", sortOrder = "desc", search } = req.query;
+
+  const aggregation = [];
+  aggregation.push({
+    $match: { role: "vendor", isDeleted: { $ne: true } },
+  });
+
+  if (search) {
+    aggregation.push({
+      $match: {
+        $or: [
+          { name: { $regex: search, $options: "i" } },
+          { email: { $regex: search, $options: "i" } },
+          { mobile: { $regex: search, $options: "i" } },
+        ],
+      },
+    });
+  }
+
+  aggregation.push({ $sort: { [sortBy]: sortOrder === "asc" ? 1 : -1 } });
+
+  aggregation.push({
+    $facet: {
+      data: [
+        { $skip: skip },
+        { $limit: limit },
+        {
+          $project: {
+            _id: 0,
+            userId: 1,
+            name: 1,
+            email: 1,
+            mobile: 1,
+            profile_image: {
+              $ifNull: [
+                "$profile_image",
+                `${req.protocol}://${req.hostname}:${process.env.PORT}/placeholder/image_place.png`,
+              ],
+            },
+            city: 1,
+            state: 1,
+            country: 1,
+            gender: 1,
+          },
+        },
+      ],
+      totalCount: [{ $count: "count" }],
+    },
+  });
+
+  const result = await User.aggregate(aggregation);
+  const vendors = result[0].data;
+  const totalCount = result[0].totalCount[0]?.count || 0;
+  const totalPages = Math.ceil(totalCount / limit);
+
+  res.json(
+    new ApiResponse(200, "Fetched all vendors successfully", {
+      vendors,
+      total_page: totalPages,
+      current_page: page,
+      total_records: totalCount,
+      per_page: limit,
+    })
+  );
+});
+
 export {
   getUserProfile,
   updateUserProfile,
@@ -2502,5 +2577,6 @@ export {
   getInterrestedProfiles,
   updateUserDetails,
   updateUserDeleteStatus,
-  getAllEventOrganizers
+  getAllEventOrganizers,
+  getAllVendors,
 };

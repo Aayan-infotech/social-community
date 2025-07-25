@@ -36,6 +36,11 @@ const productSchema = new mongoose.Schema({
     ref: "User",
     required: true,
   },
+  status: {
+    type: String,
+    enum: ["pending", "approved", "rejected"],
+    default: "pending",
+  },
 },{
     timestamps: true,
     versionKey: false,

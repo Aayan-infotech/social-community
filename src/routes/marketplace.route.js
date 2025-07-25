@@ -51,6 +51,7 @@ import {
   checkKYCStatus,
   loginExpress,
   getAllCategorires,
+  getAllProducts
 } from "../controllers/marketplace.controller.js";
 
 const router = Router();
@@ -177,6 +178,9 @@ router.get("/get-orders", verifyJWT, getAllOrders);
 
 router.get("/confirm-payment", verifyJWT, confirmPaymentFn);
 router.get('/login-express', verifyJWT, loginExpress);
+
+// web apis
+router.get('/get-all-products',verifyJWT,getAllProducts);
 
 
 export default router;

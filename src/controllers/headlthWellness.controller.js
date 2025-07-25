@@ -87,6 +87,7 @@ export const getResources = asyncHandler(async (req, res) => {
   const skip = (page - 1) * limit;
 
   const aggregation = [];
+ 
   if (req.query.userId) {
     aggregation.push({
       $match: { userId: req.query.userId },
@@ -94,6 +95,7 @@ export const getResources = asyncHandler(async (req, res) => {
   } else {
     aggregation.push({
       $match: { userId: { $ne: req.user.userId } },
+      $match: { status: "approved" },
     });
   }
   aggregation.push({
@@ -124,6 +126,7 @@ export const getResources = asyncHandler(async (req, res) => {
             description: 1,
             location: 1,
             resourceImage: 1,
+            status: 1,
           },
         },
       ],
@@ -172,4 +175,109 @@ export const getResourcesDetails = asyncHandler(async (req, res) => {
       resource
     )
   );
+});
+
+
+export const getAllResources = asyncHandler(async (req, res) => {
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.max(1, parseInt(req.query.limit) || 10);
+  const skip = (page - 1) * limit;
+
+  const {sortBy = "createdAt",sortOrder = "desc" , search = ""} = req.query;
+  const role = req.user.role;
+  if(!role.includes("admin")){
+    throw new ApiError(403, "You are not authorized to access this resource");
+  }
+  const aggregation = [];
+  aggregation.push({
+    $match: {
+      $or: [
+        { title: { $regex: search, $options: "i" } },
+        { description: { $regex: search, $options: "i" } },
+      ],
+    },
+  });
+  aggregation.push({
+    $sort: { [sortBy]: sortOrder === "asc" ? 1 : -1 },
+  });
+  aggregation.push({
+    $lookup: {
+      from: "users",
+      localField: "userId",
+      foreignField: "userId",
+      as: "user",
+    },
+  });
+  aggregation.push({
+    $unwind: "$user",
+  });
+  aggregation.push({
+    $facet: {
+      resources: [
+        { $skip: skip },
+        { $limit: limit },
+        {
+          $project: {
+            "user.name": 1,
+            "user.profile_image": 1,
+            "user.userId": 1,
+            title: 1,
+            description: 1,
+            location: 1,
+            resourceImage: 1,
+            status: 1,
+          },
+        },
+      ],
+      totalCount: [{ $count: "count" }],
+    },
+  });
+
+  const result = await HealthWellnessModel.aggregate(aggregation);
+  const resources = result[0]?.resources || [];
+  const totalCount = result[0]?.totalCount[0]?.count || 0;
+  const totalPages = Math.ceil(totalCount / limit);
+
+
+  res.json(
+    new ApiResponse(
+      200,
+      resources.length > 0
+        ? "Resources fetched successfully"
+        : "No resources found",
+      resources.length > 0
+        ? {
+            resources,
+            total_page: totalPages,
+            current_page: page,
+            total_records: totalCount,
+            per_page: limit,
+          }
+        : null
+    )
+  );
+  // const aggregation = [];
+});
+
+
+export const updateResource = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+  if (!isValidObjectId(id)) {
+    throw new ApiError(400, "Invalid resource ID format");
+  }
+
+  if (!["pending", "approved", "rejected"].includes(status)) {
+    throw new ApiError(400, "Invalid status value");
+  }
+
+  const updatedResource = await HealthWellnessModel.findByIdAndUpdate(
+    id,
+    { status },
+    { new: true }
+  );
+  if (!updatedResource) {
+    throw new ApiError(404, "Resource not found");
+  }
+  res.json(new ApiResponse(200, "Resource updated successfully", updatedResource));
 });
