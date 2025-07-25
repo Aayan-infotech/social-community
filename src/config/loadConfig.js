@@ -55,6 +55,12 @@ const loadConfig = async () => {
             GOOGLE_CLIENT_ID: secrets.GOOGLE_CLIENT_ID,
             GOOGLE_CLIENT_SECRET: secrets.GOOGLE_CLIENT_SECRET,
 
+
+            // Cloudinary configuration
+            CLOUDINARY_NAME: secrets.CLOUDINARY_NAME,
+            CLOUDINARY_API_KEY: secrets.CLOUDINARY_API_KEY,
+            CLOUDINARY_SECRET_KEY: secrets.CLOUDINARY_SECRET_KEY,
+
             // Firebase configuration
             FIREBASE_CONFIG: secrets.FIREBASE_CONFIG,
           };
@@ -106,6 +112,12 @@ const loadConfig = async () => {
     // GOOGLE CLOUD OAUTH
     GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
     GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
+
+
+    // Cloudinary configuration
+    CLOUDINARY_NAME: process.env.CLOUDINARY_NAME,
+    CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY,
+    CLOUDINARY_SECRET_KEY: process.env.CLOUDINARY_SECRET_KEY,
 
     FIREBASE_CONFIG: process.env.FIREBASE_CONFIG,
   };

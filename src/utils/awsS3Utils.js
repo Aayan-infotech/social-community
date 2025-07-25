@@ -10,6 +10,7 @@ import { Upload } from "@aws-sdk/lib-storage";
 import ffmpeg from "fluent-ffmpeg";
 import path from "path";
 import { loadConfig } from "../config/loadConfig.js";
+import { uploadOnCloudinary } from "./cloudinary.js";
 
 const secret = await loadConfig();
 
@@ -48,10 +49,15 @@ const uploadImage = async (file) => {
       fileUrl: `https://${secret.AWS_BUCKET_NAME}.s3.${secret.AWS_REGION}.amazonaws.com/${file.filename}`,
     };
   } catch (error) {
-    console.error("Error uploading file:", error);
-    throw new ApiError(500, "Failed to upload image to S3");
+    const uploadedFile = await uploadOnCloudinary(filePath);
+    if (uploadedFile) {
+      return {
+        success: true,
+        fileUrl: uploadedFile.secure_url,
+      };
+    }
+    // throw new ApiError(500, "Failed to upload image to S3");
   } finally {
-    // Always attempt cleanup
     try {
       if (fs.existsSync(filePath)) {
         await fs.promises.unlink(filePath);
@@ -108,6 +114,11 @@ const saveCompressedImage = async (file, width, height) => {
     }
   } catch (error) {
     throw new ApiError(500, error.message);
+  } finally {
+    // Clean up the temporary file
+    if (file.path && fs.existsSync(file.path)) {
+      await fs.promises.unlink(file.path);
+    }
   }
 };
 
@@ -139,17 +150,22 @@ const uploadVideo = async (file) => {
 
     const result = await upload.done();
 
-    if (file.path && fs.existsSync(file.path)) {
-      fs.unlinkSync(file.path);
-    }
-
     return { success: true, videoUrl: result.Location };
   } catch (error) {
-    if (file.path && fs.existsSync(file.path)) {
-      fs.unlinkSync(file.path);
+    // Try to upload the video on Cloudinary
+    const uploadedFile = await uploadOnCloudinary(file.path);
+    if (uploadedFile) {
+      return {
+        success: true,
+        videoUrl: uploadedFile.secure_url,
+      };
     }
-    console.error(error);
-    throw new ApiError(500, error.message);
+    // throw new ApiError(500, error.message);
+  } finally {
+    // Clean up the temporary file
+    if (file.path && fs.existsSync(file.path)) {
+      await fs.promises.unlink(file.path);
+    }
   }
 };
 
