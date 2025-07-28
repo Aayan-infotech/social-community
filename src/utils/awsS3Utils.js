@@ -178,7 +178,7 @@ const compressVideo = (inputPath, outputFolder) => {
     ffmpeg(inputPath)
       .videoCodec("libx264")
       .audioCodec("aac")
-      .size("480x360")
+      // .size("480x360")
       .fps(30)
       .outputOptions([
         "-preset slow",
@@ -204,11 +204,52 @@ const getVideoDuration = (filePath) => {
   });
 };
 
+const getMediaMetadata = async (file) => {
+  try {
+    if (file.mimetype.startsWith("image/")) {
+      const metadata = await sharp(file.path).metadata();
+      return {
+        width: metadata.width,
+        height: metadata.height,
+        aspectRatio: (metadata.width / metadata.height).toFixed(2),
+        orientation: metadata.width > metadata.height ? 'landscape' : (metadata.width < metadata.height ? 'portrait' : 'square'),
+      };
+    } else if (file.mimetype.startsWith("video/")) {
+      return new Promise((resolve, reject) => {
+        ffmpeg.ffprobe(file.path, (err, metadata) => {
+          if (err) return reject(err);
+
+          const videoStream = metadata.streams.find(stream => stream.codec_type === 'video');
+
+          if (!videoStream) {
+            return reject(new Error("No video stream found"));
+          }
+
+          const width = videoStream.width;
+          const height = videoStream.height;
+          const aspectRatio = width && height ? (width / height).toFixed(2) : null;
+
+          let orientation = 'landscape';
+          if (height > width) orientation = 'portrait';
+          else if (height === width) orientation = 'square';
+
+          resolve({ width, height, aspectRatio: Number(aspectRatio), orientation });
+        });
+      });
+    } else {
+      throw new Error("Unsupported media type");
+    }
+  } catch (error) {
+    throw new ApiError(500, "Failed to get media metadata: " + error.message);
+  }
+};
+
 export {
   uploadImage,
   deleteObject,
   saveCompressedImage,
   uploadVideo,
   compressVideo,
-  getVideoDuration
+  getVideoDuration,
+  getMediaMetadata
 };

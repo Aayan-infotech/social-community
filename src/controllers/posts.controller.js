@@ -12,6 +12,7 @@ import {
   compressVideo,
   deleteObject,
   getVideoDuration,
+  getMediaMetadata,
 } from "../utils/awsS3Utils.js";
 import fs, { stat } from "fs";
 import { isValidObjectId } from "../utils/isValidObjectId.js";
@@ -27,9 +28,18 @@ const createPost = asyncHandler(async (req, res) => {
   // let media = [];
   let media = null;
   let mediaType = null;
+  let mediaWidth = null;
+  let mediaHeight = null;
+  let mediaAspectRatio = null;
+  let mediaOrientation = null;
   if (req.files && req.files.media) {
     const file = req.files.media[0];
-    // for (const file of req.files.media) {
+    const { width, height, aspectRatio, orientation } = await getMediaMetadata(file);
+
+    if (!width || !height || !aspectRatio || !orientation) {
+      throw new ApiError(400, "Invalid media metadata");
+    }
+    [mediaWidth, mediaHeight, mediaAspectRatio, mediaOrientation] = [width, height, aspectRatio, orientation];
 
     if (file.mimetype !== "video/mp4") {
       const saveUpload = await saveCompressedImage(file, 600);
@@ -81,6 +91,8 @@ const createPost = asyncHandler(async (req, res) => {
     }
   }
 
+
+
   // save the post data
   const post = new PostModel({
     title,
@@ -89,6 +101,10 @@ const createPost = asyncHandler(async (req, res) => {
     userId: req.user.userId,
     media,
     mediaType,
+    mediaWidth: mediaWidth,
+    mediaHeight: mediaHeight,
+    mediaAspectRatio: mediaAspectRatio,
+    mediaOrientation: mediaOrientation,
   });
 
   await post.save();
@@ -98,6 +114,7 @@ const createPost = asyncHandler(async (req, res) => {
 
 const updatePost = asyncHandler(async function (req, res) {
   const { postId, title, description, type } = req.body;
+
   if (!isValidObjectId(postId)) {
     throw new ApiError(400, "Invalid post ID");
   }
@@ -107,60 +124,86 @@ const updatePost = asyncHandler(async function (req, res) {
     throw new ApiError(404, "Post not found");
   }
 
-  // update the post images and videos
-  let media = post.media || [];
+  let media = post.media || null;
+  let mediaType = post.mediaType || null;
+  let width = post.mediaWidth || null;
+  let height = post.mediaHeight || null;
+  let aspectRatio = post.mediaAspectRatio || null;
+  let orientation = post.mediaOrientation || null;
+
   if (req.files && req.files.media) {
-    for (const file of req.files.media) {
-      if (file.mimetype !== "video/mp4") {
-        const saveUpload = await saveCompressedImage(file, 600);
-        if (!saveUpload.success) {
-          throw new ApiError(400, "Image upload failed");
-        } else {
-          // post.media.push(saveUpload.thumbnailUrl);
-          media = saveUpload.thumbnailUrl;
-          post.mediaType = "image";
-        }
-      } else {
-        const videoDuration = await getVideoDuration(file.path);
-        if (videoDuration > 30) {
-          throw new ApiError(400, "Video duration should not exceed 30 seconds");
-        }
-        // compress the video
-        const status = await compressVideo(file.path, "./public/temp");
-        if (!status.success) {
-          throw new ApiError(400, "Video compression failed");
-        }
-        const compressedFile = {
-          path: status.outputPath,
-          originalname: file.originalname,
-          filename: file.filename,
-          mimetype: file.mimetype,
-        };
-        const upload = await uploadVideo(compressedFile);
-        if (!upload.success) {
-          throw new ApiError(400, "Video upload failed");
-        } else {
-          // post.media.push(upload.videoUrl);
-          media = upload.videoUrl;
-          post.mediaType = "video";
-        }
+    const file = req.files.media[0];
+    const metadata = await getMediaMetadata(file);
+
+    if (
+      !metadata.width ||
+      !metadata.height ||
+      !metadata.aspectRatio ||
+      !metadata.orientation
+    ) {
+      throw new ApiError(400, "Invalid media metadata");
+    }
+
+    width = metadata.width;
+    height = metadata.height;
+    aspectRatio = metadata.aspectRatio;
+    orientation = metadata.orientation;
+
+    if (file.mimetype !== "video/mp4") {
+      const saveUpload = await saveCompressedImage(file, 600);
+      if (!saveUpload.success) {
+        throw new ApiError(400, "Image upload failed");
+      }
+      media = saveUpload.thumbnailUrl;
+      mediaType = "image";
+    } else {
+      const videoDuration = await getVideoDuration(file.path);
+      if (videoDuration > 30) {
+        throw new ApiError(400, "Video duration should not exceed 30 seconds");
       }
 
-      if (file.path && fs.existsSync(file.path)) {
-        fs.unlinkSync(file.path);
+      const status = await compressVideo(file.path, "./public/temp");
+      if (!status.success) {
+        throw new ApiError(400, "Video compression failed");
       }
+
+      const compressedFile = {
+        path: status.outputPath,
+        originalname: file.originalname,
+        filename: file.filename,
+        mimetype: file.mimetype,
+      };
+
+      const upload = await uploadVideo(compressedFile);
+      if (!upload.success) {
+        throw new ApiError(400, "Video upload failed");
+      }
+
+      media = upload.videoUrl;
+      mediaType = "video";
+    }
+
+    if (file.path && fs.existsSync(file.path)) {
+      fs.unlinkSync(file.path);
     }
   }
 
+  // Update post fields
   post.title = title || post.title;
   post.description = description || post.description;
   post.type = type || post.type;
-  post.media = media || post.media;
+  post.media = media;
+  post.mediaType = mediaType;
+  post.mediaWidth = width;
+  post.mediaHeight = height;
+  post.mediaAspectRatio = aspectRatio;
+  post.mediaOrientation = orientation;
 
   await post.save();
 
   res.json(new ApiResponse(200, "Post updated successfully", post));
 });
+
 
 const getPosts = asyncHandler(async function (req, res) {
   const page = Math.max(1, parseInt(req.query.page) || 1);
@@ -1247,7 +1290,7 @@ const getAllReportedPosts = asyncHandler(async (req, res) => {
         updatedAt: "$post.updatedAt",
         userId: "$post.userId",
         type: "$post.type",
-        media:"$post.media",
+        media: "$post.media",
         mediaType: "$post.mediaType",
         likes: "$post.likes",
         comments: "$post.comments",

@@ -982,6 +982,7 @@ const checkKYCStatus = asyncHandler(async (req, res) => {
   }
   const stripeAccountId = getUser.stripeAccountId;
   const status = await handleKYCStatus(stripeAccountId);
+  console.log("KYC Status:", status);
 
   if (status === "active") {
     getUser.isKYCVerified = true;
@@ -989,7 +990,7 @@ const checkKYCStatus = asyncHandler(async (req, res) => {
     if (!saveStatus) {
       throw new ApiError(500, "Failed to update KYC status");
     }
-    return res.redirect(`http://18.209.91.97:5623/kyc-success`);
+    return res.redirect(`http://98.85.246.54:5623/kyc-success`);
   } else if (status === "pending") {
     return res.json(new ApiResponse(200, "KYC is pending", status));
   } else {
@@ -1397,7 +1398,7 @@ const updateOrderStatus = asyncHandler(async (req, res) => {
     { new: true }
   );
 
-  res.json(new ApiResponse(200, 'Order Status Updated Successfully', updateOrder));
+  res.json(new ApiResponse(200, 'Order Status Updated Successfully'));
 });
 
 const getAllOrders = asyncHandler(async (req, res) => {
