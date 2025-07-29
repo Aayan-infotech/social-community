@@ -990,7 +990,7 @@ const checkKYCStatus = asyncHandler(async (req, res) => {
     if (!saveStatus) {
       throw new ApiError(500, "Failed to update KYC status");
     }
-    return res.redirect(`http://98.85.246.54:5623/kyc-success`);
+    return res.redirect(`http://3.230.209.171:5623/kyc-success`);
   } else if (status === "pending") {
     return res.json(new ApiResponse(200, "KYC is pending", status));
   } else {
