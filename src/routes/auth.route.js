@@ -27,7 +27,6 @@ import { verifyJWT } from "../middlewares/auth.middleware.js";
 
 const router = Router();
 
-
 router.route("/signup").post(validateRequest(userValidationSchema), signup);
 router.route("/login").post(validateRequest(loginValidationSchema), loginUser);
 router.post("/forgot-password", forgotPassword);
