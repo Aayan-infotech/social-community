@@ -50,6 +50,9 @@ const loadConfig = async () => {
             // Stripe configuration
             STRIPE_PUBLIC_KEY: secrets.STRIPE_PUBLIC_KEY,
             STRIPE_SECRET_KEY: secrets.STRIPE_SECRET_KEY,
+            REFRESH_URL: secrets.REFRESH_URL,
+            RETURN_URL: secrets.RETURN_URL,
+            STRIPE_WEBHOOK_SECRET: secrets.STRIPE_WEBHOOK_SECRET,
 
             // Google OAuth configuration
             GOOGLE_CLIENT_ID: secrets.GOOGLE_CLIENT_ID,
@@ -108,6 +111,7 @@ const loadConfig = async () => {
     STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
     REFRESH_URL: process.env.REFRESH_URL,
     RETURN_URL: process.env.RETURN_URL,
+    STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
 
     // GOOGLE CLOUD OAUTH
     GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
