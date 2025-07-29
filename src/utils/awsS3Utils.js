@@ -10,7 +10,6 @@ import { Upload } from "@aws-sdk/lib-storage";
 import ffmpeg from "fluent-ffmpeg";
 import path from "path";
 import { loadConfig } from "../config/loadConfig.js";
-import { uploadOnCloudinary } from "./cloudinary.js";
 
 const secret = await loadConfig();
 
@@ -49,14 +48,7 @@ const uploadImage = async (file) => {
       fileUrl: `https://${secret.AWS_BUCKET_NAME}.s3.${secret.AWS_REGION}.amazonaws.com/${file.filename}`,
     };
   } catch (error) {
-    const uploadedFile = await uploadOnCloudinary(filePath);
-    if (uploadedFile) {
-      return {
-        success: true,
-        fileUrl: uploadedFile.secure_url,
-      };
-    }
-    // throw new ApiError(500, "Failed to upload image to S3");
+    throw new ApiError(500, "Failed to upload image to S3");
   } finally {
     try {
       if (fs.existsSync(filePath)) {
