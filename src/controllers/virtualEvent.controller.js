@@ -21,6 +21,7 @@ import { sendEventLoginCredentialEmail } from "../emails/eventLoginCredential.js
 import { sendEmail } from "../services/emailService.js";
 import jwt from "jsonwebtoken";
 import { loadConfig } from "../config/loadConfig.js";
+import { User } from "../models/user.model.js";
 
 const secret = await loadConfig();
 
@@ -36,6 +37,10 @@ const addEvent = asyncHandler(async (req, res) => {
     eventTimeEnd,
     noOfSlots,
   } = req.body;
+
+  if (ticketPrice <= 0) {
+    throw new ApiError(400, "Ticket price must be greater than 0");
+  }
 
   const isKYCCompleted = req.user?.isKYCVerified;
   if (!isKYCCompleted) {
@@ -277,6 +282,15 @@ const myEvenets = asyncHandler(async (req, res) => {
   });
 
   aggregation.push({
+    $lookup: {
+      from: "eventloginusers",
+      localField: "_id",
+      foreignField: "eventId",
+      as: "eventManager",
+    }
+  });
+
+  aggregation.push({
     $facet: {
       virtualEvents: [
         { $skip: skip },
@@ -297,6 +311,19 @@ const myEvenets = asyncHandler(async (req, res) => {
             eventImage: 1,
             userId: 1,
             status: 1,
+            eventManager: {
+              $map: {
+                input: "$eventManager",
+                as: "manager",
+                in: {
+                  userId: "$$manager.userId",
+                  name: "$$manager.name",
+                  email: "$$manager.email",
+                  username: "$$manager.username",
+                  password: "$$manager.password",
+                },
+              },
+            },
             userDetails: {
               userId: "$userDetails.userId",
               name: "$userDetails.name",
@@ -681,6 +708,8 @@ const updateBookingStatus = asyncHandler(async (req, res) => {
   const qrCodeData = {
     ticketId: booking.ticketId,
     eventId: booking.eventId._id,
+    eventName: booking.eventId.eventName,
+    eventLocation: booking.eventId.eventLocation,
   };
 
   // base 64 encode the qrCodeData
@@ -1092,13 +1121,15 @@ const ticketExhaust = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Ticket not found");
   }
 
+  if (ticket.bookingStatus === "used") {
+    throw new ApiError(400, "Ticket is already used");
+  }
+
   if (ticket.bookingStatus !== "booked") {
     throw new ApiError(400, "Ticket is not booked");
   }
 
-  if (ticket.bookingStatus === "used") {
-    throw new ApiError(400, "Ticket is already used");
-  }
+
 
   //   throw new ApiError(400, "Ticket is not booked");
 
@@ -1110,7 +1141,15 @@ const ticketExhaust = asyncHandler(async (req, res) => {
       },
     },
     { new: true }
-  );
+  ).populate("eventId", "eventName eventLocation eventStartDate eventEndDate ticketPrice userId");
+
+  const user = await User.findOne({ userId: updatedTicket.userId }).select(
+    "userId name email profile_image");
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
+
+  updatedTicket.user = user;
 
   return res.json(
     new ApiResponse(200, "Ticket exhausted successfully", updatedTicket)
@@ -1174,13 +1213,9 @@ const registration = asyncHandler(async (req, res) => {
   if (!savedRegistration) {
     throw new ApiError(500, "Failed to register for the event");
   }
-  // remove the password from the response key
-  savedRegistration.password = undefined;
 
   return res.json(
-    new ApiResponse(200, "Registration successful", {
-      registration: savedRegistration,
-    })
+    new ApiResponse(200, "Registration successful", savedRegistration)
   );
 });
 
@@ -1349,12 +1384,12 @@ const getAllEvents = asyncHandler(async (req, res) => {
 
 
 
-  if(search){
+  if (search) {
     aggregation.push({
       $match: {
         $or: [
           { eventName: { $regex: search, $options: "i" } },
-          {eventLocation: { $regex: search, $options: "i" } },
+          { eventLocation: { $regex: search, $options: "i" } },
           { "user.name": { $regex: search, $options: "i" } },
         ]
       }
@@ -1457,7 +1492,7 @@ const getEventDetails = asyncHandler(async (req, res) => {
 
 
 const udpateEventStatus = asyncHandler(async (req, res) => {
-  const { eventId} = req.params;
+  const { eventId } = req.params;
   const { status } = req.body;
   if (!isValidObjectId(eventId)) {
     throw new ApiError(400, "Invalid event ID");
@@ -1467,7 +1502,7 @@ const udpateEventStatus = asyncHandler(async (req, res) => {
   if (!event) {
     throw new ApiError(404, "Event not found");
   }
-  if (!["approved","rejected"].includes(status)) {
+  if (!["approved", "rejected"].includes(status)) {
     throw new ApiError(400, "Invalid status. Must be 'approved' or 'rejected'");
   }
 
@@ -1476,7 +1511,7 @@ const udpateEventStatus = asyncHandler(async (req, res) => {
     throw new ApiError(403, "You are not authorized to update this event status");
   }
   event.status = status;
-  const updatedEvent = await event.save();  
+  const updatedEvent = await event.save();
 
   res.json(
     new ApiResponse(200, "Event status updated successfully", {

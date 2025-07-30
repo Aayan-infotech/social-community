@@ -3,7 +3,8 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import routes from "./routes/index.js";
 import passport from "passport";
-import './config/passport.js'; 
+import './config/passport.js';
+import { handleWebhooks } from "./services/stripeService.js";
 
 const app = express();
 
@@ -14,6 +15,7 @@ app.use(
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
   })
 );
+app.post("/webhooks", express.raw({ type: 'application/json' }), handleWebhooks);
 
 app.use(express.json({ limit: "10kb" }));
 app.use(express.urlencoded({ extended: true, limit: "10kb" }));

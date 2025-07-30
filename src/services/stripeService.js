@@ -152,7 +152,7 @@ const paymentSheet = async (customerId, amount, currency, AccountId) => {
       { apiVersion: '2025-04-30.basil' }
     );
 
-    const platFormFee = 100 + Math.floor(Number(amount) * 100 * 0.1);
+    const platFormFee = Math.floor(Number(amount) * 100 * 0.1);
 
     const paymentIntent = await stripeClient.paymentIntents.create({
       amount: Number(amount) * 100,
@@ -176,7 +176,7 @@ const paymentSheet = async (customerId, amount, currency, AccountId) => {
     };
   } catch (error) {
     console.error("Error creating payment sheet:", error);
-    throw new ApiError(500, "Please Complete the KYC First", error.message);
+    throw new ApiError(500, error.message || "Failed to create payment sheet", error.message);
   }
 };
 
@@ -249,6 +249,45 @@ const createLoginLink = async (accountId) => {
 };
 
 
+const handleWebhooks = async (req, res) => {
+  const sig = req.headers['stripe-signature'];
+  let event;
+  try {
+    event = stripeClient.webhooks.constructEvent(req.body, sig, secret.STRIPE_WEBHOOK_SECRET);
+  }
+  catch (err) {
+    console.error(`Webhook signature verification failed: ${err.message}`);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+  // Handle the event
+  console
+  try {
+    switch (event.type) {
+      case 'payment_intent.succeeded':
+        const paymentIntent = event.data.object;
+        console.log('PaymentIntent was successful!', paymentIntent);
+        break;
+      case 'payment_intent.payment_failed':
+        const paymentFailed = event.data.object;
+        console.log('PaymentIntent failed:', paymentFailed);
+        break;
+      case 'customer.created':
+        const customer = event.data.object;
+        console.log('Customer created:', customer);
+        break;
+      // Add more cases as needed
+      default:
+        console.warn(`Unhandled event type ${event.type}`);
+    }
+    res.json({ received: true });
+  } catch (error) {
+    console.error("Error handling webhook event:", error);
+    res.status(500).send("Webhook handler failed");
+  }
+};
+
+
+
 
 
 export {
@@ -266,4 +305,5 @@ export {
   handleKYCStatus,
   createLoginLink,
   productOrder,
+  handleWebhooks
 };
