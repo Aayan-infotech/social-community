@@ -149,8 +149,13 @@ router.post("/delete-account-request", verifyJWT, deleteAccountRequest);
 
 // web apis
 router.get("/get-all-users", verifyJWT, getAllUsers);
-router.put('/update-user/:userId',verifyJWT,validateRequest(updateUserDetailsSchema),updateUserDetails);
-router.put('/update-user-status/:userId',verifyJWT,updateUserDeleteStatus);
+router.put('/update-user/:userId', verifyJWT, upload.fields([
+  {
+    name: "profile_image",
+    maxCount: 1,
+  },
+]), validateRequest(updateUserDetailsSchema), errorHandler, updateUserDetails);
+router.put('/update-user-status/:userId', verifyJWT, updateUserDeleteStatus);
 router.get("/get-all-delete-request", verifyJWT, getAllDeleteRequest);
 router.put(
   "/update-delete-request",
@@ -179,9 +184,9 @@ router.put(
 );
 router.get("/get-matrimonial-profile", verifyJWT, getMatrimonialProfile);
 router.get("/get-matrimonial-suggestions", verifyJWT, getMatrimonialProfileSuggestions);
-router.post('/sent-interest',verifyJWT,sendInterest);
-router.put('/accept-reject-interest',verifyJWT,acceptRejectInterest);
-router.get('/get-interest-profiles',verifyJWT,getInterrestedProfiles);
+router.post('/sent-interest', verifyJWT, sendInterest);
+router.put('/accept-reject-interest', verifyJWT, acceptRejectInterest);
+router.get('/get-interest-profiles', verifyJWT, getInterrestedProfiles);
 
 // Info Pages
 router.get("/info-pages", verifyJWT, getAllInfoPages);
@@ -194,7 +199,7 @@ router.post('/upload-chat-document', verifyJWT, upload.fields([
   },
 ]), errorHandler, uploadChatDocument);
 
-router.post('/remove-friend',verifyJWT,removeFriend);
+router.post('/remove-friend', verifyJWT, removeFriend);
 
 router.get('/get-all-event-organizers', verifyJWT, getAllEventOrganizers);
 router.get('/get-all-vendors', verifyJWT, getAllVendors);

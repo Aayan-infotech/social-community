@@ -104,9 +104,9 @@ const updateUserProfile = asyncHandler(async (req, res) => {
 
   if (req.files && req.files.profile_image) {
     // Delete the previous profile image from AWS
-    // if (req.user.profile_image) {
-    //   await deleteObject(req.user.profile_image);
-    // }
+    if (req.user.profile_image) {
+      await deleteObject(req.user.profile_image);
+    }
 
     // Upload the new profile image to AWS S3
     const updateStatus = await saveCompressedImage(
@@ -159,9 +159,9 @@ const updateProfessionalImage = asyncHandler(async (req, res) => {
 
   if (req.files && req.files.professional_image) {
     // Delete the previous profile image from AWS
-    // if (req.user.professional_image) {
-    //   await deleteObject(req.user.professional_image);
-    // }
+    if (req.user.professional_image) {
+      await deleteObject(req.user.professional_image);
+    }
 
     // Upload the new profile image to AWS S3
     const updateStatus = await saveCompressedImage(
@@ -1502,7 +1502,7 @@ const getResources = asyncHandler(async (req, res) => {
   const userId = req.user.userId;
   const validTypes = ["job", "post", "health_wellness", "event"];
   if (!validTypes.includes(type)) {
-    throw new ApiError(400, "Invalid resource type provided");zs
+    throw new ApiError(400, "Invalid resource type provided"); zs
   }
 
   const aggregation = [];
@@ -2335,25 +2335,46 @@ const updateUserDetails = asyncHandler(async (req, res) => {
     throw new ApiError(400, "User ID is required");
   }
 
-  const user = await User.findOneAndUpdate(
-    { userId },
-    {
-      $set: {
-        name,
-        email,
-        mobile,
-        gender,
-        city,
-        state,
-        country,
-        aboutMe
-      }
-    }
-  );
-
+  const user = await User.findOne({ userId });
   if (!user) {
     throw new ApiError(404, "User not found");
   }
+
+  // Remove the user from the request body if it exists
+
+
+  // upload profile image if exists
+  let profileImageUrl = null;
+  if (req.files && req.files.profile_image) {
+
+    if (user.profile_image) {
+      await deleteImage(user.profile_image);
+    }
+
+    const profileImage = req.files.profile_image;
+    if (!profileImage || !profileImage.length) {
+      throw new ApiError(400, "Profile image is required");
+    }
+    const uploadStatus = await uploadImage(profileImage[0]);
+    if (!uploadStatus.success) {
+      throw new ApiError(500, "Failed to upload profile image");
+    }
+    profileImageUrl = uploadStatus.fileUrl;
+  }
+
+  user.name = name;
+  user.email = email;
+  user.mobile = mobile;
+  user.gender = gender;
+  user.city = city;
+  user.state = state;
+  user.country = country;
+  user.aboutMe = aboutMe;
+  user.profile_image = profileImageUrl || null;
+
+  await user.save()
+
+
 
   res.json(new ApiResponse(200, "User details updated successfully"));
 });

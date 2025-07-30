@@ -570,9 +570,6 @@ const updateUserDetailsSchema = Joi.object({
   city: Joi.string().optional().allow("").messages({
     "string.base": "City must be a string.",
   }),
-  profile_image: Joi.string().optional().allow("").messages({
-    "string.base": "Profile image must be a string.",
-  }),
   aboutMe: Joi.string()
     .min(10)
     .max(200)
@@ -582,6 +579,9 @@ const updateUserDetailsSchema = Joi.object({
       "string.min": "About Me must be at least 10 characters long.",
       "string.max": "About Me must be at most 200 characters long.",
     }),
+  profile_image: Joi.string().optional().allow("").messages({
+    "string.base": "Profile Image must be a string.",
+  }),
 });
 
 export {
