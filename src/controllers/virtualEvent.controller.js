@@ -464,6 +464,7 @@ const eventDetails = asyncHandler(async (req, res) => {
       ticketPrice: 1,
       eventImage: 1,
       userId: 1,
+      status: 1,
       userDetails: {
         userId: "$userDetails.userId",
         name: "$userDetails.name",
