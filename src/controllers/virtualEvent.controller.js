@@ -145,7 +145,7 @@ const getEvents = asyncHandler(async (req, res) => {
   const limit = Math.max(1, parseInt(req.query.limit) || 10);
   const skip = (page - 1) * limit;
 
-  const timezone = req.headers?.timezone || "Central Daylight Time";
+  const timezone = req.headers?.timezone || "UTC";
 
   // Search Event By Event Name or User Name
   const searchQuery = req.query.search || "";
@@ -204,6 +204,7 @@ const getEvents = asyncHandler(async (req, res) => {
             eventTimeEnd: 1,
             ticketPrice: 1,
             eventImage: 1,
+            noOfSlots: 1,
             userId: 1,
             userDetails: {
               userId: "$userDetails.userId",
@@ -709,7 +710,8 @@ const bookTickets = asyncHandler(async (req, res) => {
     req.user.stripeCustomerId,
     totalPrice,
     "usd",
-    userDetails.stripeAccountId
+    userDetails.stripeAccountId,
+    newBooking._id.toString()
   );
 
   if (!paymentDetails || !paymentDetails.paymentIntent) {

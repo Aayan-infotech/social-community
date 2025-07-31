@@ -1,6 +1,8 @@
 import stripe from "stripe";
 import { loadConfig } from "../config/loadConfig.js";
 import { ApiError } from "../utils/ApiError.js";
+import { ContentAndApprovalsListInstance } from "twilio/lib/rest/content/v1/contentAndApprovals.js";
+import { updateVirtualEventStatus } from "../utils/webhookUtils.js";
 
 const secret = await loadConfig();
 
@@ -145,7 +147,7 @@ const productOrder = async (customerId, amount, currency, transferGroup) => {
   }
 };
 
-const paymentSheet = async (customerId, amount, currency, AccountId) => {
+const paymentSheet = async (customerId, amount, currency, AccountId, bookingId) => {
   try {
     const ephemeralKey = await stripeClient.ephemeralKeys.create(
       { customer: customerId },
@@ -161,12 +163,20 @@ const paymentSheet = async (customerId, amount, currency, AccountId) => {
       automatic_payment_methods: {
         enabled: true,
       },
-      application_fee_amount: platFormFee, // Platform fee in cents
+      metadata: {
+        accountId: AccountId,
+        userId: customerId,
+        platFormFee: platFormFee,
+        paymentType: "virtualEvent",
+        bookingId: bookingId
+      },
+      application_fee_amount: platFormFee,
       transfer_data: {
         destination: AccountId,
       },
     });
 
+    console.log("Payment Intent:", paymentIntent);
 
     return {
       paymentIntent: paymentIntent.client_secret,
@@ -265,7 +275,15 @@ const handleWebhooks = async (req, res) => {
     switch (event.type) {
       case 'payment_intent.succeeded':
         const paymentIntent = event.data.object;
-        console.log('PaymentIntent was successful!', paymentIntent);
+        const metadata = paymentIntent.metadata;
+        if (metadata.paymentType === "virtualEvent") {
+          const bookingId = metadata.bookingId;
+          console.log('PaymentIntent was successful!', paymentIntent);
+          console.log('Booking ID:', bookingId);
+          const response = await updateVirtualEventStatus(bookingId, "booked", "completed");
+          console.log('Virtual Event Booking Status Updated:', response);
+
+        }
         break;
       case 'payment_intent.payment_failed':
         const paymentFailed = event.data.object;
