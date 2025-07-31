@@ -157,7 +157,7 @@ const getEvents = asyncHandler(async (req, res) => {
 
   aggregation.push({
     $match: {
-      eventStartDate: { $gte: new Date() },
+      // eventStartDate: { $gte: new Date() },
       eventEndDate: { $gte: new Date() },
       status: "approved",
       userId: { $ne: userId }
