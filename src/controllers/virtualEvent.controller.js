@@ -22,7 +22,9 @@ import { sendEmail } from "../services/emailService.js";
 import jwt from "jsonwebtoken";
 import { loadConfig } from "../config/loadConfig.js";
 import { User } from "../models/user.model.js";
-
+import { FRONTEND_URL } from "../constants.js";
+import fs from "fs";
+import sendPushNotification from "../utils/sendPushNotification.js";
 const secret = await loadConfig();
 
 const addEvent = asyncHandler(async (req, res) => {
@@ -36,11 +38,17 @@ const addEvent = asyncHandler(async (req, res) => {
     eventTimeStart,
     eventTimeEnd,
     noOfSlots,
+    isFreeEvent
   } = req.body;
 
-  if (ticketPrice <= 0) {
-    throw new ApiError(400, "Ticket price must be greater than 0");
+
+  if (isFreeEvent && ticketPrice > 0) {
+    throw new ApiError(400, "Ticket price must be 0 for free events");
+  } else if (!isFreeEvent && (ticketPrice < 1 || ticketPrice > 99999999)) {
+    throw new ApiError(400, "Ticket price must be between 1 and 99999999 for paid events");
   }
+
+
 
   const isKYCCompleted = req.user?.isKYCVerified;
   if (!isKYCCompleted) {
@@ -55,6 +63,23 @@ const addEvent = asyncHandler(async (req, res) => {
   if (!role.includes("event_manager")) {
     req.user.role.push("event_manager");
     await req.user.save();
+
+    // send the email to the user with the login credentials
+    const html = fs.readFileSync('./src/emails/VendorPanelLogin.html', 'utf8');
+
+    const subject = "Vendor Panel Login Credentials";
+    const name = new RegExp(`{{VENDOR_NAME}}`, "g");
+    const updatedHtml = html.replace(name, req.user.name);
+
+    const LOGIN_LINK = new RegExp(`{{LOGIN_LINK}}`, "g");
+    const updatedHtml1 = updatedHtml.replace(LOGIN_LINK, `${FRONTEND_URL}login`);
+
+    const send = await sendEmail(req.user.email, subject, updatedHtml1);
+
+    if (!send.success) {
+      throw new ApiError(500, "Failed to send OTP to Email");
+    }
+
   }
 
 
@@ -86,11 +111,6 @@ const addEvent = asyncHandler(async (req, res) => {
     eventImageUrl = eventImage.fileUrl;
   }
 
-
-
-
-
-
   const newEvent = new VirtualEvent({
     eventName,
     eventDescription,
@@ -105,6 +125,7 @@ const addEvent = asyncHandler(async (req, res) => {
       : "",
     userId: req.user.userId,
     noOfSlots: noOfSlots,
+    isFreeEvent,
   });
 
   const savedEvent = await newEvent.save();
@@ -138,13 +159,9 @@ const getEvents = asyncHandler(async (req, res) => {
     $match: {
       eventStartDate: { $gte: new Date() },
       eventEndDate: { $gte: new Date() },
-    },
-    $match: {
+      status: "approved",
       userId: { $ne: userId }
     },
-    $match: {
-      status: "approved"
-    }
   });
 
   aggregation.push({
@@ -555,6 +572,7 @@ const bookTickets = asyncHandler(async (req, res) => {
       eventImage: 1,
       noOfSlots: 1,
       userId: 1,
+      isFreeEvent: 1,
       userDetails: {
         userId: "$userDetails.userId",
         name: "$userDetails.name",
@@ -619,6 +637,73 @@ const bookTickets = asyncHandler(async (req, res) => {
     bookingTime,
     ticketId,
   });
+  
+
+  if (eventDetails.isFreeEvent) {
+    // Send the booking confirmation email
+    const qrCodeData = {
+      ticketId: newBooking.ticketId,
+      eventId: eventDetails._id,
+      eventName: eventDetails.eventName,
+      eventLocation: eventDetails.eventLocation,
+    };
+
+    // base 64 encode the qrCodeData
+    const qrCodeDataEncoded = Buffer.from(JSON.stringify(qrCodeData)).toString(
+      "base64"
+    );
+
+
+    const eventDetails1 = {
+      ticketId: newBooking.ticketId,
+      eventId: newBooking.eventId._id,
+      eventName: newBooking.eventId.eventName,
+      date: bookingDateTime.toISOString().split("T")[0],
+      time: convertTo12Hour(bookingDateTime.toTimeString().split(" ")[0]),
+      venue: newBooking.eventId.eventLocation,
+      noOfTickets: newBooking.ticketCount,
+      attendeeName: req.user.name,
+      price: newBooking.totalPrice,
+      qrCodeData: qrCodeDataEncoded,
+    };
+    const ticketFilePath = await generateAndSendTicket(
+      eventDetails1,
+      req.user.email
+    );
+    if (!ticketFilePath.success) {
+      throw new ApiError(500, "Failed to generate and send ticket");
+    }
+
+    // update the noOfSlots in the event
+    const updateStatus = await VirtualEvent.findByIdAndUpdate(
+      eventId, {
+        $inc: { noOfSlots: -ticketCount },
+      },
+      { new: true }
+    );
+
+    if (!updateStatus) {
+      throw new ApiError(500, "Failed to update event slots");
+    }
+
+    // update the booking status to booked and payment status to completed
+    newBooking.bookingStatus = "booked";
+    newBooking.paymentStatus = "completed";
+    await newBooking.save();
+
+    return res.json(
+      new ApiResponse(200, "Tickets booked successfully", {
+        booking: newBooking,
+        eventDetails: eventDetails1,
+        user: {
+          userId: req.user.userId,
+          name: req.user.name,
+          email: req.user.email,
+          profile_image: req.user.profile_image,
+        },
+      })
+    );
+  }
 
   const paymentDetails = await paymentSheet(
     req.user.stripeCustomerId,
@@ -1512,6 +1597,23 @@ const udpateEventStatus = asyncHandler(async (req, res) => {
   }
   event.status = status;
   const updatedEvent = await event.save();
+
+  // get the user device token 
+  const user = await User.findOne({ userId: event.userId }).select("device_token name email profile_image");
+  if (user?.device_token?.length > 0) {
+    // Send push notification to the event creator
+    await sendPushNotification(
+      user?.device_token,
+      "Event Status Update",
+      `Your event "${event?.eventName}" has been ${status}`,
+      req?.user?.userId,
+      event.userId,
+      {
+        type: "event_status_update",
+        eventDetails: JSON.stringify(event),
+      }
+    );
+  }
 
   res.json(
     new ApiResponse(200, "Event status updated successfully", {

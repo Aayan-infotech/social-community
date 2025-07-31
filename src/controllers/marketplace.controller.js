@@ -25,6 +25,7 @@ import Card from "../models/userCard.model.js";
 import { User } from "../models/user.model.js";
 import { generateUniqueOrderId } from "../utils/HelperFunctions.js";
 import Order from "../models/orders.model.js";
+import { FRONTEND_URL } from "../constants.js";
 
 const upsertCategory = asyncHandler(async (req, res) => {
   const { id, category_name } = req.body;
@@ -503,9 +504,7 @@ const getMarketplaceProducts = asyncHandler(async (req, res) => {
   aggregation.push({
     $match: {
       status: "approved",
-    },
-    $match: {
-      userId: { $ne: req.user.userId }, 
+      userId: { $ne: req.user.userId },
     },
   });
   // get the category or subcategory id from the query
@@ -990,7 +989,7 @@ const checkKYCStatus = asyncHandler(async (req, res) => {
     if (!saveStatus) {
       throw new ApiError(500, "Failed to update KYC status");
     }
-    return res.redirect(`http://3.230.209.171:5623/kyc-success`);
+    return res.redirect(`${FRONTEND_URL}kyc-success`);
   } else if (status === "pending") {
     return res.json(new ApiResponse(200, "KYC is pending", status));
   } else {
@@ -1411,7 +1410,11 @@ const getAllOrders = asyncHandler(async (req, res) => {
 
   const aggregation = [];
 
-  if (role !== 'admin') {
+  if (role.includes("admin")) {
+    aggregation.push({
+      $match: {}
+    });
+  } else {
     aggregation.push({
       $match: {
         sellerId: userId,
@@ -1471,6 +1474,22 @@ const getAllOrders = asyncHandler(async (req, res) => {
   });
 
   aggregation.push({
+    $lookup: {
+      from: "users",
+      localField: "sellerId",
+      foreignField: "userId",
+      as: "seller",
+    },
+  });
+
+  aggregation.push({
+    $unwind: {
+      path: "$seller",
+      preserveNullAndEmptyArrays: true,
+    },
+  });
+
+  aggregation.push({
     $facet: {
       orders: [
         { $skip: skip },
@@ -1486,9 +1505,26 @@ const getAllOrders = asyncHandler(async (req, res) => {
             createdAt: 1,
             status: 1,
             paymentStatus: 1,
-            product_name: "$product.product_name",
-            product_image: "$product.product_image",
-            buyer_name: "$buyer.name",
+            product: {
+              _id: "$product._id",
+              product_name: "$product.product_name",
+              product_image: "$product.product_image",
+              product_price: "$product.product_price",
+              product_discount: "$product.product_discount",
+              product_description: "$product.product_description",
+            },
+            buyer: {
+              name: "$buyer.name",
+              email: "$buyer.email",
+              profile_image: "$buyer.profile_image",
+              mobile: "$buyer.mobile",
+            },
+            seller: {
+              name: "$seller.name",
+              email: "$seller.email",
+              profile_image: "$seller.profile_image",
+              mobile: "$seller.mobile",
+            },
             shippingAddress: {
               name: "$shippingAddress.name",
               address: "$shippingAddress.address",

@@ -54,6 +54,10 @@ const virtualEventSchema = new mongoose.Schema(
       enum: ["pending", "approved", "rejected", "cancelled", "completed"],
       default: "pending",
     },
+    isFreeEvent: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,
