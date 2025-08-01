@@ -861,12 +861,7 @@ const updateBookingStatus = asyncHandler(async (req, res) => {
         userId: req.user.userId,
         name: req.user.name,
         email: req.user.email,
-        profile_image: {
-          $ifNull: [
-            req.user.profile_image,
-            `${process.env.APP_URL}/placeholder/image_place.png`,
-          ],
-        },
+        profile_image: req.user.profile_image || `${process.env.APP_URL}/placeholder/image_place.png`,
       },
     })
   );
