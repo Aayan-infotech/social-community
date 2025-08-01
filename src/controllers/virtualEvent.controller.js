@@ -656,72 +656,9 @@ const bookTickets = asyncHandler(async (req, res) => {
 
 
   if (eventDetails.isFreeEvent) {
-    // Send the booking confirmation email
-    const qrCodeData = {
-      ticketId: newBooking.ticketId,
-      eventId: eventDetails._id,
-      eventName: eventDetails.eventName,
-      eventLocation: eventDetails.eventLocation,
-    };
-
-    // base 64 encode the qrCodeData
-    const qrCodeDataEncoded = Buffer.from(JSON.stringify(qrCodeData)).toString(
-      "base64"
-    );
-
-
-    const eventDetails1 = {
-      ticketId: newBooking.ticketId,
-      eventId: newBooking.eventId._id,
-      eventName: newBooking.eventId.eventName,
-      date: bookingDateTime.toISOString().split("T")[0],
-      time: convertTo12Hour(bookingDateTime.toTimeString().split(" ")[0]),
-      venue: newBooking.eventId.eventLocation,
-      noOfTickets: newBooking.ticketCount,
-      attendeeName: req.user.name,
-      price: newBooking.totalPrice,
-      qrCodeData: qrCodeDataEncoded,
-    };
-    const ticketFilePath = await generateAndSendTicket(
-      eventDetails1,
-      req.user.email
-    );
-    if (!ticketFilePath.success) {
-      throw new ApiError(500, "Failed to generate and send ticket");
-    }
-
-    // update the noOfSlots in the event
-    const updateStatus = await VirtualEvent.findByIdAndUpdate(
-      eventId, {
-      $inc: { noOfSlots: -ticketCount },
-    },
-      { new: true }
-    );
-
-    if (!updateStatus) {
-      throw new ApiError(500, "Failed to update event slots");
-    }
-
-    // update the booking status to booked and payment status to completed
-    newBooking.bookingStatus = "booked";
-    newBooking.paymentStatus = "completed";
-    await newBooking.save();
-
     return res.json(
-      new ApiResponse(200, "Tickets booked successfully", {
+      new ApiResponse(201, "Tickets booked successfully", {
         booking: newBooking,
-        eventDetails: eventDetails1,
-        user: {
-          userId: req.user.userId,
-          name: req.user.name,
-          email: req.user.email,
-          profile_image: {
-            $ifNull: [
-              req.user.profile_image,
-              `${process.env.APP_URL}/placeholder/image_place.png`,
-            ],
-          },
-        },
       })
     );
   }
