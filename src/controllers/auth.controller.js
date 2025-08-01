@@ -142,7 +142,7 @@ const signup = asyncHandler(async (req, res) => {
   }
   const stripeAccountId = stripeAccount.id;
 
-  
+
 
   const user = new User({
     userId,
@@ -210,7 +210,7 @@ const loginUser = asyncHandler(async (req, res) => {
   if (!password) {
     throw new ApiError(400, "Password Is Required Field..!!");
   }
-  
+
   let user = await User.findOne({
     $or: [{ email: userEmail }],
   });
@@ -219,11 +219,11 @@ const loginUser = asyncHandler(async (req, res) => {
     throw new ApiError(404, "User Doesn't Exist Or Invalid Email Or Mobile No");
   }
 
-  if(user.isDeleted){
+  if (user.isDeleted) {
     throw new ApiError(400, "Your account is suspended. Please contact support for more information.");
   }
 
-  if(user.googleId){
+  if (user.googleId) {
     throw new ApiError(400, "You have registered with Google. Please login with Google.");
   }
 
@@ -252,7 +252,13 @@ const loginUser = asyncHandler(async (req, res) => {
     user._id
   );
 
-  const loggedInUser = await User.findById(user._id)
+  const loggedInUser = await User.findById(user._id).select("-password -otp -otpExpire -refreshToken -__v -createdAt -updatedAt -device_token");
+
+  if (!loggedInUser) {
+    throw new ApiError(500, "Something went wrong while logging in");
+  }
+
+  loggedInUser.profile_image = loggedInUser.profile_image || `${process.env.APP_URL}/images/default-profile.png`;
 
   // cookies
   const options = {

@@ -80,7 +80,12 @@ export const getAllJobs = asyncHandler(async (req, res) => {
         {
           $project: {
             "user.name": 1,
-            "user.profile_image": 1,
+            "user.profile_image": {
+              $ifNull: [
+                "$user.profile_image",
+                `${process.env.APP_URL}/placeholder/image_place.png`,
+              ],
+            },
             "user.userId": 1,
             description: 1,
             location: 1,
@@ -210,7 +215,12 @@ export const getJobDetails = asyncHandler(async (req, res) => {
   aggregation.push({
     $project: {
       "user.name": 1,
-      "user.profile_image": 1,
+      "user.profile_image": {
+        $ifNull: [
+          "$user.profile_image",
+          `${process.env.APP_URL}/placeholder/image_place.png`,
+        ],
+      },
       "user.userId": 1,
       description: 1,
       location: 1,
@@ -282,7 +292,7 @@ export const getApplicantList = asyncHandler(async (req, res) => {
         profile_image: {
           $ifNull: [
             "$user.profile_image",
-            `${req.protocol}://${req.hostname}:${process.env.PORT}/placeholder/image_place.png`,
+            `${process.env.APP_URL}/placeholder/image_place.png`,
           ],
         },
         userId: "$user.userId",
@@ -434,7 +444,7 @@ export const getApplicantDetails = asyncHandler(async (req, res) => {
         profile_image: {
           $ifNull: [
             "$user.profile_image",
-            `${req.protocol}://${req.hostname}:${process.env.PORT}/placeholder/image_place.png`,
+            `${process.env.APP_URL}/placeholder/image_place.png`,
           ],
         },
         userId: "$user.userId",

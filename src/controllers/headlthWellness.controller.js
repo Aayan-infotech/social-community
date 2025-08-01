@@ -120,7 +120,12 @@ export const getResources = asyncHandler(async (req, res) => {
         {
           $project: {
             "user.name": 1,
-            "user.profile_image": 1,
+            "user.profile_image": {
+              $ifNull: [
+                "$user.profile_image",
+                `${process.env.APP_URL}/placeholder/image_place.png`,
+              ],
+            },
             "user.userId": 1,
             title: 1,
             description: 1,
@@ -219,7 +224,12 @@ export const getAllResources = asyncHandler(async (req, res) => {
         {
           $project: {
             "user.name": 1,
-            "user.profile_image": 1,
+            "user.profile_image": {
+              $ifNull: [
+                "$user.profile_image",
+                `${process.env.APP_URL}/placeholder/image_place.png`,
+              ],
+            },
             "user.userId": 1,
             title: 1,
             description: 1,

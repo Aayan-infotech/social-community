@@ -1516,13 +1516,13 @@ const getAllOrders = asyncHandler(async (req, res) => {
             buyer: {
               name: "$buyer.name",
               email: "$buyer.email",
-              profile_image: "$buyer.profile_image",
+              profile_image: "$buyer.profile_image" || `${process.env.APP_URL}/placeholder/image_place.png`,
               mobile: "$buyer.mobile",
             },
             seller: {
               name: "$seller.name",
               email: "$seller.email",
-              profile_image: "$seller.profile_image",
+              profile_image: "$seller.profile_image" || `${process.env.APP_URL}/placeholder/image_place.png`,
               mobile: "$seller.mobile",
             },
             shippingAddress: {
@@ -1658,7 +1658,7 @@ const getAllProducts = asyncHandler(async (req, res) => {
             user_id: "$user.userId",
             user_name: "$user.name",
             user_email: "$user.email",
-            profile_image: "$user.profile_image",
+            profile_image: "$user.profile_image" || `${process.env.APP_URL}/placeholder/image_place.png`,
             status: 1,
           },
         },

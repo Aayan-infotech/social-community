@@ -210,7 +210,12 @@ const getEvents = asyncHandler(async (req, res) => {
               userId: "$userDetails.userId",
               name: "$userDetails.name",
               email: "$userDetails.email",
-              profile_image: "$userDetails.profile_image",
+              profile_image: {
+                $ifNull: [
+                  "$userDetails.profile_image",
+                  `${process.env.APP_URL}/placeholder/image_place.png`,
+                ],
+              },
             },
           },
         },
@@ -346,7 +351,12 @@ const myEvenets = asyncHandler(async (req, res) => {
               userId: "$userDetails.userId",
               name: "$userDetails.name",
               email: "$userDetails.email",
-              profile_image: "$userDetails.profile_image",
+              profile_image: {
+                $ifNull: [
+                  "$userDetails.profile_image",
+                  `${process.env.APP_URL}/placeholder/image_place.png`,
+                ],
+              }
             },
           },
         },
@@ -514,7 +524,12 @@ const eventDetails = asyncHandler(async (req, res) => {
         userId: "$userDetails.userId",
         name: "$userDetails.name",
         email: "$userDetails.email",
-        profile_image: "$userDetails.profile_image",
+        profile_image: {
+          $ifNull: [
+            "$userDetails.profile_image",
+            `${process.env.APP_URL}/placeholder/image_place.png`,
+          ],
+        },
       },
     },
   });
@@ -638,7 +653,7 @@ const bookTickets = asyncHandler(async (req, res) => {
     bookingTime,
     ticketId,
   });
-  
+
 
   if (eventDetails.isFreeEvent) {
     // Send the booking confirmation email
@@ -678,8 +693,8 @@ const bookTickets = asyncHandler(async (req, res) => {
     // update the noOfSlots in the event
     const updateStatus = await VirtualEvent.findByIdAndUpdate(
       eventId, {
-        $inc: { noOfSlots: -ticketCount },
-      },
+      $inc: { noOfSlots: -ticketCount },
+    },
       { new: true }
     );
 
@@ -700,7 +715,12 @@ const bookTickets = asyncHandler(async (req, res) => {
           userId: req.user.userId,
           name: req.user.name,
           email: req.user.email,
-          profile_image: req.user.profile_image,
+          profile_image: {
+            $ifNull: [
+              req.user.profile_image,
+              `${process.env.APP_URL}/placeholder/image_place.png`,
+            ],
+          },
         },
       })
     );
@@ -841,8 +861,13 @@ const updateBookingStatus = asyncHandler(async (req, res) => {
         userId: req.user.userId,
         name: req.user.name,
         email: req.user.email,
-        profile_image: req.user.profile_image,
-      }
+        profile_image: {
+          $ifNull: [
+            req.user.profile_image,
+            `${process.env.APP_URL}/placeholder/image_place.png`,
+          ],
+        },
+      },
     })
   );
 });
@@ -1017,7 +1042,12 @@ const getAllTickets = asyncHandler(async (req, res) => {
               userId: "$userDetails.userId",
               email: "$userDetails.email",
               mobile: "$userDetails.mobile",
-              profile_image: "$userDetails.profile_image",
+              profile_image: {
+                $ifNull: [
+                  "$userDetails.profile_image",
+                  `${process.env.APP_URL}/placeholder/image_place.png`,
+                ],
+              },
               name: "$userDetails.name",
             },
             // ...getTimezoneDateProjection("bookingDate", req.headers?.timezone || "UTC", "bookingDate"),
@@ -1148,7 +1178,12 @@ const getAllCancelledTickets = asyncHandler(async (req, res) => {
               userId: "$userDetails.userId",
               email: "$userDetails.email",
               mobile: "$userDetails.mobile",
-              profile_image: "$userDetails.profile_image",
+              profile_image: {
+                $ifNull: [
+                  "$userDetails.profile_image",
+                  `${process.env.APP_URL}/placeholder/image_place.png`,
+                ],
+              },
               name: "$userDetails.name",
             },
             // ...getTimezoneDateProjection("bookingDate", req.headers?.timezone || "UTC", "bookingDate"),
@@ -1236,6 +1271,7 @@ const ticketExhaust = asyncHandler(async (req, res) => {
     throw new ApiError(404, "User not found");
   }
 
+  user.profile_image = user.profile_image || `${process.env.APP_URL}/placeholder/image_place.png`;
   updatedTicket.user = user;
 
   return res.json(
@@ -1527,7 +1563,12 @@ const getAllEvents = asyncHandler(async (req, res) => {
               name: "$user.name",
               email: "$user.email",
               mobile: "$user.mobile",
-              profile_image: "$user.profile_image",
+              profile_image: {
+                $ifNull: [
+                  "$user.profile_image",
+                  `${process.env.APP_URL}/placeholder/image_place.png`,
+                ],
+              },
             },
           },
         },
@@ -1569,6 +1610,7 @@ const getEventDetails = asyncHandler(async (req, res) => {
   if (!event) {
     throw new ApiError(404, "Event not found");
   }
+  event.userId.profile_image = event.userId.profile_image || `${process.env.APP_URL}/placeholder/image_place.png`;
 
   res.json(
     new ApiResponse(200, "Event details fetched successfully", {
