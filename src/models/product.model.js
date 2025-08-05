@@ -12,10 +12,21 @@ const productSchema = new mongoose.Schema({
   product_price: {
     type: Number,
     required: true,
+    min: 1,
+    default: 1,
+  },
+  product_quantity: {
+    type: Number,
+    required: true,
+    min: 1,
+    default: 1,
   },
   product_discount: {
     type: Number,
     required: true,
+    min: 0,
+    max: 100,
+    default: 0,
   },
   product_description: {
     type: String,

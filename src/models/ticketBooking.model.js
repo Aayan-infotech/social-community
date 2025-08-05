@@ -11,6 +11,11 @@ const ticketBookingSchema = new mongoose.Schema({
         required: true,
         ref: 'VirtualEvent',
     },
+    paymentIntentId: {
+        type: String,
+        required: false,
+        default: null,
+    },
     ticketCount: {
         type: Number,
         required: true,
@@ -23,7 +28,7 @@ const ticketBookingSchema = new mongoose.Schema({
     bookingStatus: {
         type: String,
         required: true,
-        enum: ['pending','booked', 'cancelled'],
+        enum: ['pending', 'booked', 'cancelled'],
         default: 'pending',
     },
     bookingDate: {
@@ -31,7 +36,7 @@ const ticketBookingSchema = new mongoose.Schema({
         required: true,
         default: Date.now,
     },
-    bookingTime:{
+    bookingTime: {
         type: String,
         required: true,
     },

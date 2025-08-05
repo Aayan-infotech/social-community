@@ -5,7 +5,7 @@ import { generateAndSendTicket } from "../services/generateTicket.js";
 import { ApiError } from "./ApiError.js";
 import { isValidObjectId } from "./isValidObjectId.js";
 
-export const updateVirtualEventStatus = async (bookingId, bookingStatus, paymentStatus) => {
+export const updateVirtualEventStatus = async (bookingId, bookingStatus, paymentStatus, paymentIntentId = null) => {
     try {
         if (!isValidObjectId(bookingId)) {
             throw new ApiError(400, "Invalid booking ID");
@@ -19,7 +19,7 @@ export const updateVirtualEventStatus = async (bookingId, bookingStatus, payment
             throw new ApiError(404, "Booking not found");
         }
 
-        if (booking.bookingStatus === "completed") {
+        if (booking.bookingStatus === "booked" && booking.paymentStatus === "completed") {
             throw new ApiError(400, "Booking is already completed");
         }
 
@@ -61,6 +61,7 @@ export const updateVirtualEventStatus = async (bookingId, bookingStatus, payment
         }
 
         const user = await User.findOne({ userId: booking.userId }).select("userId name email profile_image");
+        user.profile_image = user.profile_image || `${process.env.APP_URL}/placeholder/image_place.png`;
 
 
         const qrCodeData = {
@@ -99,13 +100,12 @@ export const updateVirtualEventStatus = async (bookingId, bookingStatus, payment
 
         booking.bookingStatus = bookingStatus;
         booking.paymentStatus = paymentStatus;
+        booking.paymentIntentId = paymentIntentId;
         const updatedBooking = await booking.save();
         if (!updatedBooking) {
             throw new ApiError(500, "Failed to update booking status");
         }
-        console.log("Booking status updated successfully:", updatedBooking);
-        console.log("Event details:", eventDetails);
-        console.log("User details:", user);
+
 
         return {
             updatedBooking,

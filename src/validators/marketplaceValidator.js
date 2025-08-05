@@ -233,11 +233,11 @@ const updateOrderStatusSchema = joi.object({
     "any.required": "Status is required",
     "any.only": "Status must be one of 'placed', 'shipped', 'completed', or 'cancelled'",
   }),
-  paymentStatus: joi.string().valid("pending", "completed", "failed").required().messages({
+  paymentStatus: joi.string().valid("pending", "paid", "failed").required().messages({
     "string.empty": "Payment status is required",
     "any.required": "Payment status is required",
-    "any.only": "Payment status must be one of 'pending', 'completed', or 'failed'",
-  }),   
+    "any.only": "Payment status must be one of 'pending', 'paid', or 'failed'",
+  }),
 });
 
 export {

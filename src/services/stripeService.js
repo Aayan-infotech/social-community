@@ -133,7 +133,6 @@ const productOrder = async (customerId, amount, currency, transferGroup) => {
       transfer_group: transferGroup,
     });
 
-    console.log("Payment Intent:", paymentIntent);
 
     return ({
       paymentIntent: paymentIntent.client_secret,
@@ -154,7 +153,8 @@ const paymentSheet = async (customerId, amount, currency, AccountId, bookingId) 
       { apiVersion: '2025-04-30.basil' }
     );
 
-    const platFormFee = Math.floor(Number(amount) * 100 * 0.1);
+    const stripedFixedFee = 0.3 * 100;
+    const platFormFee = Math.floor(Number(amount) * 100 * 0.1) + stripedFixedFee;
 
     const paymentIntent = await stripeClient.paymentIntents.create({
       amount: Number(amount) * 100,
@@ -176,7 +176,6 @@ const paymentSheet = async (customerId, amount, currency, AccountId, bookingId) 
       },
     });
 
-    console.log("Payment Intent:", paymentIntent);
 
     return {
       paymentIntent: paymentIntent.client_secret,
@@ -278,22 +277,17 @@ const handleWebhooks = async (req, res) => {
         const metadata = paymentIntent.metadata;
         if (metadata.paymentType === "virtualEvent") {
           const bookingId = metadata.bookingId;
-          console.log('PaymentIntent was successful!', paymentIntent);
-          console.log('Booking ID:', bookingId);
-          const response = await updateVirtualEventStatus(bookingId, "booked", "completed");
-          console.log('Virtual Event Booking Status Updated:', response);
-
+          const response = await updateVirtualEventStatus(bookingId, "booked", "completed", paymentIntent.id);
         }
         break;
       case 'payment_intent.payment_failed':
         const paymentFailed = event.data.object;
-        console.log('PaymentIntent failed:', paymentFailed);
+        const metadataFailed = paymentFailed.metadata;
+        if (metadataFailed.paymentType === "virtualEvent") {
+          const bookingIdFailed = metadataFailed.bookingId;
+          const responseFailed = await updateVirtualEventStatus(bookingIdFailed, "cancelled", "failed", paymentFailed.id);
+        }
         break;
-      case 'customer.created':
-        const customer = event.data.object;
-        console.log('Customer created:', customer);
-        break;
-      // Add more cases as needed
       default:
         console.warn(`Unhandled event type ${event.type}`);
     }

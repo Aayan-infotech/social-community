@@ -31,7 +31,8 @@ import {
     refreshAccessToken,
     getAllEvents,
     getEventDetails,
-    udpateEventStatus
+    udpateEventStatus,
+    getEventDashboard
 } from "../controllers/virtualEvent.controller.js";
 import { verifyEventAuth } from "../middlewares/eventAuth.middleware.js";
 
@@ -95,5 +96,7 @@ router.post('/refresh-access-token',refreshAccessToken);
 router.get('/getAllEvents', verifyJWT, getAllEvents);
 router.get('/getEventDetails/:eventId',verifyJWT,getEventDetails);
 router.put('/updateEvent/:eventId',verifyJWT,udpateEventStatus);
+
+router.get('/getEventDashboard',verifyJWT,getEventDashboard);
 
 export default router;

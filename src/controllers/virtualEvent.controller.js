@@ -1598,6 +1598,89 @@ const udpateEventStatus = asyncHandler(async (req, res) => {
   );
 });
 
+
+const getEventDashboard = asyncHandler(async (req, res) => {
+  const userId = req.user.userId;
+
+  const [totalEvents, upcomingEvents, pastEvents] = await Promise.all([
+    VirtualEvent.countDocuments({ userId }),
+    VirtualEvent.countDocuments({ userId, startDate: { $gt: new Date() } }),
+    VirtualEvent.countDocuments({ userId, startDate: { $lt: new Date() } }),
+  ]);
+
+  // Return the Year Revenue on monthly basis
+
+  const eventData = await VirtualEvent.aggregate([
+    {
+      $match: {
+        userId,
+        status: "approved",
+      },
+    },
+    {
+      $project: {
+        _id: 1,
+      },
+    },
+  ]);
+
+
+  const eventIds = eventData.map(event => event._id);
+
+  const yearRevenue = await TicketBooking.aggregate([
+    {
+      $match: {
+        eventId: { $in: eventIds },
+        paymentStatus: "completed",
+      },
+    },
+    {
+      $group: {
+        _id: {
+          year: { $year: "$bookingDate" },
+          month: { $month: "$bookingDate" },
+        },
+        totalRevenue: { $sum: "$totalPrice" },
+      },
+    },
+    {
+      $sort: { "_id.year": 1, "_id.month": 1 },
+    },
+    {
+      $project: {
+        _id: 0,
+        year: "$_id.year",
+        month: "$_id.month",
+        totalRevenue: 1,
+      },
+    },
+  ]);
+
+
+  const monthNames = [
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+  ];
+
+  const currentYear = new Date().getFullYear();
+  const barData = monthNames.map((name, index) => {
+    const monthRevenue = yearRevenue.find(r => r.month === index + 1 && r.year === currentYear);
+    return {
+      name,
+      revenue: monthRevenue ? monthRevenue.totalRevenue : 0,
+    };
+  });
+
+  res.json(
+    new ApiResponse(200, "Event dashboard fetched successfully", {
+      totalEvents,
+      upcomingEvents,
+      pastEvents,
+      barData,
+    })
+  );
+});
+
 export {
   addEvent,
   getEvents,
@@ -1617,5 +1700,6 @@ export {
   refreshAccessToken,
   getAllEvents,
   getEventDetails,
-  udpateEventStatus
+  udpateEventStatus,
+  getEventDashboard
 };
