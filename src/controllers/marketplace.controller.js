@@ -980,7 +980,7 @@ const checkKYCStatus = asyncHandler(async (req, res) => {
   }
   const stripeAccountId = getUser.stripeAccountId;
   const status = await handleKYCStatus(stripeAccountId);
-  console.log("KYC Status:", status);
+
 
   if (status === "active") {
     getUser.isKYCVerified = true;
@@ -1432,18 +1432,143 @@ const getAllOrders = asyncHandler(async (req, res) => {
   const page = Math.max(1, parseInt(req.query.page) || 1);
   const limit = Math.max(1, parseInt(req.query.limit) || 10);
   const skip = (page - 1) * limit;
+  const { sortBy = "createdAt", sortOrder = "desc", search, type } = req.query;
 
   const userId = req.user.userId;
   const role = req.user.role;
 
-  const matchStage = role.includes("admin")
-    ? {}
-    : { "items.sellerId": userId };
+  const matchStage = {};
 
-  console.log("Match Stage:", matchStage);
+  if (!role.includes("admin")) {
+    matchStage["items.sellerId"] = userId;
+  }
+
+  if (search) {
+    matchStage.$or = [
+      { orderId: { $regex: search, $options: "i" } },
+      { paymentStatus: { $regex: search, $options: "i" } }
+    ];
+  }
+
+  if (type) {
+    matchStage["items"] = {
+      $elemMatch: {
+        sellerId: userId,
+        status: type
+      }
+    };
+  }
 
   const pipeline = [
     { $match: matchStage },
+
+    {
+      $lookup: {
+        from: "users",
+        localField: "buyerId",
+        foreignField: "userId",
+        as: "buyer"
+      }
+    },
+    { $unwind: { path: "$buyer", preserveNullAndEmptyArrays: true } },
+
+    {
+      $project: {
+        _id: 0,
+        orderId: 1,
+        createdAt: 1,
+        paymentStatus: 1,
+        buyer: {
+          name: "$buyer.name"
+        },
+        items: role.includes("admin")
+          ? "$items"
+          : {
+              $filter: {
+                input: "$items",
+                as: "item",
+                cond: { $eq: ["$$item.sellerId", userId] }
+              }
+            }
+      }
+    },
+
+    {
+      $addFields: {
+        totalAmount: {
+          $sum: {
+            $map: {
+              input: "$items",
+              as: "item",
+              in: {
+                $multiply: ["$$item.amount", "$$item.quantity"]
+              }
+            }
+          }
+        },
+        totalProducts: { $size: "$items" }
+      }
+    },
+
+    { $sort: { [sortBy]: sortOrder === "desc" ? -1 : 1 } },
+    { $skip: skip },
+    { $limit: limit }
+  ];
+
+  const countPipeline = [
+    { $match: matchStage },
+    {
+      $group: {
+        _id: "$orderId"
+      }
+    },
+    {
+      $count: "count"
+    }
+  ];
+
+  const [orders, totalRes] = await Promise.all([
+    Order.aggregate(pipeline),
+    Order.aggregate(countPipeline)
+  ]);
+
+  const totalCount = totalRes[0]?.count || 0;
+  const totalPages = Math.ceil(totalCount / limit);
+
+  return res.json(
+    new ApiResponse(
+      200,
+      orders.length ? "Orders fetched successfully" : "No orders found",
+      orders.length
+        ? {
+            orders,
+            total_page: totalPages,
+            current_page: page,
+            total_records: totalCount,
+            per_page: limit
+          }
+        : null
+    )
+  );
+});
+
+
+const orderDetails = asyncHandler(async (req, res) => {
+  const { orderId } = req.params;
+  const userId = req.user.userId;
+  const role = req.user.role;
+
+  if (!orderId) {
+    throw new ApiError(400, "Order ID is required");
+  }
+
+  const matchStage = role.includes("admin")
+    ? { orderId }
+    : { orderId, "items.sellerId": userId };
+
+  const pipeline = [
+    { $match: matchStage },
+
     {
       $lookup: {
         from: "users",
@@ -1463,12 +1588,11 @@ const getAllOrders = asyncHandler(async (req, res) => {
       }
     },
     { $unwind: { path: "$shippingAddress", preserveNullAndEmptyArrays: true } },
+
     { $unwind: "$items" },
 
-    // Optional filter again if vendor (to avoid other sellers)
     ...(role.includes("admin") ? [] : [{ $match: { "items.sellerId": userId } }]),
 
-    // Lookup product
     {
       $lookup: {
         from: "products",
@@ -1479,7 +1603,6 @@ const getAllOrders = asyncHandler(async (req, res) => {
     },
     { $unwind: { path: "$product", preserveNullAndEmptyArrays: true } },
 
-    // Lookup seller
     {
       $lookup: {
         from: "users",
@@ -1490,12 +1613,12 @@ const getAllOrders = asyncHandler(async (req, res) => {
     },
     { $unwind: { path: "$seller", preserveNullAndEmptyArrays: true } },
 
-    // Group back by orderId
     {
       $group: {
         _id: "$orderId",
         createdAt: { $first: "$createdAt" },
         paymentStatus: { $first: "$paymentStatus" },
+        totalAmount: { $first: "$totalAmount" },
         transferGroup: { $first: "$transferGroup" },
         buyer: { $first: "$buyer" },
         shippingAddress: { $first: "$shippingAddress" },
@@ -1504,6 +1627,9 @@ const getAllOrders = asyncHandler(async (req, res) => {
             quantity: "$items.quantity",
             amount: "$items.amount",
             status: "$items.status",
+            trackingId: "$items.trackingId",
+            carrierPartner: "$items.carrierPartner",
+            cancellationRemark: "$items.cancellationRemark",
             isTransferred: "$items.isTransferred",
             transferAmount: "$items.transferAmount",
             product: {
@@ -1517,7 +1643,10 @@ const getAllOrders = asyncHandler(async (req, res) => {
               name: "$seller.name",
               email: "$seller.email",
               profile_image: {
-                $ifNull: ["$seller.profile_image", `${process.env.APP_URL}/placeholder/image_place.png`]
+                $ifNull: [
+                  "$seller.profile_image",
+                  `${process.env.APP_URL}/placeholder/image_place.png`
+                ]
               },
               mobile: "$seller.mobile"
             }
@@ -1526,17 +1655,12 @@ const getAllOrders = asyncHandler(async (req, res) => {
       }
     },
 
-    // Pagination
-    { $sort: { createdAt: -1 } },
-    { $skip: skip },
-    { $limit: limit },
-
-    // Rename _id to orderId
     {
       $project: {
         _id: 0,
         orderId: "$_id",
         createdAt: 1,
+        totalAmount: 1,
         paymentStatus: 1,
         transferGroup: 1,
         buyer: {
@@ -1553,44 +1677,14 @@ const getAllOrders = asyncHandler(async (req, res) => {
     }
   ];
 
-  // Count total orders separately (per orderId)
-  const countPipeline = [
-    { $match: matchStage },
-    ...(role.includes("admin") ? [] : [{ $unwind: "$items" }, { $match: { "items.sellerId": userId } }]),
-    {
-      $group: {
-        _id: "$orderId"
-      }
-    },
-    { $count: "count" }
-  ];
+  const [order] = await Order.aggregate(pipeline);
 
-  const [orders, totalRes] = await Promise.all([
-    Order.aggregate(pipeline),
-    Order.aggregate(countPipeline)
-  ]);
+  if (!order) {
+    throw new ApiError(404, "Order not found");
+  }
 
-  const totalCount = totalRes[0]?.count || 0;
-  const totalPages = Math.ceil(totalCount / limit);
-
-  return res.json(
-    new ApiResponse(
-      200,
-      orders.length ? "Orders fetched successfully" : "No orders found",
-      orders.length
-        ? {
-          orders,
-          total_page: totalPages,
-          current_page: page,
-          total_records: totalCount,
-          per_page: limit
-        }
-        : null
-    )
-  );
+  return res.json(new ApiResponse(200, "Order fetched successfully", order));
 });
-
-
 
 const getAllProducts = asyncHandler(async (req, res) => {
   const page = Math.max(1, parseInt(req.query.page) || 1);
@@ -1728,7 +1822,6 @@ const getAllProducts = asyncHandler(async (req, res) => {
 const updateProductStatus = asyncHandler(async (req, res) => {
   const { status } = req.body;
   const { productId } = req.params;
-  console.log("Product ID:", productId, "Status:", status);
 
   const role = req.user.role;
   if (!role.includes("admin")) {
@@ -1753,6 +1846,50 @@ const updateProductStatus = asyncHandler(async (req, res) => {
 
 
 });
+
+const updateOrderDeliveryStatus = asyncHandler(async (req, res) => {
+  const { orderId, status, trackingId, carrierPartner, cancellationRemark } = req.body;
+  const userId = req.user.userId;
+
+  if (!orderId) {
+    throw new ApiError(400, "Order ID is required");
+  }
+
+  // Find the order with a matching item for this seller
+  const order = await Order.findOne({ orderId, "items.sellerId": userId });
+  if (!order) {
+    throw new ApiError(404, "Order not found for this seller");
+  }
+
+  console.log("order", order);
+  const updateFields = {
+    "items.$[elem].status": status
+  };
+
+  if (status === "shipped") {
+    updateFields["items.$[elem].trackingId"] = trackingId;
+    updateFields["items.$[elem].carrierPartner"] = carrierPartner;
+  }
+
+  if (status === "cancelled") {
+    updateFields["items.$[elem].cancellationRemark"] = cancellationRemark;
+  }
+
+  const updateResult = await Order.updateMany(
+    { orderId },
+    { $set: updateFields },
+    {
+      arrayFilters: [{ "elem.sellerId": userId }],
+    }
+  );
+
+  // wanted to return the updated items
+  const updatedOrder = await Order.findOne({ orderId, "items.sellerId": userId }, { items: 1, deliveryStatus: 1, trackingId: 1, carrierPartner: 1 });
+
+  return res.json(new ApiResponse(200, "Order item status updated successfully", updatedOrder));
+});
+
+
 
 
 export {
@@ -1792,5 +1929,7 @@ export {
   getAllOrders,
   getAllCategorires,
   getAllProducts,
-  updateProductStatus
+  updateProductStatus,
+  orderDetails,
+  updateOrderDeliveryStatus
 };

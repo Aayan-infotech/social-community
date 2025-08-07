@@ -13,6 +13,7 @@ import {
   addToCartSchema,
   orderPlaceSchema,
   updateOrderStatusSchema,
+  updateOrderDeliveryStatusSchema
 } from "../validators/marketplaceValidator.js";
 import {
   upsertCategory,
@@ -52,6 +53,8 @@ import {
   getAllCategorires,
   getAllProducts,
   updateProductStatus,
+  orderDetails,
+  updateOrderDeliveryStatus
 } from "../controllers/marketplace.controller.js";
 
 const router = Router();
@@ -175,6 +178,8 @@ router.post('/place-order', verifyJWT, validateRequest(orderPlaceSchema), errorH
 router.put('/update-order-status', verifyJWT, validateRequest(updateOrderStatusSchema), errorHandler, updateOrderStatus);
 router.get("/my-orders", verifyJWT, myOrders);
 router.get("/get-orders", verifyJWT, getAllOrders);
+router.get("/get-order/:orderId", verifyJWT, orderDetails);
+router.put('/order-status',verifyJWT,validateRequest(updateOrderDeliveryStatusSchema), errorHandler, updateOrderDeliveryStatus);
 
 router.get("/confirm-payment", verifyJWT, confirmPaymentFn);
 router.get('/login-express', verifyJWT, loginExpress);

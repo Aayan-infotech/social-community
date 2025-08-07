@@ -25,8 +25,20 @@ const orderItemSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ["pending", "placed", "shipped", "completed", "cancelled"],
+    enum: ["pending", "placed", "shipped", "delivered", "cancelled"],
     default: "pending"
+  },
+  trackingId: {
+    type: String,
+    default: null
+  },
+  carrierPartner: {
+    type: String,
+    default: null
+  },
+  cancellationRemark: {
+    type: String,
+    default: null
   },
   isTransferred: {
     type: Boolean,

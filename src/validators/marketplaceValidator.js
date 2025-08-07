@@ -240,6 +240,50 @@ const updateOrderStatusSchema = joi.object({
   }),
 });
 
+
+const updateOrderDeliveryStatusSchema =  joi.object({
+  orderId: joi.string().required().messages({
+    "string.empty": "Order ID is required",
+    "any.required": "Order ID is required",
+  }),
+
+  status: joi.string()
+    .valid("placed", "shipped", "delivered", "cancelled")
+    .required()
+    .messages({
+      "string.empty": "Status is required",
+      "any.required": "Status is required",
+      "any.only": "Status must be one of 'placed', 'shipped', 'delivered', or 'cancelled'",
+    }),
+
+  trackingId: joi.when("status", {
+    is: "shipped",
+    then: joi.string().required().messages({
+      "string.empty": "Tracking ID is required when status is 'shipped'",
+      "any.required": "Tracking ID is required when status is 'shipped'",
+    }),
+    otherwise: joi.optional(),
+  }),
+
+  carrierPartner: joi.when("status", {
+    is: "shipped",
+    then: joi.string().required().messages({
+      "string.empty": "Carrier partner name is required when status is 'shipped'",
+      "any.required": "Carrier partner name is required when status is 'shipped'",
+    }),
+    otherwise: joi.optional(),
+  }),
+
+  cancellationRemark: joi.when("status", {
+    is: "cancelled",
+    then: joi.string().required().messages({
+      "string.empty": "Cancellation remark is required when status is 'cancelled'",
+      "any.required": "Cancellation remark is required when status is 'cancelled'",
+    }),
+    otherwise: joi.optional(),
+  }),
+});
+
 export {
   upsertCategorySchema,
   upsertSubcategorySchema,
@@ -249,5 +293,6 @@ export {
   updateAddressSchema,
   addToCartSchema,
   orderPlaceSchema,
-  updateOrderStatusSchema
+  updateOrderStatusSchema,
+  updateOrderDeliveryStatusSchema
 };
