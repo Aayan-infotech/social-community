@@ -42,9 +42,9 @@ const addEvent = asyncHandler(async (req, res) => {
   } = req.body;
 
 
-  if (isFreeEvent && ticketPrice > 0) {
+  if (isFreeEvent === 'true' && ticketPrice > 0) {
     throw new ApiError(400, "Ticket price must be 0 for free events");
-  } else if (!isFreeEvent && (ticketPrice < 1 || ticketPrice > 99999999)) {
+  } else if (isFreeEvent === 'false' && (ticketPrice < 1 || ticketPrice > 99999999)) {
     throw new ApiError(400, "Ticket price must be between 1 and 99999999 for paid events");
   }
 
