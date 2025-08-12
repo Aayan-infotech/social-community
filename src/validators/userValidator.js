@@ -494,6 +494,24 @@ const saveFAQSchema = Joi.object({
   }),
 });
 
+const updateFAQSchema = Joi.object({
+  id:Joi.string().required().messages({
+    "string.base":"id must be a string.",
+    "string.empty":"id is required.",
+    "any.required":"id is required."
+  }),
+  question: Joi.string().required().messages({
+    "string.base": "Question must be a string.",
+    "string.empty": "Question is required.",
+    "any.required": "Question is required.",
+  }),
+  answer: Joi.string().required().messages({
+    "string.base": "Answer must be a string.",
+    "string.empty": "Answer is required.",
+    "any.required": "Answer is required.",
+  }),
+})
+
 const updateMatrimonialProfileSchema = Joi.object({
   matrimonialAboutMe: Joi.string().optional().allow("").messages({
     "string.base": "Matrimonial About Me must be a string.",
@@ -604,4 +622,5 @@ export {
   updateMatrimonialProfileSchema,
   sendNotificationSchema,
   updateUserDetailsSchema,
+  updateFAQSchema
 };

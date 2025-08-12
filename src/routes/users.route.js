@@ -44,7 +44,10 @@ import {
   updateUserDetails,
   updateUserDeleteStatus,
   getAllEventOrganizers,
-  getAllVendors
+  getAllVendors,
+  updatePage,
+  updateFAQ,
+  deleteFAQ
 } from "../controllers/users.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { validateRequest } from "../middlewares/validation.middleware.js";
@@ -61,7 +64,8 @@ import {
   saveFAQSchema,
   updateMatrimonialProfileSchema,
   sendNotificationSchema,
-  updateUserDetailsSchema
+  updateUserDetailsSchema, 
+  updateFAQSchema
 } from "../validators/userValidator.js";
 import errorHandler from "../middlewares/errorhandler.middleware.js";
 
@@ -171,10 +175,14 @@ router.post(
 );
 router.get("/get-resources", verifyJWT, getResources);
 router.post("/add-pages", verifyJWT, validateRequest(addPagesSchema), addPages);
+router.get("/get-pages", verifyJWT, getAllInfoPages);
+router.put("/update-page/:pageId", verifyJWT, validateRequest(addPagesSchema), updatePage);
 router.post("/FAQ", verifyJWT, validateRequest(saveFAQSchema), saveFAQ);
 router.get("/privacy-policy", verifyJWT, getPrivacyPolicy);
 router.get("/terms-and-conditions", verifyJWT, getTermsAndConditions);
 router.get("/FAQ", verifyJWT, getFAQ);
+router.put("/FAQ/:faqId", verifyJWT, validateRequest(updateFAQSchema), updateFAQ);
+router.delete("/delete-faq/:faqId",verifyJWT,deleteFAQ);
 // Users Matrimonial Profile
 router.put(
   "/update-matrimonial-profile",

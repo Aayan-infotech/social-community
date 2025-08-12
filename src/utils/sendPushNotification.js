@@ -43,4 +43,15 @@ const sendPushNotification = async (
   }
 };
 
+export const generateFCMToken = async (userId, deviceToken) => {
+  try {
+    const token = await firebaseAdmin.messaging().getToken(deviceToken);
+    console.log("Successfully generated FCM token:", token);
+    return token;
+  } catch (error) {
+    console.error("Error generating FCM token:", error);
+    throw error;
+  }
+}
+
 export default sendPushNotification;

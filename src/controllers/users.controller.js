@@ -1590,6 +1590,7 @@ const addPages = asyncHandler(async (req, res) => {
   res.json(new ApiResponse(200, "Page added successfully", page));
 });
 
+
 const saveFAQ = asyncHandler(async (req, res) => {
   const { question, answer } = req.body;
 
@@ -1633,12 +1634,44 @@ const getTermsAndConditions = asyncHandler(async (req, res) => {
 
 const getFAQ = asyncHandler(async (req, res) => {
   const faqs = await FAQModel.find({})
-    .select("-_id -createdAt -__v -updatedAt")
+    .select("-createdAt -__v -updatedAt")
     .sort({ createdAt: 1 });
   if (!faqs) {
     throw new ApiError(404, "FAQs not found");
   }
   res.json(new ApiResponse(200, "FAQs fetched successfully", faqs));
+});
+
+const updateFAQ = asyncHandler(async (req, res) => {
+  const { faqId } = req.params;
+  const { question, answer } = req.body;
+
+  if (!isValidObjectId(faqId)) {
+    throw new ApiError(400, "Invalid FAQ ID");
+  }
+
+  const faq = await FAQModel.findByIdAndUpdate(
+    faqId,
+    { question, answer },
+    { new: true }
+  );
+
+  if (!faq) {
+    throw new ApiError(404, "FAQ not found");
+  }
+
+  res.json(new ApiResponse(200, "FAQ updated successfully", faq));
+});
+
+const deleteFAQ = asyncHandler(async (req,res) =>{
+  const { faqId } = req.params;
+
+  const faq = await FAQModel.findByIdAndDelete(faqId);
+  if(!faq){
+     throw new ApiError(404, "FAQ not found");
+  }
+
+  res.json(new ApiResponse(200, "FAQ deleted successfully"));
 });
 
 const updateMatrimonialProfile = asyncHandler(async (req, res) => {
@@ -2103,8 +2136,98 @@ const getInterrestedProfiles = asyncHandler(async (req, res) => {
 });
 
 const getAllInfoPages = asyncHandler(async (req, res) => {
-  const pages = await PageModel.find({});
-  res.json(new ApiResponse(200, "Info pages fetched successfully", pages));
+  // const pages = await PageModel.find({});
+  // res.json(new ApiResponse(200, "Info pages fetched successfully", pages));
+
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.max(1, parseInt(req.query.limit) || 10);
+  const skip = (page - 1) * limit;
+
+  const { sortBy, sortOrder, search } = req.query;
+
+  const aggregation = [];
+
+  aggregation.push({
+    $match: {
+      isDeleted: { $ne: true },
+      ...(search && {
+        $or: [
+          { title: { $regex: search, $options: "i" } },
+          { content: { $regex: search, $options: "i" } },
+        ],
+      }),
+    },
+  });
+
+  aggregation.push({
+    $sort: {
+      [sortBy]: sortOrder === "asc" ? 1 : -1,
+    },
+  });
+
+  aggregation.push({
+    $facet: {
+      infoPages: [
+        { $skip: skip },
+        { $limit: limit },
+        {
+          $project: {
+            _id: 1,
+            title: 1,
+            url: 1,
+            description: 1,
+          },
+        },
+      ],
+      totalCount: [{ $count: "count" }],
+    },
+  });
+
+  const results = await PageModel.aggregate(aggregation);
+  const infoPages = results[0]?.infoPages || [];
+  const totalCount = results[0]?.totalCount[0]?.count || 0;
+  const totalPages = Math.ceil(totalCount / limit);
+
+  res.json(
+    new ApiResponse(
+      200,
+      infoPages.length > 0 ? "Info pages fetched successfully" : "No info pages found",
+      infoPages.length > 0
+        ? {
+          infoPages,
+          total_page: totalPages,
+          current_page: page,
+          total_records: totalCount,
+          per_page: limit,
+        }
+        : null
+    )
+  );
+});
+
+
+const updatePage = asyncHandler(async (req, res) => {
+  const { pageId } = req.params;
+  const { title, url, description } = req.body;
+
+  if (!isValidObjectId(pageId)) {
+    throw new ApiError(400, "Invalid page ID");
+  }
+
+
+
+
+  const page = await PageModel.findByIdAndUpdate(
+    pageId,
+    { title, url, description },
+    { new: true }
+  );
+
+  if (!page) {
+    throw new ApiError(404, "Page not found");
+  }
+
+  res.json(new ApiResponse(200, "Page updated successfully", page));
 });
 
 const searchAllUsers = asyncHandler(async (req, res) => {
@@ -2600,4 +2723,7 @@ export {
   updateUserDeleteStatus,
   getAllEventOrganizers,
   getAllVendors,
+  updatePage,
+  updateFAQ,
+  deleteFAQ
 };

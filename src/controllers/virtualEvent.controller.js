@@ -148,8 +148,8 @@ const getEvents = asyncHandler(async (req, res) => {
   const timezone = req.headers?.timezone || "UTC";
 
   // Search Event By Event Name or User Name
-  const searchQuery = req.query.search || "";
-  const searchRegex = new RegExp(searchQuery, "i");
+  const searchQuery = req.query.search|| "";
+  console.log(searchQuery);
 
   const userId = req.query.userId || req.user.userId;
 
@@ -180,11 +180,22 @@ const getEvents = asyncHandler(async (req, res) => {
   });
 
   if (searchQuery) {
-    aggregation.push({
-      $match: {
-        $or: [{ eventName: searchRegex }, { "userDetails.name": searchRegex }],
-      },
-    });
+    console.log(searchQuery);
+    // aggregation.push({
+    //   $match: {
+    //     eventName: searchRegex,
+    //   },
+    // });
+
+      aggregation.push({
+        $match: {
+          $or: [
+            { eventName: { $regex: searchQuery, $options: "i" } },
+          ]
+        }
+      });
+    
+
   }
 
   aggregation.push({
@@ -249,10 +260,12 @@ const getEvents = asyncHandler(async (req, res) => {
   );
 });
 
-const myEvenets = asyncHandler(async (req, res) => {
+
+const myEvents = asyncHandler(async (req, res) => {
   const page = Math.max(1, parseInt(req.query.page) || 1);
   const limit = Math.max(1, parseInt(req.query.limit) || 10);
   const skip = (page - 1) * limit;
+
 
   const type = req.query.type || "all";
   if (!["all", "upcoming", "past"].includes(type)) {
@@ -262,34 +275,58 @@ const myEvenets = asyncHandler(async (req, res) => {
     );
   }
 
-  const timezone = req.headers?.timezone || "UTC";
+  const searchKeyword = req.query.searchKeyword?.trim();
+  const sortField = req.query.sortField || "createdAt";
+  const sortOrder = req.query.sortOrder === "asc" ? 1 : -1;
 
+  const allowedSortFields = [
+    "createdAt",
+    "eventName",
+    "eventLocation",
+    "eventStartDate",
+    "eventEndDate",
+    "status",
+    "noOfSlots",
+    "ticketPrice",
+  ];
+  const sort = {};
+  if (allowedSortFields.includes(sortField)) {
+    sort[sortField] = sortOrder;
+  } else {
+    sort["createdAt"] = -1;
+  }
+
+  const timezone = req.headers?.timezone || "UTC";
   const userId = req.user.userId;
 
   const aggregation = [];
 
   aggregation.push({
-    $match: {
-      userId: userId,
-    },
+    $match: { userId: userId },
   });
+
   if (type === "upcoming") {
     aggregation.push({
-      $match: {
-        eventStartDate: { $gte: new Date() },
-      },
+      $match: { eventStartDate: { $gte: new Date() } },
     });
   } else if (type === "past") {
     aggregation.push({
-      $match: {
-        eventEndDate: { $lt: new Date() },
-      },
+      $match: { eventEndDate: { $lt: new Date() } },
     });
   }
 
-  aggregation.push({
-    $sort: { createdAt: -1 },
-  });
+  if (searchKeyword) {
+    aggregation.push({
+      $match: {
+        $or: [
+          { eventName: { $regex: searchKeyword, $options: "i" } },
+          { eventLocation: { $regex: searchKeyword, $options: "i" } }
+        ]
+      }
+    });
+  }
+
+  aggregation.push({ $sort: sort });
 
   aggregation.push({
     $lookup: {
@@ -300,9 +337,7 @@ const myEvenets = asyncHandler(async (req, res) => {
     },
   });
 
-  aggregation.push({
-    $unwind: "$userDetails",
-  });
+  aggregation.push({ $unwind: "$userDetails" });
 
   aggregation.push({
     $lookup: {
@@ -324,14 +359,15 @@ const myEvenets = asyncHandler(async (req, res) => {
             eventName: 1,
             eventDescription: 1,
             eventLocation: 1,
-            // ...getTimezoneDateProjection("eventStartDate", timezone, "eventStartDate"),
-            // ...getTimezoneDateProjection("eventEndDate", timezone, "eventEndDate"),
             eventStartDate: 1,
             eventEndDate: 1,
             eventTimeStart: 1,
             eventTimeEnd: 1,
             ticketPrice: 1,
+            noOfSlots: 1,
+            isFreeEvent: 1,
             eventImage: 1,
+            rejectionReason: 1,
             userId: 1,
             status: 1,
             eventManager: {
@@ -379,16 +415,18 @@ const myEvenets = asyncHandler(async (req, res) => {
         : "No virtual events found",
       virtualEvents.length > 0
         ? {
-          virtualEvents,
-          total_page: Math.ceil(totalCount / limit),
-          current_page: page,
-          total_records: totalCount,
-          per_page: limit,
-        }
+            virtualEvents,
+            total_page: Math.ceil(totalCount / limit),
+            current_page: page,
+            total_records: totalCount,
+            per_page: limit,
+          }
         : null
     )
   );
 });
+
+
 
 const updateEvent = asyncHandler(async (req, res) => {
   const eventId = req.params.id;
@@ -406,6 +444,7 @@ const updateEvent = asyncHandler(async (req, res) => {
     eventEndDate,
     ticketPrice,
     noOfSlots,
+    isFreeEvent,
   } = req.body;
 
   // Check if the event Name is already taken by another event
@@ -414,9 +453,21 @@ const updateEvent = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Event not found");
   }
 
+  if(event.status === 'approved'){
+    throw new ApiError(400, "Cannot update approved event");
+  }
+
   if (event.userId.toString() !== req.user.userId) {
     throw new ApiError(403, "You are not authorized to update this event");
   }
+
+  if (isFreeEvent === 'true' && ticketPrice > 0) {
+    throw new ApiError(400, "Ticket price must be 0 for free events");
+  } else if (isFreeEvent === 'false' && (ticketPrice < 1 || ticketPrice > 99999999)) {
+    throw new ApiError(400, "Ticket price must be between 1 and 99999999 for paid events");
+  }
+
+  const isFreeEventBoolean = isFreeEvent === 'true' ? true : false;
 
   const isKYCCompleted = req.user?.isKYCVerified;
   if (!isKYCCompleted) {
@@ -468,6 +519,8 @@ const updateEvent = asyncHandler(async (req, res) => {
         ? eventImageUrl
         : "",
       noOfSlots: noOfSlots,
+      isFreeEvent: isFreeEventBoolean,
+      status: "pending",
     },
     { new: true }
   );
@@ -1552,9 +1605,9 @@ const getEventDetails = asyncHandler(async (req, res) => {
 });
 
 
-const udpateEventStatus = asyncHandler(async (req, res) => {
+const updateEventStatus = asyncHandler(async (req, res) => {
   const { eventId } = req.params;
-  const { status } = req.body;
+  const { status, rejectionReason } = req.body;
   if (!isValidObjectId(eventId)) {
     throw new ApiError(400, "Invalid event ID");
   }
@@ -1567,11 +1620,20 @@ const udpateEventStatus = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Invalid status. Must be 'approved' or 'rejected'");
   }
 
+  if (status === "rejected" && !rejectionReason) {
+    throw new ApiError(400, "Rejection reason is required");
+  }
+
   const role = req.user.role;
   if (!role.includes("admin")) {
     throw new ApiError(403, "You are not authorized to update this event status");
   }
   event.status = status;
+  if (status === "rejected") {
+    event.rejectionReason = rejectionReason;
+  } else {
+    event.rejectionReason = null; // Clear rejection reason if approved
+  }
   const updatedEvent = await event.save();
 
   // get the user device token 
@@ -1684,7 +1746,7 @@ const getEventDashboard = asyncHandler(async (req, res) => {
 export {
   addEvent,
   getEvents,
-  myEvenets,
+  myEvents,
   eventDetails,
   bookTickets,
   updateBookingStatus,
@@ -1700,6 +1762,6 @@ export {
   refreshAccessToken,
   getAllEvents,
   getEventDetails,
-  udpateEventStatus,
+  updateEventStatus,
   getEventDashboard
 };

@@ -58,6 +58,10 @@ const virtualEventSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    rejectionReason: {
+      type: String,
+      required: false,
+    },
   },
   {
     timestamps: true,

@@ -15,7 +15,7 @@ import {
 import {
     addEvent,
     getEvents,
-    myEvenets,
+    myEvents,
     eventDetails,
     bookTickets,
     updateBookingStatus,
@@ -31,7 +31,7 @@ import {
     refreshAccessToken,
     getAllEvents,
     getEventDetails,
-    udpateEventStatus,
+    updateEventStatus,
     getEventDashboard
 } from "../controllers/virtualEvent.controller.js";
 import { verifyEventAuth } from "../middlewares/eventAuth.middleware.js";
@@ -65,7 +65,7 @@ router.put("/update/:id",
 );
 
 router.get("/get", verifyJWT, getEvents);
-router.get("/my-events", verifyJWT, myEvenets);
+router.get("/my-events", verifyJWT, myEvents);
 router.get("/event-details/:id", verifyJWT, eventDetails);
 router.post(
     "/book-tickets",
@@ -95,7 +95,7 @@ router.post('/refresh-access-token',refreshAccessToken);
 // Get all events for admin
 router.get('/getAllEvents', verifyJWT, getAllEvents);
 router.get('/getEventDetails/:eventId',verifyJWT,getEventDetails);
-router.put('/updateEvent/:eventId',verifyJWT,udpateEventStatus);
+router.put('/updateEvent/:eventId',verifyJWT,updateEventStatus);
 
 router.get('/getEventDashboard',verifyJWT,getEventDashboard);
 
