@@ -600,7 +600,7 @@ const eventDetails = asyncHandler(async (req, res) => {
 });
 
 const bookTickets = asyncHandler(async (req, res) => {
-  const { eventId, ticketCount, totalPrice, bookingDate, bookingTime } =
+  const { eventId, ticketCount, totalPrice, bookingDate } =
     req.body;
   if (!isValidObjectId(eventId)) {
     throw new ApiError(400, "Invalid event ID");
@@ -613,7 +613,7 @@ const bookTickets = asyncHandler(async (req, res) => {
   const aggregation = [];
   aggregation.push({
     $match: {
-      _id: new mongoose.Types.ObjectId(eventId),
+      _id: mongoose.Types.ObjectId.createFromHexString(String(eventId)),
     },
   });
   aggregation.push({
@@ -657,9 +657,11 @@ const bookTickets = asyncHandler(async (req, res) => {
 
   const eventDetails = event[0];
   const { userDetails } = eventDetails;
-  if (!userDetails.stripeCustomerId) {
+  // Ensure buyer has a Stripe customer ID
+  if (!req.user.stripeCustomerId) {
     throw new ApiError(400, "User does not have a Stripe customer ID");
   }
+  // Ensure event creator has a Stripe connected account
   if (!userDetails.stripeAccountId) {
     throw new ApiError(400, "Event creator does not have a Stripe account ID");
   }
@@ -673,42 +675,58 @@ const bookTickets = asyncHandler(async (req, res) => {
   }
 
 
-  const bookingDateTime = new Date(`${bookingDate}T${bookingTime}`);
   const eventStartDate = eventDetails?.eventStartDate?.toISOString().split("T")[0];
-  const eventStartDateTime = new Date(`${eventStartDate}T${eventDetails?.eventTimeStart}`);
   const eventEndDate = eventDetails?.eventEndDate?.toISOString().split("T")[0];
-  const eventEndDateTime = new Date(`${eventEndDate}T${eventDetails?.eventTimeEnd}`);
 
-  if (
-    bookingDateTime < eventStartDateTime ||
-    bookingDateTime > eventEndDateTime
-  ) {
-    throw new ApiError(
-      400,
-      "Booking date and time must be between event start and end dates and times"
-    );
+  if (bookingDate < eventStartDate || bookingDate > eventEndDate) {
+    throw new ApiError(400, "Booking date must be between event start and end dates");
   }
 
-  if (eventEndDateTime < new Date()) {
+  if (eventDetails.eventEndDate < new Date()) {
     throw new ApiError(400, "Event Already ended, cannot book tickets");
   }
 
-  const ticketId = generateTicketId();
-
-  const newBooking = await TicketBooking.create({
+  // Check if user has the already booked tickets for this event
+  const existingBooking = await TicketBooking.findOne({
     userId: req.user.userId,
     eventId,
-    ticketCount,
-    totalPrice,
-    bookingStatus: "pending",
-    paymentStatus: "pending",
-    bookingDate: bookingDateTime,
-    bookingTime,
-    ticketId,
+    bookingStatus: "pending"
   });
 
 
+
+  const ticketId = generateTicketId();
+  let newBooking;
+  if (existingBooking) {
+    newBooking = existingBooking;
+  } else {
+    newBooking = await TicketBooking.create({
+      userId: req.user.userId,
+      eventId,
+      ticketCount,
+      totalPrice,
+      bookingStatus: "pending",
+      paymentStatus: "pending",
+      bookingDate: bookingDate,
+      // bookingTime,
+      ticketId,
+    });
+
+  }
+
+
   if (eventDetails.isFreeEvent) {
+    // Instantly complete free bookings and decrement available slots
+    if (eventDetails.noOfSlots !== null && eventDetails.noOfSlots !== undefined) {
+      await VirtualEvent.updateOne(
+        { _id: eventId },
+        { $inc: { noOfSlots: -ticketCount } }
+      );
+    }
+    newBooking.bookingStatus = "booked";
+    newBooking.paymentStatus = "completed";
+    await newBooking.save();
+
     return res.json(
       new ApiResponse(201, "Tickets booked successfully", {
         booking: newBooking,
