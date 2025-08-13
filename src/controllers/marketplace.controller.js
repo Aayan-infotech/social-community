@@ -1278,104 +1278,151 @@ const myOrders = asyncHandler(async (req, res) => {
 
   const userId = req.user.userId;
 
-  const aggregation = [];
-  aggregation.push({
-    $match: {
-      buyerId: userId,
-    },
-  });
-  aggregation.push({
-    $lookup: {
-      from: "products",
-      localField: "productId",
-      foreignField: "_id",
-      as: "product",
-    },
-  });
-  aggregation.push({
-    $unwind: {
-      path: "$product",
-      preserveNullAndEmptyArrays: true,
-    },
-  });
-  aggregation.push({
-    $lookup: {
-      from: "deliveryaddresses",
-      localField: "shippingAddressId",
-      foreignField: "_id",
-      as: "shippingAddress",
-    },
-  });
+  const dataPipeline = [
+    { $match: { buyerId: userId } },
 
-  aggregation.push({
-    $unwind: {
-      path: "$shippingAddress",
-      preserveNullAndEmptyArrays: true,
+    {
+      $lookup: {
+        from: "deliveryaddresses",
+        localField: "shippingAddressId",
+        foreignField: "_id",
+        as: "shippingAddress",
+      },
     },
-  });
+    { $unwind: { path: "$shippingAddress", preserveNullAndEmptyArrays: true } },
 
+    { $unwind: "$items" },
 
-  aggregation.push({
-    $lookup: {
-      from: "users",
-      localField: "sellerId",
-      foreignField: "userId",
-      as: "seller",
+    {
+      $lookup: {
+        from: "products",
+        localField: "items.productId",
+        foreignField: "_id",
+        as: "product",
+      },
     },
-  });
-  aggregation.push({
-    $unwind: {
-      path: "$seller",
-      preserveNullAndEmptyArrays: true,
-    },
-  });
+    { $unwind: { path: "$product", preserveNullAndEmptyArrays: true } },
 
-  aggregation.push({
-    $facet: {
-      orders: [
-        { $skip: skip },
-        { $limit: limit },
-        {
-          $project: {
-            _id: 1,
-            orderId: 1,
-            transferGroup: 1,
-            amount: 1,
-            currency: 1,
-            quantity: 1,
-            createdAt: 1,
-            product_name: "$product.product_name",
-            product_image: "$product.product_image",
-            seller_name: "$seller.name",
-            shippingAddress: {
-              name: "$shippingAddress.name",
-              address: "$shippingAddress.address",
-              city: "$shippingAddress.city",
-              state: "$shippingAddress.state",
-              country: "$shippingAddress.country",
-              pincode: "$shippingAddress.pincode",
+    {
+      $lookup: {
+        from: "users",
+        localField: "items.sellerId", // FIX: was sellerId at root
+        foreignField: "userId",
+        as: "seller",
+      },
+    },
+    { $unwind: { path: "$seller", preserveNullAndEmptyArrays: true } },
+
+    {
+      $group: {
+        _id: "$orderId",
+        createdAt: { $first: "$createdAt" },
+        paymentStatus: { $first: "$paymentStatus" },
+        transferGroup: { $first: "$transferGroup" },
+        currency: { $first: "$currency" },
+        totalAmount: { $first: "$totalAmount" }, // fallback computed below if null
+        shippingAddress: { $first: "$shippingAddress" },
+        items: {
+          $push: {
+            productId: "$items.productId",
+            quantity: "$items.quantity",
+            amount: "$items.amount",
+            status: "$items.status",
+            trackingId: "$items.trackingId",
+            carrierPartner: "$items.carrierPartner",
+            isTransferred: "$items.isTransferred",
+            transferAmount: "$items.transferAmount",
+            product: {
+              _id: "$product._id",
+              name: "$product.product_name",
+              image: "$product.product_image",
+              price: "$product.product_price",
+              discount: "$product.product_discount",
+            },
+            seller: {
+              userId: "$seller.userId",
+              name: "$seller.name",
+              email: "$seller.email",
+              profile_image: {
+                $ifNull: [
+                  "$seller.profile_image",
+                  `${process.env.APP_URL}/placeholder/image_place.png`,
+                ],
+              },
             },
           },
         },
-      ],
-      totalCount: [{ $count: "count" }],
-    }
-  });
+      },
+    },
 
-  const result = await Order.aggregate(aggregation);
+    {
+      $project: {
+        _id: 0,
+        orderId: "$_id",
+        createdAt: 1,
+        paymentStatus: 1,
+        transferGroup: 1,
+        currency: 1,
+        totalAmount: {
+          $ifNull: [
+            "$totalAmount",
+            {
+              $sum: {
+                $map: {
+                  input: "$items",
+                  as: "i",
+                  in: { $multiply: ["$$i.amount", "$$i.quantity"] },
+                },
+              },
+            },
+          ],
+        },
+        shippingAddress: {
+          name: "$shippingAddress.name",
+          address: "$shippingAddress.address",
+          city: "$shippingAddress.city",
+          state: "$shippingAddress.state",
+          country: "$shippingAddress.country",
+          pincode: "$shippingAddress.pincode",
+        },
+        items: 1,
+      },
+    },
 
-  const orders = result[0]?.orders || [];
-  const totalCount = result[0]?.totalCount[0]?.count || 0;
+    { $sort: { createdAt: -1 } },
+    { $skip: skip },
+    { $limit: limit },
+  ];
+
+  const countPipeline = [
+    { $match: { buyerId: userId } },
+    { $group: { _id: "$orderId" } },
+    { $count: "count" },
+  ];
+
+  const [orders, totalRes] = await Promise.all([
+    Order.aggregate(dataPipeline),
+    Order.aggregate(countPipeline),
+  ]);
+
+  const totalCount = totalRes[0]?.count || 0;
   const totalPages = Math.ceil(totalCount / limit);
 
-  res.json(new ApiResponse(200, orders.length > 0 ? "Orders fetched successfully" : "No orders found", orders.length > 0 ? {
-    orders,
-    total_page: totalPages,
-    current_page: page,
-    total_records: totalCount,
-    per_page: limit,
-  } : null));
-
+  return res.json(
+    new ApiResponse(
+      200,
+      orders.length ? "Orders fetched successfully" : "No orders found",
+      orders.length
+        ? {
+            orders,
+            total_page: totalPages,
+            current_page: page,
+            total_records: totalCount,
+            per_page: limit,
+          }
+        : null
+    )
+  );
 });
 
 
@@ -1484,12 +1531,12 @@ const getAllOrders = asyncHandler(async (req, res) => {
         items: role.includes("admin")
           ? "$items"
           : {
-              $filter: {
-                input: "$items",
-                as: "item",
-                cond: { $eq: ["$$item.sellerId", userId] }
-              }
+            $filter: {
+              input: "$items",
+              as: "item",
+              cond: { $eq: ["$$item.sellerId", userId] }
             }
+          }
       }
     },
 
@@ -1541,12 +1588,12 @@ const getAllOrders = asyncHandler(async (req, res) => {
       orders.length ? "Orders fetched successfully" : "No orders found",
       orders.length
         ? {
-            orders,
-            total_page: totalPages,
-            current_page: page,
-            total_records: totalCount,
-            per_page: limit
-          }
+          orders,
+          total_page: totalPages,
+          current_page: page,
+          total_records: totalCount,
+          per_page: limit
+        }
         : null
     )
   );
