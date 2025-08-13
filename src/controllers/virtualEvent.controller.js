@@ -148,7 +148,7 @@ const getEvents = asyncHandler(async (req, res) => {
   const timezone = req.headers?.timezone || "UTC";
 
   // Search Event By Event Name or User Name
-  const searchQuery = req.query.search|| "";
+  const searchQuery = req.query.search || "";
   console.log(searchQuery);
 
   const userId = req.query.userId || req.user.userId;
@@ -187,14 +187,14 @@ const getEvents = asyncHandler(async (req, res) => {
     //   },
     // });
 
-      aggregation.push({
-        $match: {
-          $or: [
-            { eventName: { $regex: searchQuery, $options: "i" } },
-          ]
-        }
-      });
-    
+    aggregation.push({
+      $match: {
+        $or: [
+          { eventName: { $regex: searchQuery, $options: "i" } },
+        ]
+      }
+    });
+
 
   }
 
@@ -415,12 +415,12 @@ const myEvents = asyncHandler(async (req, res) => {
         : "No virtual events found",
       virtualEvents.length > 0
         ? {
-            virtualEvents,
-            total_page: Math.ceil(totalCount / limit),
-            current_page: page,
-            total_records: totalCount,
-            per_page: limit,
-          }
+          virtualEvents,
+          total_page: Math.ceil(totalCount / limit),
+          current_page: page,
+          total_records: totalCount,
+          per_page: limit,
+        }
         : null
     )
   );
@@ -453,7 +453,7 @@ const updateEvent = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Event not found");
   }
 
-  if(event.status === 'approved'){
+  if (event.status === 'approved') {
     throw new ApiError(400, "Cannot update approved event");
   }
 

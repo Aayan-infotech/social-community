@@ -81,12 +81,12 @@ const signup = asyncHandler(async (req, res) => {
     } else if (existingUser.email === userEmail) {
       throw new ApiError(
         400,
-        "Email is already registered. Please use a different email"
+        "Email is already registered. Please use a different email. Go to Login to proceed further."
       );
     } else if (existingUser.mobile === mobile) {
       throw new ApiError(
         400,
-        "Mobile number is already registered. Please use a different mobile number"
+        "Mobile number is already registered. Please use a different mobile number. Go to Login to proceed further."
       );
     }
   }

@@ -38,7 +38,7 @@ const ticketBookingSchema = new mongoose.Schema({
     },
     bookingTime: {
         type: String,
-        required: true,
+        required: false,
     },
     ticketId: {
         type: String,
@@ -51,6 +51,10 @@ const ticketBookingSchema = new mongoose.Schema({
         enum: ['pending', 'completed', 'failed'],
         default: 'pending',
     },
+    paymentIntentId: {
+        type: String,
+        required: false,
+    }
 }, {
     timestamps: true,
     versionKey: false,

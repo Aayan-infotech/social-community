@@ -91,10 +91,10 @@ const bookTicketSchema = Joi.object({
     "date.base": "Booking date must be a valid date",
     "any.required": "Booking date is required",
   }),
-  bookingTime: Joi.string().required().messages({
-    "string.empty": "Booking time is required",
-    "any.required": "Booking time is required",
-  }),
+  // bookingTime: Joi.string().required().messages({
+  //   "string.empty": "Booking time is required",
+  //   "any.required": "Booking time is required",
+  // }),
 });
 
 const updateBookingStatusSchema = Joi.object({
