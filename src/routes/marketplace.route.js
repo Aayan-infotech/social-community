@@ -54,7 +54,8 @@ import {
   getAllProducts,
   updateProductStatus,
   orderDetails,
-  updateOrderDeliveryStatus
+  updateOrderDeliveryStatus,
+  myOrderDetails
 } from "../controllers/marketplace.controller.js";
 
 const router = Router();
@@ -177,6 +178,7 @@ router.get("/kyc-status", checkKYCStatus);
 router.post('/place-order', verifyJWT, validateRequest(orderPlaceSchema), errorHandler, placeOrder);
 router.put('/update-order-status', verifyJWT, validateRequest(updateOrderStatusSchema), errorHandler, updateOrderStatus);
 router.get("/my-orders", verifyJWT, myOrders);
+router.get("/order-details/:orderId", verifyJWT, myOrderDetails);
 router.get("/get-order/:orderId", verifyJWT, orderDetails);
 router.get("/get-orders", verifyJWT, getAllOrders);
 router.put('/order-status',verifyJWT,validateRequest(updateOrderDeliveryStatusSchema), errorHandler, updateOrderDeliveryStatus);

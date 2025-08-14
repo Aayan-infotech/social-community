@@ -1282,10 +1282,8 @@ const myOrders = asyncHandler(async (req, res) => {
   const dataPipeline = [
     { $match: { buyerId: userId } },
 
-    // Unwind items so each is its own document
     { $unwind: "$items" },
 
-    // Lookup product details for each item
     {
       $lookup: {
         from: "products",
@@ -1295,17 +1293,14 @@ const myOrders = asyncHandler(async (req, res) => {
       },
     },
 
-    // Attach product object (first match)
     {
       $addFields: {
         "items.product": { $arrayElemAt: ["$product", 0] },
       },
     },
 
-    // Remove temporary product array
     { $unset: "product" },
 
-    // Group back by orderId & sellerId so each order-seller pair is separate
     {
       $group: {
         _id: {
@@ -1324,7 +1319,6 @@ const myOrders = asyncHandler(async (req, res) => {
       },
     },
 
-    // Flatten _id
     {
       $project: {
         _id: "$_id_order",
@@ -1371,18 +1365,99 @@ const myOrders = asyncHandler(async (req, res) => {
       orders.length ? "Orders fetched successfully" : "No orders found",
       orders.length
         ? {
-            orders,
-            total_page: totalPages,
-            current_page: page,
-            total_records: totalCount,
-            per_page: limit,
-          }
+          orders,
+          total_page: totalPages,
+          current_page: page,
+          total_records: totalCount,
+          per_page: limit,
+        }
         : null
     )
   );
 });
 
 
+
+const myOrderDetails = asyncHandler(async (req, res) => {
+  const { orderId } = req.params;
+  const { sellerId } = req.query;
+  const userId = req.user.userId;
+
+  const aggregation = [];
+
+  aggregation.push({ $match: { orderId, buyerId: userId } });
+  aggregation.push({
+    $lookup: {
+      from: "deliveryaddresses",
+      localField: "shippingAddressId",
+      foreignField: "_id",
+      as: "shippingAddress"
+    }
+  });
+  aggregation.push({
+    $unwind: {
+      path: "$shippingAddress",
+      preserveNullAndEmptyArrays: true
+    }
+  });
+
+  aggregation.push({
+    $lookup: {
+      from: "products",
+      localField: "items.productId",
+      foreignField: "_id",
+      as: "product"
+    }
+  });
+
+
+  aggregation.push({
+    $addFields: {
+      "items.product": { $arrayElemAt: ["$product", 0] },
+    },
+  });
+
+  aggregation.push({
+    $project: {
+      _id: 0,
+      orderId: 1,
+      buyerId: 1,
+      shippingAddress: {
+        name: "$shippingAddress.name",
+        mobile: "$shippingAddress.mobile",
+        alternate_mobile: "$shippingAddress.alternate_mobile",
+        address: "$shippingAddress.address",
+        city: "$shippingAddress.city",
+        state: "$shippingAddress.state",
+        country: "$shippingAddress.country",
+        pincode: "$shippingAddress.pincode"
+      },
+      totalAmount: 1,
+      currency: 1,
+      paymentStatus: 1,
+      createdAt: 1,
+      updatedAt: 1,
+      items: {
+        $filter: {
+          input: "$items",
+          as: "item",
+          cond: { $eq: ["$$item.sellerId", sellerId] }
+        }
+      },
+    }
+  });
+
+
+  const order = await Order.aggregate(aggregation);
+
+  if (!order) {
+    throw new ApiError(404, "Order not found");
+  }
+
+  return res.json(
+    new ApiResponse(200, "Order details fetched successfully", order)
+  );
+});
 
 const updateOrderStatus = asyncHandler(async (req, res) => {
   const { orderId, status, paymentStatus, productId } = req.body;
@@ -1935,5 +2010,6 @@ export {
   getAllProducts,
   updateProductStatus,
   orderDetails,
-  updateOrderDeliveryStatus
+  updateOrderDeliveryStatus,
+  myOrderDetails
 };
