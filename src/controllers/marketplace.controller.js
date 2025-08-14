@@ -1224,15 +1224,16 @@ const placeOrder = asyncHandler(async (req, res) => {
     throw new ApiError(500, "Failed to save order");
   }
 
-  // Remove items from cart
-  await Cart.deleteMany({ userId, productId: { $in: product_ids } });
+ 
 
   // Create Stripe PaymentIntent with transfer_group
   const paySheet = await productOrder(
     req.user.stripeCustomerId,
     totalAmount,
     "usd",
-    orderId
+    orderId,
+    userId,
+    JSON.stringify(product_ids)
   );
 
   paySheet.orderId = orderId;
@@ -1908,7 +1909,6 @@ const updateOrderDeliveryStatus = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Order not found for this seller");
   }
 
-  console.log("order", order);
   const updateFields = {
     "items.$[elem].status": status
   };

@@ -2,7 +2,7 @@ import stripe from "stripe";
 import { loadConfig } from "../config/loadConfig.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ContentAndApprovalsListInstance } from "twilio/lib/rest/content/v1/contentAndApprovals.js";
-import { updateVirtualEventStatus } from "../utils/webhookUtils.js";
+import { updateOrderStatus, updateVirtualEventStatus } from "../utils/webhookUtils.js";
 
 const secret = await loadConfig();
 
@@ -117,18 +117,29 @@ const paymentMethod = async (customerId) => {
   }
 };
 
-const productOrder = async (customerId, amount, currency, transferGroup) => {
+const productOrder = async (customerId, amount, currency, transferGroup, userId, product_ids) => {
   try {
     const ephemeralKey = await stripeClient.ephemeralKeys.create(
       { customer: customerId },
       { apiVersion: '2025-04-30.basil' }
     );
+
+    const platformFee = Math.floor(Number(amount) * 100 * 0.1) + 0.3 * 100;
+
     const paymentIntent = await stripeClient.paymentIntents.create({
       amount: Number(amount) * 100, // amount in cents
       currency: currency,
       customer: customerId,
       automatic_payment_methods: {
         enabled: true,
+      },
+      metadata: {
+        stripeCustomerId: customerId,
+        platformFee: platformFee,
+        paymentType: "marketplace",
+        orderId: transferGroup,
+        userId: userId,
+        product_ids: product_ids
       },
       transfer_group: transferGroup,
     });
@@ -269,7 +280,6 @@ const handleWebhooks = async (req, res) => {
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
   // Handle the event
-  console
   try {
     switch (event.type) {
       case 'payment_intent.succeeded':
@@ -279,6 +289,13 @@ const handleWebhooks = async (req, res) => {
           const bookingId = metadata.bookingId;
           const response = await updateVirtualEventStatus(bookingId, "booked", "completed", paymentIntent.id);
         }
+
+        if (metadata.paymentType === 'marketplace') {
+          const orderId = metadata.orderId;
+          const product_ids = JSON.parse(metadata.product_ids);
+          const response = await updateOrderStatus(orderId, "paid", "placed", paymentIntent.id, metadata.userId, product_ids);
+        }
+
         break;
       case 'payment_intent.payment_failed':
         const paymentFailed = event.data.object;
@@ -287,6 +304,12 @@ const handleWebhooks = async (req, res) => {
           const bookingIdFailed = metadataFailed.bookingId;
           const responseFailed = await updateVirtualEventStatus(bookingIdFailed, "cancelled", "failed", paymentFailed.id);
         }
+
+        if (metadata.paymentType === 'marketplace') {
+          const orderId = metadata.orderId;
+          const response = await updateOrderStatus(orderId, "failed", "cancelled", paymentIntent.id);
+        }
+
         break;
       default:
         console.warn(`Unhandled event type ${event.type}`);

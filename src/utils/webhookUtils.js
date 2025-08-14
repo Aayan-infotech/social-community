@@ -1,3 +1,5 @@
+import Cart from "../models/addtocart.model.js";
+import Order from "../models/orders.model.js";
 import TicketBooking from "../models/ticketBooking.model.js";
 import { User } from "../models/user.model.js";
 import VirtualEvent from "../models/virtualEvent.model.js";
@@ -118,5 +120,54 @@ export const updateVirtualEventStatus = async (bookingId, bookingStatus, payment
     } catch (error) {
         console.error("Error updating virtual event status:", error);
         throw new ApiError(500, "Failed to update virtual event status", error.message);
+    }
+};
+
+
+export const updateOrderStatus = async (orderId, paymentStatus, orderStatus, paymentIntentId = null, userId, product_ids) => {
+    try {
+        const order = await Order.findOne({ orderId });
+        if (!order) {
+            throw new ApiError(404, "Order not found");
+        }
+
+        const updates = {};
+
+
+
+        if (paymentStatus) {
+            updates.paymentStatus = paymentStatus;
+            updates.paymentIntentId = paymentIntentId;
+        }
+
+        if (paymentStatus === 'paid') {
+            // Remove items from cart
+            await Cart.deleteMany({ userId, productId: { $in: product_ids } });
+        }
+
+
+        if (orderStatus) {
+            await Order.updateOne(
+                { orderId },
+                {
+                    $set: {
+                        "items.$[].status": orderStatus,
+                        ...updates
+                    }
+                }
+            );
+        }
+        else if (paymentStatus) {
+            await Order.updateOne(
+                { orderId },
+                { $set: updates }
+            );
+        }
+
+        await order.save();
+        return order;
+    } catch (error) {
+        console.error("Error updating order status:", error);
+        throw new ApiError(500, "Failed to update order status", error.message);
     }
 };
