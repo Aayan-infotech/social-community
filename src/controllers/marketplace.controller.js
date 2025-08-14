@@ -1224,7 +1224,7 @@ const placeOrder = asyncHandler(async (req, res) => {
     throw new ApiError(500, "Failed to save order");
   }
 
- 
+
 
   // Create Stripe PaymentIntent with transfer_group
   const paySheet = await productOrder(
@@ -1282,18 +1282,10 @@ const myOrders = asyncHandler(async (req, res) => {
   const dataPipeline = [
     { $match: { buyerId: userId } },
 
-    {
-      $lookup: {
-        from: "deliveryaddresses",
-        localField: "shippingAddressId",
-        foreignField: "_id",
-        as: "shippingAddress",
-      },
-    },
-    { $unwind: { path: "$shippingAddress", preserveNullAndEmptyArrays: true } },
-
+    // Unwind items so each is its own document
     { $unwind: "$items" },
 
+    // Lookup product details for each item
     {
       $lookup: {
         from: "products",
@@ -1302,90 +1294,46 @@ const myOrders = asyncHandler(async (req, res) => {
         as: "product",
       },
     },
-    { $unwind: { path: "$product", preserveNullAndEmptyArrays: true } },
 
+    // Attach product object (first match)
     {
-      $lookup: {
-        from: "users",
-        localField: "items.sellerId", // FIX: was sellerId at root
-        foreignField: "userId",
-        as: "seller",
+      $addFields: {
+        "items.product": { $arrayElemAt: ["$product", 0] },
       },
     },
-    { $unwind: { path: "$seller", preserveNullAndEmptyArrays: true } },
 
+    // Remove temporary product array
+    { $unset: "product" },
+
+    // Group back by orderId & sellerId so each order-seller pair is separate
     {
       $group: {
-        _id: "$orderId",
-        createdAt: { $first: "$createdAt" },
+        _id: {
+          orderId: "$orderId",
+          sellerId: "$items.sellerId",
+          orderDocId: "$_id",
+        },
+        orderId: { $first: "$orderId" },
+        _id_order: { $first: "$_id" },
+        currency: { $first: "$currency" },
         paymentStatus: { $first: "$paymentStatus" },
         transferGroup: { $first: "$transferGroup" },
-        currency: { $first: "$currency" },
-        totalAmount: { $first: "$totalAmount" }, // fallback computed below if null
-        shippingAddress: { $first: "$shippingAddress" },
-        items: {
-          $push: {
-            productId: "$items.productId",
-            quantity: "$items.quantity",
-            amount: "$items.amount",
-            status: "$items.status",
-            trackingId: "$items.trackingId",
-            carrierPartner: "$items.carrierPartner",
-            isTransferred: "$items.isTransferred",
-            transferAmount: "$items.transferAmount",
-            product: {
-              _id: "$product._id",
-              name: "$product.product_name",
-              image: "$product.product_image",
-              price: "$product.product_price",
-              discount: "$product.product_discount",
-            },
-            seller: {
-              userId: "$seller.userId",
-              name: "$seller.name",
-              email: "$seller.email",
-              profile_image: {
-                $ifNull: [
-                  "$seller.profile_image",
-                  `${process.env.APP_URL}/placeholder/image_place.png`,
-                ],
-              },
-            },
-          },
-        },
+        createdAt: { $first: "$createdAt" },
+        totalAmount: { $first: "$totalAmount" },
+        items: { $push: "$items" },
       },
     },
 
+    // Flatten _id
     {
       $project: {
-        _id: 0,
-        orderId: "$_id",
-        createdAt: 1,
+        _id: "$_id_order",
+        orderId: 1,
+        currency: 1,
         paymentStatus: 1,
         transferGroup: 1,
-        currency: 1,
-        totalAmount: {
-          $ifNull: [
-            "$totalAmount",
-            {
-              $sum: {
-                $map: {
-                  input: "$items",
-                  as: "i",
-                  in: { $multiply: ["$$i.amount", "$$i.quantity"] },
-                },
-              },
-            },
-          ],
-        },
-        shippingAddress: {
-          name: "$shippingAddress.name",
-          address: "$shippingAddress.address",
-          city: "$shippingAddress.city",
-          state: "$shippingAddress.state",
-          country: "$shippingAddress.country",
-          pincode: "$shippingAddress.pincode",
-        },
+        createdAt: 1,
+        totalAmount: 1,
         items: 1,
       },
     },
@@ -1397,7 +1345,15 @@ const myOrders = asyncHandler(async (req, res) => {
 
   const countPipeline = [
     { $match: { buyerId: userId } },
-    { $group: { _id: "$orderId" } },
+    { $unwind: "$items" },
+    {
+      $group: {
+        _id: {
+          orderId: "$orderId",
+          sellerId: "$items.sellerId",
+        },
+      },
+    },
     { $count: "count" },
   ];
 
@@ -1425,6 +1381,7 @@ const myOrders = asyncHandler(async (req, res) => {
     )
   );
 });
+
 
 
 const updateOrderStatus = asyncHandler(async (req, res) => {
