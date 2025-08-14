@@ -1418,6 +1418,22 @@ const myOrderDetails = asyncHandler(async (req, res) => {
   });
 
   aggregation.push({
+    $lookup: {
+      from: 'users',
+      localField: 'items.sellerId',
+      foreignField: 'userId',
+      as: 'seller'
+    }
+  });
+
+  aggregation.push({
+    $unwind: {
+      path: "$seller",
+      preserveNullAndEmptyArrays: true
+    }
+  });
+
+  aggregation.push({
     $project: {
       _id: 0,
       orderId: 1,
@@ -1443,6 +1459,12 @@ const myOrderDetails = asyncHandler(async (req, res) => {
           as: "item",
           cond: { $eq: ["$$item.sellerId", sellerId] }
         }
+      },
+      seller: {
+        name: "$seller.name",
+        email: "$seller.email",
+        mobile: "$seller.mobile",
+        profile_image: { $ifNull: ["$seller.profile_image", `${process.env.APP_URL}/placeholder/person.png`] }
       },
     }
   });
