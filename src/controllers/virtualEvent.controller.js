@@ -149,7 +149,7 @@ const getEvents = asyncHandler(async (req, res) => {
 
   // Search Event By Event Name or User Name
   const searchQuery = req.query.search || "";
-  console.log(searchQuery);
+
 
   const userId = req.query.userId || req.user.userId;
 
@@ -180,7 +180,6 @@ const getEvents = asyncHandler(async (req, res) => {
   });
 
   if (searchQuery) {
-    console.log(searchQuery);
     // aggregation.push({
     //   $match: {
     //     eventName: searchRegex,
@@ -752,6 +751,38 @@ const bookTickets = asyncHandler(async (req, res) => {
       payment: paymentDetails,
     })
   );
+});
+
+const repayment = asyncHandler(async (req, res) => {
+  const { bookingId } = req.body;
+
+  if(bookingId === undefined || bookingId === null) {
+    throw new ApiError(400, "Booking ID is required");
+  } 
+
+  if (!isValidObjectId(bookingId)) {
+    throw new ApiError(400, "Invalid booking ID");
+  }
+
+  const booking = await TicketBooking.findById(bookingId);
+  if (!booking) {
+    throw new ApiError(404, "Booking not found");
+  }
+
+  if (booking.paymentStatus === "completed") {
+    throw new ApiError(400, "Booking is not eligible for repayment");
+  }
+
+  // get the Event Details 
+  const eventDetails = await VirtualEvent.findById(booking.eventId);
+  if (!eventDetails) {
+    throw new ApiError(404, "Event not found");
+  }
+
+  const userDetails = await User.findOne({ userId: eventDetails.userId }).select("stripeAccountId");
+  const payment = await paymentSheet(req.user.stripeCustomerId, booking.totalPrice, "usd", userDetails.stripeAccountId, booking._id.toString());
+
+  return res.json(new ApiResponse(200, "Repayment processed successfully", payment));
 });
 
 const updateBookingStatus = asyncHandler(async (req, res) => {
@@ -1781,5 +1812,6 @@ export {
   getAllEvents,
   getEventDetails,
   updateEventStatus,
-  getEventDashboard
+  getEventDashboard,
+  repayment
 };

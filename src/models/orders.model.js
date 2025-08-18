@@ -6,11 +6,6 @@ const orderItemSchema = new mongoose.Schema({
     ref: "Product",
     required: true
   },
-  sellerId: {
-    type: String,
-    ref: "User",
-    required: true
-  },
   quantity: {
     type: Number,
     required: true
@@ -28,27 +23,46 @@ const orderItemSchema = new mongoose.Schema({
     enum: ["pending", "placed", "shipped", "delivered", "cancelled"],
     default: "pending"
   },
-  trackingId: {
-    type: String,
-    default: null
-  },
-  carrierPartner: {
-    type: String,
-    default: null
-  },
-  cancellationRemark: {
-    type: String,
-    default: null
-  },
-  isTransferred: {
-    type: Boolean,
-    default: false
-  },
-  transferAmount: {
-    type: Number,
-    default: 0
-  }
-}, { _id: false });
+  // trackingId: {
+  //   type: String,
+  //   default: null
+  // },
+  // carrierPartner: {
+  //   type: String,
+  //   default: null
+  // },
+  // cancellationRemark: {
+  //   type: String,
+  //   default: null
+  // },
+  // isTransferred: {
+  //   type: Boolean,
+  //   default: false
+  // },
+  // transferAmount: {
+  //   type: Number,
+  //   default: 0
+  // },
+  // placeOrderDate: {
+  //   type: Date,
+  //   default: null
+  // },
+  // shippingDate: {
+  //   type: Date,
+  //   default: null
+  // },
+  // deliveryDate: {
+  //   type: Date,
+  //   default: null
+  // },
+  // cancellationDate: {
+  //   type: Date,
+  //   default: null
+  // }
+}, {
+  _id: false,
+  timestamps: true
+});
 
 const orderSchema = new mongoose.Schema({
   orderId: {
@@ -56,6 +70,11 @@ const orderSchema = new mongoose.Schema({
     required: true
   },
   buyerId: {
+    type: String,
+    ref: "User",
+    required: true
+  },
+  sellerId: {
     type: String,
     ref: "User",
     required: true
@@ -83,10 +102,56 @@ const orderSchema = new mongoose.Schema({
     enum: ['pending', 'paid', 'failed'],
     default: "pending"
   },
+  status: {
+    type: String,
+    enum: ["pending", "placed", "shipped", "delivered", "cancelled"],
+    default: "pending"
+  },
+  paymentIntentId: {
+    type: String,
+    required: true
+  },
   transferGroup: {
     type: String,
     required: true
+  },
+  trackingId: {
+    type: String,
+    default: null
+  },
+  carrierPartner: {
+    type: String,
+    default: null
+  },
+  cancellationRemark: {
+    type: String,
+    default: null
+  },
+  isTransferred: {
+    type: Boolean,
+    default: false
+  },
+  transferAmount: {
+    type: Number,
+    default: 0
+  },
+  placeOrderDate: {
+    type: Date,
+    default: null
+  },
+  shippingDate: {
+    type: Date,
+    default: null
+  },
+  deliveryDate: {
+    type: Date,
+    default: null
+  },
+  cancellationDate: {
+    type: Date,
+    default: null
   }
+
 }, {
   timestamps: true,
   versionKey: false

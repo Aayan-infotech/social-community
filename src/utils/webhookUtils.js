@@ -1,3 +1,4 @@
+import { placeOrder } from "../controllers/marketplace.controller.js";
 import Cart from "../models/addtocart.model.js";
 import Order from "../models/orders.model.js";
 import TicketBooking from "../models/ticketBooking.model.js";
@@ -124,48 +125,51 @@ export const updateVirtualEventStatus = async (bookingId, bookingStatus, payment
 };
 
 
-export const updateOrderStatus = async (orderId, paymentStatus, orderStatus, paymentIntentId = null, userId, product_ids) => {
+export const updateOrderStatus = async (
+    orderId,
+    paymentStatus,
+    orderStatus,
+    paymentIntentId = null,
+    userId,
+    product_ids
+) => {
     try {
-        const order = await Order.findOne({ orderId });
-        if (!order) {
+        const orders = await Order.find({ orderId });
+        if (!orders || orders.length === 0) {
             throw new ApiError(404, "Order not found");
         }
 
         const updates = {};
 
-
-
         if (paymentStatus) {
             updates.paymentStatus = paymentStatus;
-            updates.paymentIntentId = paymentIntentId;
+            if (paymentIntentId) updates.paymentIntentId = paymentIntentId;
         }
 
-        if (paymentStatus === 'paid') {
-            // Remove items from cart
+        if (paymentStatus === "paid" && userId && product_ids?.length > 0) {
             await Cart.deleteMany({ userId, productId: { $in: product_ids } });
         }
 
-
+        let updateQuery = {};
         if (orderStatus) {
-            await Order.updateOne(
-                { orderId },
-                {
-                    $set: {
-                        "items.$[].status": orderStatus,
-                        ...updates
-                    }
+            updateQuery = {
+                $set: {
+                    "items.$[].status": orderStatus,
+                    status: orderStatus,
+                    placeOrderDate: new Date(),
+                    ...updates
                 }
-            );
-        }
-        else if (paymentStatus) {
-            await Order.updateOne(
-                { orderId },
-                { $set: updates }
-            );
+            };
+        } else if (paymentStatus) {
+            updateQuery = { $set: updates };
         }
 
-        await order.save();
-        return order;
+        // apply to all vendor orders with same orderId
+        const result = await Order.updateMany({ orderId }, updateQuery);
+
+        // return updated documents
+        const updatedOrders = await Order.find({ orderId });
+        return updatedOrders;
     } catch (error) {
         console.error("Error updating order status:", error);
         throw new ApiError(500, "Failed to update order status", error.message);

@@ -1120,6 +1120,129 @@ const orderPlace = asyncHandler(async (req, res) => {
   res.json(new ApiResponse(200, "Order placed successfully", paymentIntent));
 });
 
+// const placeOrder = asyncHandler(async (req, res) => {
+//   const { product_ids, quantity, address_id, order_amount } = req.body;
+//   const userId = req.user.userId;
+
+//   if (!Array.isArray(product_ids) || product_ids.length === 0) {
+//     throw new ApiError(400, "Invalid product IDs");
+//   }
+//   if (!isValidObjectId(address_id)) {
+//     throw new ApiError(400, "Invalid address ID");
+//   }
+
+//   const aggregation = [
+//     {
+//       $match: {
+//         _id: { $in: product_ids.map(id => new mongoose.Types.ObjectId(id)) }
+//       }
+//     },
+//     {
+//       $lookup: {
+//         from: "users",
+//         localField: "userId",
+//         foreignField: "userId",
+//         as: "user"
+//       }
+//     },
+//     {
+//       $unwind: {
+//         path: "$user",
+//         preserveNullAndEmptyArrays: true
+//       }
+//     },
+//     {
+//       $project: {
+//         _id: 1,
+//         product_name: 1,
+//         product_price: 1,
+//         product_discount: 1,
+//         userId: 1,
+//         user: {
+//           name: "$user.name",
+//           email: "$user.email",
+//           stripeAccountId: "$user.stripeAccountId",
+//           stripeCustomerId: "$user.stripeCustomerId"
+//         }
+//       }
+//     }
+//   ];
+
+//   const products = await Product.aggregate(aggregation);
+//   if (products.length === 0) {
+//     throw new ApiError(404, "Product not found");
+//   }
+
+//   const orderItems = [];
+//   let totalAmount = 0;
+
+//   for (const item of products) {
+//     const index = product_ids.indexOf(item._id.toString());
+//     const qty = quantity[index];
+//     const discountedPrice = item.product_price - (item.product_price * item.product_discount) / 100;
+//     const itemTotal = discountedPrice * qty;
+
+//     totalAmount += itemTotal;
+
+//     orderItems.push({
+//       productId: item._id,
+//       sellerId: item.userId,
+//       quantity: qty,
+//       amount: discountedPrice,
+//       currency: "usd",
+//       status: "pending",
+//       isTransferred: false,
+//       transferAmount: 0 
+//     });
+//   }
+
+//   if (Number(totalAmount.toFixed(2)) !== Number(order_amount)) {
+//     throw new ApiError(400, "Order amount does not match the total amount");
+//   }
+
+//   const address = await DeliveryAddress.findOne({ _id: address_id, userId });
+//   if (!address) {
+//     throw new ApiError(404, "Address not found");
+//   }
+
+//   const orderId = generateUniqueOrderId();
+
+//   // Save a single order document with all items
+//   const orderDoc = new Order({
+//     orderId,
+//     transferGroup: orderId,
+//     buyerId: userId,
+//     shippingAddressId: address_id,
+//     items: orderItems,
+//     totalAmount,
+//     currency: "usd",
+//     paymentStatus: "pending"
+//   });
+
+//   const savedOrder = await orderDoc.save();
+//   if (!savedOrder) {
+//     throw new ApiError(500, "Failed to save order");
+//   }
+
+
+
+//   // Create Stripe PaymentIntent with transfer_group
+//   const paySheet = await productOrder(
+//     req.user.stripeCustomerId,
+//     totalAmount,
+//     "usd",
+//     orderId,
+//     userId,
+//     JSON.stringify(product_ids)
+//   );
+
+//   paySheet.orderId = orderId;
+
+//   return res.status(200).json(
+//     new ApiResponse(200, "Payment sheet created successfully", paySheet)
+//   );
+// });
+
 const placeOrder = asyncHandler(async (req, res) => {
   const { product_ids, quantity, address_id, order_amount } = req.body;
   const userId = req.user.userId;
@@ -1145,12 +1268,7 @@ const placeOrder = asyncHandler(async (req, res) => {
         as: "user"
       }
     },
-    {
-      $unwind: {
-        path: "$user",
-        preserveNullAndEmptyArrays: true
-      }
-    },
+    { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
     {
       $project: {
         _id: 1,
@@ -1191,8 +1309,6 @@ const placeOrder = asyncHandler(async (req, res) => {
       amount: discountedPrice,
       currency: "usd",
       status: "pending",
-      isTransferred: false,
-      transferAmount: 0 // will update after Stripe split payout
     });
   }
 
@@ -1207,26 +1323,18 @@ const placeOrder = asyncHandler(async (req, res) => {
 
   const orderId = generateUniqueOrderId();
 
-  // Save a single order document with all items
-  const orderDoc = new Order({
-    orderId,
-    transferGroup: orderId,
-    buyerId: userId,
-    shippingAddressId: address_id,
-    items: orderItems,
-    totalAmount,
-    currency: "usd",
-    paymentStatus: "pending"
-  });
+  // Group items by vendor
+  const vendorGroups = orderItems.reduce((acc, item) => {
+    if (!acc[item.sellerId]) acc[item.sellerId] = [];
+    acc[item.sellerId].push(item);
+    return acc;
+  }, {});
 
-  const savedOrder = await orderDoc.save();
-  if (!savedOrder) {
-    throw new ApiError(500, "Failed to save order");
-  }
+  console.log(vendorGroups);
 
 
 
-  // Create Stripe PaymentIntent with transfer_group
+  // Create ONE Stripe PaymentIntent for full order
   const paySheet = await productOrder(
     req.user.stripeCustomerId,
     totalAmount,
@@ -1236,12 +1344,49 @@ const placeOrder = asyncHandler(async (req, res) => {
     JSON.stringify(product_ids)
   );
 
+
+  const savedOrders = [];
+  for (const [sellerId, items] of Object.entries(vendorGroups)) {
+    console.log(`Processing orders for seller: ${sellerId}`);
+    const vendorTotal = items.reduce((sum, i) => sum + i.amount * i.quantity, 0);
+    console.log(`Total amount for seller ${sellerId}: ${vendorTotal}`);
+
+    const orderDoc = new Order({
+      orderId,                  // SAME for all vendors
+      transferGroup: orderId,   // Used by Stripe
+      buyerId: userId,
+      sellerId,                 // NEW: store vendor-specific order
+      shippingAddressId: address_id,
+      items,
+      totalAmount: vendorTotal,
+      currency: "usd",
+      paymentStatus: "pending",
+      paymentIntentId: paySheet.id,
+      isTransferred: false,
+      transferAmount: 0
+    });
+
+    const saved = await orderDoc.save();
+    if (!saved) throw new ApiError(500, "Failed to save vendor order");
+
+    savedOrders.push(saved);
+  }
+
+
+
+
   paySheet.orderId = orderId;
+  paySheet.vendorOrders = savedOrders.map(o => ({
+    orderDbId: o._id,
+    sellerId: o.sellerId,
+    vendorAmount: o.totalAmount
+  }));
 
   return res.status(200).json(
     new ApiResponse(200, "Payment sheet created successfully", paySheet)
   );
 });
+
 
 
 const confirmPaymentFn = asyncHandler(async (req, res) => {
@@ -1279,84 +1424,95 @@ const myOrders = asyncHandler(async (req, res) => {
 
   const userId = req.user.userId;
 
-  const dataPipeline = [
-    { $match: { buyerId: userId } },
 
-    { $unwind: "$items" },
+  const aggregation = [];
 
-    {
-      $lookup: {
-        from: "products",
-        localField: "items.productId",
-        foreignField: "_id",
-        as: "product",
-      },
+  aggregation.push({
+    $match: { buyerId: userId },
+  });
+
+  aggregation.push({
+    $lookup: {
+      from: "products",
+      localField: "items.productId",
+      foreignField: "_id",
+      as: "product"
+    }
+  });
+
+  aggregation.push({
+    $addFields: {
+      "items.product": { $arrayElemAt: ["$product", 0] },
     },
+  });
 
-    {
-      $addFields: {
-        "items.product": { $arrayElemAt: ["$product", 0] },
-      },
-    },
 
-    { $unset: "product" },
+  aggregation.push({
+    $lookup: {
+      from: "deliveryaddresses",
+      localField: "shippingAddressId",
+      foreignField: "_id",
+      as: "shippingAddress"
+    }
+  });
 
-    {
-      $group: {
-        _id: {
-          orderId: "$orderId",
-          sellerId: "$items.sellerId",
-          orderDocId: "$_id",
+  aggregation.push({
+    $unwind: {
+      path: "$shippingAddress",
+      preserveNullAndEmptyArrays: true
+    }
+  });
+
+  aggregation.push({
+    $sort: {
+      createdAt: -1
+    }
+  });
+
+  aggregation.push({
+    $facet: {
+      orders: [
+        { $skip: skip },
+        { $limit: limit },
+        {
+          $project: {
+            _id: 1,
+            orderId: 1,
+            buyerId: 1,
+            shippingAddressId: {
+              name: "$shippingAddress.name",
+              mobile: "$shippingAddress.mobile",
+              alternate_mobile: "$shippingAddress.alternate_mobile",
+              address: "$shippingAddress.address",
+              city: "$shippingAddress.city",
+              state: "$shippingAddress.state",
+              country: "$shippingAddress.country",
+              pincode: "$shippingAddress.pincode"
+            },
+            items: 1,
+            totalAmount: 1,
+            currency: 1,
+            paymentStatus: 1,
+            status: 1,
+            trackingId: 1,
+            carrierPartner: 1,
+            cancellationRemark: 1,
+            placeOrderDate: 1,
+            shippingDate: 1,
+            deliveryDate: 1,
+            cancellationDate: 1,
+            createdAt: 1,
+            updatedAt: 1
+          },
         },
-        orderId: { $first: "$orderId" },
-        _id_order: { $first: "$_id" },
-        currency: { $first: "$currency" },
-        paymentStatus: { $first: "$paymentStatus" },
-        transferGroup: { $first: "$transferGroup" },
-        createdAt: { $first: "$createdAt" },
-        totalAmount: { $first: "$totalAmount" },
-        items: { $push: "$items" },
-      },
+      ],
+      totalCount: [{ $count: "count" }],
     },
+  });
 
-    {
-      $project: {
-        _id: "$_id_order",
-        orderId: 1,
-        currency: 1,
-        paymentStatus: 1,
-        transferGroup: 1,
-        createdAt: 1,
-        totalAmount: 1,
-        items: 1,
-      },
-    },
-
-    { $sort: { createdAt: -1 } },
-    { $skip: skip },
-    { $limit: limit },
-  ];
-
-  const countPipeline = [
-    { $match: { buyerId: userId } },
-    { $unwind: "$items" },
-    {
-      $group: {
-        _id: {
-          orderId: "$orderId",
-          sellerId: "$items.sellerId",
-        },
-      },
-    },
-    { $count: "count" },
-  ];
-
-  const [orders, totalRes] = await Promise.all([
-    Order.aggregate(dataPipeline),
-    Order.aggregate(countPipeline),
-  ]);
-
-  const totalCount = totalRes[0]?.count || 0;
+  const result = await Order.aggregate(aggregation);
+  const orders = result[0]?.orders || [];
+  const totalCount = result[0]?.totalCount?.[0]?.count || 0;
   const totalPages = Math.ceil(totalCount / limit);
 
   return res.json(
@@ -1383,9 +1539,13 @@ const myOrderDetails = asyncHandler(async (req, res) => {
   const { sellerId } = req.query;
   const userId = req.user.userId;
 
+  if (!sellerId) {
+    throw new ApiError(400, "Seller ID is required");
+  }
+
   const aggregation = [];
 
-  aggregation.push({ $match: { orderId, buyerId: userId } });
+  aggregation.push({ $match: { orderId, buyerId: userId, sellerId } });
   aggregation.push({
     $lookup: {
       from: "deliveryaddresses",
@@ -1420,7 +1580,7 @@ const myOrderDetails = asyncHandler(async (req, res) => {
   aggregation.push({
     $lookup: {
       from: 'users',
-      localField: 'items.sellerId',
+      localField: 'sellerId',
       foreignField: 'userId',
       as: 'seller'
     }
@@ -1453,13 +1613,7 @@ const myOrderDetails = asyncHandler(async (req, res) => {
       paymentStatus: 1,
       createdAt: 1,
       updatedAt: 1,
-      items: {
-        $filter: {
-          input: "$items",
-          as: "item",
-          cond: { $eq: ["$$item.sellerId", sellerId] }
-        }
-      },
+      items: 1,
       seller: {
         name: "$seller.name",
         email: "$seller.email",
@@ -1485,49 +1639,53 @@ const updateOrderStatus = asyncHandler(async (req, res) => {
   const { orderId, status, paymentStatus, productId } = req.body;
   const userId = req.user.userId;
 
-  const order = await Order.findOne({ orderId, buyerId: userId });
-
-  if (!order) {
+  // ensure order exists for this buyer
+  const existing = await Order.findOne({ orderId, buyerId: userId });
+  if (!existing) {
     throw new ApiError(404, "Order not found");
   }
 
   const updates = {};
-
   if (paymentStatus) {
     updates.paymentStatus = paymentStatus;
   }
 
-  // If productId is given, update specific item
+  let updatedOrder;
+
   if (status && productId) {
-    const updated = await Order.updateOne(
+    const result = await Order.updateOne(
       { orderId, buyerId: userId, "items.productId": productId },
       { $set: { "items.$.status": status, ...updates } }
     );
-    if (updated.modifiedCount === 0) {
+
+    if (result.modifiedCount === 0) {
       throw new ApiError(400, "Product not found in order or no update made");
     }
-  }
-  else if (status) {
-    await Order.updateOne(
+  } else if (status) {
+    await Order.updateMany(
       { orderId, buyerId: userId },
       {
         $set: {
           "items.$[].status": status,
+          status,   // also update order-level status
           ...updates
         }
       }
     );
-  }
-  else if (paymentStatus) {
-    await Order.updateOne(
+  } else if (paymentStatus) {
+    await Order.updateMany(
       { orderId, buyerId: userId },
       { $set: updates }
     );
   }
 
+  updatedOrder = await Order.find({ orderId, buyerId: userId });
 
-  return res.json(new ApiResponse(200, "Order status updated successfully", order));
+  return res.json(
+    new ApiResponse(200, "Order status updated successfully", updatedOrder)
+  );
 });
+
 
 
 const getAllOrders = asyncHandler(async (req, res) => {
@@ -1957,35 +2115,40 @@ const updateOrderDeliveryStatus = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Order ID is required");
   }
 
-  // Find the order with a matching item for this seller
-  const order = await Order.findOne({ orderId, "items.sellerId": userId });
+  const order = await Order.findOne({ orderId, "sellerId": userId });
   if (!order) {
     throw new ApiError(404, "Order not found for this seller");
   }
 
+  if (order.status === "delivered" || order.status === "cancelled") {
+    throw new ApiError(400, "Cannot update delivery status , order is already delivered or cancelled");
+  }
+
   const updateFields = {
-    "items.$[elem].status": status
+    status,
+    "items.$[].status": status,
   };
 
   if (status === "shipped") {
-    updateFields["items.$[elem].trackingId"] = trackingId;
-    updateFields["items.$[elem].carrierPartner"] = carrierPartner;
-  }
-
-  if (status === "cancelled") {
-    updateFields["items.$[elem].cancellationRemark"] = cancellationRemark;
+    updateFields["trackingId"] = trackingId;
+    updateFields["carrierPartner"] = carrierPartner;
+    updateFields["shippingDate"] = new Date();
+  } else if (status === "cancelled") {
+    updateFields["cancellationRemark"] = cancellationRemark;
+    updateFields["cancellationDate"] = new Date();
+  } else if (status === 'delivered') {
+    updateFields["deliveryDate"] = new Date();
+  } else if (status === "placed") {
+    updateFields["placeOrderDate"] = new Date();
   }
 
   const updateResult = await Order.updateMany(
-    { orderId },
+    { orderId, sellerId: userId },
     { $set: updateFields },
-    {
-      arrayFilters: [{ "elem.sellerId": userId }],
-    }
   );
 
-  // wanted to return the updated items
-  const updatedOrder = await Order.findOne({ orderId, "items.sellerId": userId }, { items: 1, deliveryStatus: 1, trackingId: 1, carrierPartner: 1 });
+
+  const updatedOrder = await Order.findOne({ orderId, "sellerId": userId });
 
   return res.json(new ApiResponse(200, "Order item status updated successfully", updatedOrder));
 });

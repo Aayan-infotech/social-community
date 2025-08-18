@@ -32,7 +32,8 @@ import {
     getAllEvents,
     getEventDetails,
     updateEventStatus,
-    getEventDashboard
+    getEventDashboard,
+    repayment
 } from "../controllers/virtualEvent.controller.js";
 import { verifyEventAuth } from "../middlewares/eventAuth.middleware.js";
 
@@ -73,6 +74,7 @@ router.post(
     validateRequest(bookTicketSchema),
     bookTickets
 );
+router.post('/repayment', verifyJWT, repayment);
 router.put(
     "/update-booking-status",
     verifyJWT,

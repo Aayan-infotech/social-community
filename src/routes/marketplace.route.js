@@ -176,12 +176,11 @@ router.get("/complete-kyc", verifyJWT, doKYC);
 router.get('/refresh-url', refreshUrl);
 router.get("/kyc-status", checkKYCStatus);
 router.post('/place-order', verifyJWT, validateRequest(orderPlaceSchema), errorHandler, placeOrder);
-router.put('/update-order-status', verifyJWT, validateRequest(updateOrderStatusSchema), errorHandler, updateOrderStatus);
+router.put('/order-status',verifyJWT,validateRequest(updateOrderDeliveryStatusSchema), errorHandler, updateOrderDeliveryStatus);
 router.get("/my-orders", verifyJWT, myOrders);
 router.get("/order-details/:orderId", verifyJWT, myOrderDetails);
 router.get("/get-order/:orderId", verifyJWT, orderDetails);
 router.get("/get-orders", verifyJWT, getAllOrders);
-router.put('/order-status',verifyJWT,validateRequest(updateOrderDeliveryStatusSchema), errorHandler, updateOrderDeliveryStatus);
 
 router.get("/confirm-payment", verifyJWT, confirmPaymentFn);
 router.get('/login-express', verifyJWT, loginExpress);
