@@ -1120,129 +1120,6 @@ const orderPlace = asyncHandler(async (req, res) => {
   res.json(new ApiResponse(200, "Order placed successfully", paymentIntent));
 });
 
-// const placeOrder = asyncHandler(async (req, res) => {
-//   const { product_ids, quantity, address_id, order_amount } = req.body;
-//   const userId = req.user.userId;
-
-//   if (!Array.isArray(product_ids) || product_ids.length === 0) {
-//     throw new ApiError(400, "Invalid product IDs");
-//   }
-//   if (!isValidObjectId(address_id)) {
-//     throw new ApiError(400, "Invalid address ID");
-//   }
-
-//   const aggregation = [
-//     {
-//       $match: {
-//         _id: { $in: product_ids.map(id => new mongoose.Types.ObjectId(id)) }
-//       }
-//     },
-//     {
-//       $lookup: {
-//         from: "users",
-//         localField: "userId",
-//         foreignField: "userId",
-//         as: "user"
-//       }
-//     },
-//     {
-//       $unwind: {
-//         path: "$user",
-//         preserveNullAndEmptyArrays: true
-//       }
-//     },
-//     {
-//       $project: {
-//         _id: 1,
-//         product_name: 1,
-//         product_price: 1,
-//         product_discount: 1,
-//         userId: 1,
-//         user: {
-//           name: "$user.name",
-//           email: "$user.email",
-//           stripeAccountId: "$user.stripeAccountId",
-//           stripeCustomerId: "$user.stripeCustomerId"
-//         }
-//       }
-//     }
-//   ];
-
-//   const products = await Product.aggregate(aggregation);
-//   if (products.length === 0) {
-//     throw new ApiError(404, "Product not found");
-//   }
-
-//   const orderItems = [];
-//   let totalAmount = 0;
-
-//   for (const item of products) {
-//     const index = product_ids.indexOf(item._id.toString());
-//     const qty = quantity[index];
-//     const discountedPrice = item.product_price - (item.product_price * item.product_discount) / 100;
-//     const itemTotal = discountedPrice * qty;
-
-//     totalAmount += itemTotal;
-
-//     orderItems.push({
-//       productId: item._id,
-//       sellerId: item.userId,
-//       quantity: qty,
-//       amount: discountedPrice,
-//       currency: "usd",
-//       status: "pending",
-//       isTransferred: false,
-//       transferAmount: 0 
-//     });
-//   }
-
-//   if (Number(totalAmount.toFixed(2)) !== Number(order_amount)) {
-//     throw new ApiError(400, "Order amount does not match the total amount");
-//   }
-
-//   const address = await DeliveryAddress.findOne({ _id: address_id, userId });
-//   if (!address) {
-//     throw new ApiError(404, "Address not found");
-//   }
-
-//   const orderId = generateUniqueOrderId();
-
-//   // Save a single order document with all items
-//   const orderDoc = new Order({
-//     orderId,
-//     transferGroup: orderId,
-//     buyerId: userId,
-//     shippingAddressId: address_id,
-//     items: orderItems,
-//     totalAmount,
-//     currency: "usd",
-//     paymentStatus: "pending"
-//   });
-
-//   const savedOrder = await orderDoc.save();
-//   if (!savedOrder) {
-//     throw new ApiError(500, "Failed to save order");
-//   }
-
-
-
-//   // Create Stripe PaymentIntent with transfer_group
-//   const paySheet = await productOrder(
-//     req.user.stripeCustomerId,
-//     totalAmount,
-//     "usd",
-//     orderId,
-//     userId,
-//     JSON.stringify(product_ids)
-//   );
-
-//   paySheet.orderId = orderId;
-
-//   return res.status(200).json(
-//     new ApiResponse(200, "Payment sheet created successfully", paySheet)
-//   );
-// });
-
 const placeOrder = asyncHandler(async (req, res) => {
   const { product_ids, quantity, address_id, order_amount } = req.body;
   const userId = req.user.userId;
@@ -1440,12 +1317,6 @@ const myOrders = asyncHandler(async (req, res) => {
     }
   });
 
-  aggregation.push({
-    $addFields: {
-      "items.product": { $arrayElemAt: ["$product", 0] },
-    },
-  });
-
 
   aggregation.push({
     $lookup: {
@@ -1479,6 +1350,7 @@ const myOrders = asyncHandler(async (req, res) => {
             _id: 1,
             orderId: 1,
             buyerId: 1,
+            sellerId: 1,
             shippingAddressId: {
               name: "$shippingAddress.name",
               mobile: "$shippingAddress.mobile",
@@ -1489,7 +1361,31 @@ const myOrders = asyncHandler(async (req, res) => {
               country: "$shippingAddress.country",
               pincode: "$shippingAddress.pincode"
             },
-            items: 1,
+            items: {
+              $map: {
+                input: "$items",
+                as: "item",
+                in: {
+                  $mergeObjects: [
+                    "$$item",
+                    {
+                      product: {
+                        $arrayElemAt: [
+                          {
+                            $filter: {
+                              input: "$product",
+                              as: "prod",
+                              cond: { $eq: ["$$prod._id", "$$item.productId"] }
+                            }
+                          },
+                          0
+                        ]
+                      }
+                    }
+                  ]
+                }
+              }
+            },
             totalAmount: 1,
             currency: 1,
             paymentStatus: 1,
@@ -1572,12 +1468,6 @@ const myOrderDetails = asyncHandler(async (req, res) => {
 
 
   aggregation.push({
-    $addFields: {
-      "items.product": { $arrayElemAt: ["$product", 0] },
-    },
-  });
-
-  aggregation.push({
     $lookup: {
       from: 'users',
       localField: 'sellerId',
@@ -1613,7 +1503,31 @@ const myOrderDetails = asyncHandler(async (req, res) => {
       paymentStatus: 1,
       createdAt: 1,
       updatedAt: 1,
-      items: 1,
+      items: {
+        $map: {
+          input: "$items",
+          as: "item",
+          in: {
+            $mergeObjects: [
+              "$$item",
+              {
+                product: {
+                  $arrayElemAt: [
+                    {
+                      $filter: {
+                        input: "$product",
+                        as: "prod",
+                        cond: { $eq: ["$$prod._id", "$$item.productId"] }
+                      }
+                    },
+                    0
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      },
       seller: {
         name: "$seller.name",
         email: "$seller.email",
@@ -1700,7 +1614,7 @@ const getAllOrders = asyncHandler(async (req, res) => {
   const matchStage = {};
 
   if (!role.includes("admin")) {
-    matchStage["items.sellerId"] = userId;
+    matchStage.sellerId = userId;
   }
 
   if (search) {
@@ -1711,61 +1625,25 @@ const getAllOrders = asyncHandler(async (req, res) => {
   }
 
   if (type) {
-    matchStage["items"] = {
-      $elemMatch: {
-        sellerId: userId,
-        status: type
-      }
-    };
+    matchStage.status = type;
   }
 
   const pipeline = [
     { $match: matchStage },
 
     {
-      $lookup: {
-        from: "users",
-        localField: "buyerId",
-        foreignField: "userId",
-        as: "buyer"
-      }
-    },
-    { $unwind: { path: "$buyer", preserveNullAndEmptyArrays: true } },
-
-    {
       $project: {
-        _id: 0,
+        _id: 1,
         orderId: 1,
         createdAt: 1,
         paymentStatus: 1,
-        buyer: {
-          name: "$buyer.name"
-        },
-        items: role.includes("admin")
-          ? "$items"
-          : {
-            $filter: {
-              input: "$items",
-              as: "item",
-              cond: { $eq: ["$$item.sellerId", userId] }
-            }
-          }
+        status: 1,
+        items: 1,
+        totalAmount: 1,
       }
     },
-
     {
       $addFields: {
-        totalAmount: {
-          $sum: {
-            $map: {
-              input: "$items",
-              as: "item",
-              in: {
-                $multiply: ["$$item.amount", "$$item.quantity"]
-              }
-            }
-          }
-        },
         totalProducts: { $size: "$items" }
       }
     },
@@ -1775,13 +1653,9 @@ const getAllOrders = asyncHandler(async (req, res) => {
     { $limit: limit }
   ];
 
+
   const countPipeline = [
     { $match: matchStage },
-    {
-      $group: {
-        _id: "$orderId"
-      }
-    },
     {
       $count: "count"
     }
@@ -1824,7 +1698,7 @@ const orderDetails = asyncHandler(async (req, res) => {
 
   const matchStage = role.includes("admin")
     ? { orderId }
-    : { orderId, "items.sellerId": userId };
+    : { orderId, "sellerId": userId };
 
   const pipeline = [
     { $match: matchStage },
@@ -1849,9 +1723,7 @@ const orderDetails = asyncHandler(async (req, res) => {
     },
     { $unwind: { path: "$shippingAddress", preserveNullAndEmptyArrays: true } },
 
-    { $unwind: "$items" },
-
-    ...(role.includes("admin") ? [] : [{ $match: { "items.sellerId": userId } }]),
+    ...(role.includes("admin") ? [] : [{ $match: { "sellerId": userId } }]),
 
     {
       $lookup: {
@@ -1861,12 +1733,11 @@ const orderDetails = asyncHandler(async (req, res) => {
         as: "product"
       }
     },
-    { $unwind: { path: "$product", preserveNullAndEmptyArrays: true } },
 
     {
       $lookup: {
         from: "users",
-        localField: "items.sellerId",
+        localField: "sellerId",
         foreignField: "userId",
         as: "seller"
       }
@@ -1874,54 +1745,13 @@ const orderDetails = asyncHandler(async (req, res) => {
     { $unwind: { path: "$seller", preserveNullAndEmptyArrays: true } },
 
     {
-      $group: {
-        _id: "$orderId",
-        createdAt: { $first: "$createdAt" },
-        paymentStatus: { $first: "$paymentStatus" },
-        totalAmount: { $first: "$totalAmount" },
-        transferGroup: { $first: "$transferGroup" },
-        buyer: { $first: "$buyer" },
-        shippingAddress: { $first: "$shippingAddress" },
-        items: {
-          $push: {
-            quantity: "$items.quantity",
-            amount: "$items.amount",
-            status: "$items.status",
-            trackingId: "$items.trackingId",
-            carrierPartner: "$items.carrierPartner",
-            cancellationRemark: "$items.cancellationRemark",
-            isTransferred: "$items.isTransferred",
-            transferAmount: "$items.transferAmount",
-            product: {
-              _id: "$product._id",
-              name: "$product.product_name",
-              image: "$product.product_image",
-              price: "$product.product_price",
-              discount: "$product.product_discount"
-            },
-            seller: {
-              name: "$seller.name",
-              email: "$seller.email",
-              profile_image: {
-                $ifNull: [
-                  "$seller.profile_image",
-                  `${process.env.APP_URL}/placeholder/image_place.png`
-                ]
-              },
-              mobile: "$seller.mobile"
-            }
-          }
-        }
-      }
-    },
-
-    {
       $project: {
-        _id: 0,
-        orderId: "$_id",
+        _id: 1,
+        orderId: 1,
         createdAt: 1,
         totalAmount: 1,
         paymentStatus: 1,
+        status: 1,
         transferGroup: 1,
         buyer: {
           name: "$buyer.name",
@@ -1932,7 +1762,31 @@ const orderDetails = asyncHandler(async (req, res) => {
           }
         },
         shippingAddress: 1,
-        items: 1
+        items: {
+          $map: {
+            input: "$items",
+            as: "item",
+            in: {
+              $mergeObjects: [
+                "$$item",
+                {
+                  product: {
+                    $arrayElemAt: [
+                      {
+                        $filter: {
+                          input: "$product",
+                          as: "prod",
+                          cond: { $eq: ["$$prod._id", "$$item.productId"] }
+                        }
+                      },
+                      0
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        }
       }
     }
   ];
@@ -2114,8 +1968,10 @@ const updateOrderDeliveryStatus = asyncHandler(async (req, res) => {
   if (!orderId) {
     throw new ApiError(400, "Order ID is required");
   }
+  console.log(orderId);
+  console.log("Seller ID:", userId);
 
-  const order = await Order.findOne({ orderId, "sellerId": userId });
+  const order = await Order.findOne({ orderId, sellerId: userId });
   if (!order) {
     throw new ApiError(404, "Order not found for this seller");
   }
