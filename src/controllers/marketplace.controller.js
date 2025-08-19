@@ -10,6 +10,7 @@ import MarketPlaceSubCategory from "../models/marketplaceSubCategory.model.js";
 import DeliveryAddress from "../models/deliveryAddress.model.js";
 import Product from "../models/product.model.js";
 import Cart from "../models/addtocart.model.js";
+import { updateOrderStatus, updateVirtualEventStatus } from "../utils/webhookUtils.js";
 import {
   addCardToCustomer,
   completeKYC,
@@ -1152,6 +1153,7 @@ const placeOrder = asyncHandler(async (req, res) => {
         product_name: 1,
         product_price: 1,
         product_discount: 1,
+        product_quantity: 1,
         userId: 1,
         user: {
           name: "$user.name",
@@ -1166,6 +1168,14 @@ const placeOrder = asyncHandler(async (req, res) => {
   const products = await Product.aggregate(aggregation);
   if (products.length === 0) {
     throw new ApiError(404, "Product not found");
+  }
+
+  for (const item of products) {
+    const index = product_ids.indexOf(item._id.toString());
+    const qty = quantity[index];
+    if (item.product_quantity < qty) {
+      throw new ApiError(400, `Insufficient stock for product ${item.product_name}`);
+    }
   }
 
   const orderItems = [];
@@ -1501,6 +1511,14 @@ const myOrderDetails = asyncHandler(async (req, res) => {
       totalAmount: 1,
       currency: 1,
       paymentStatus: 1,
+      status: 1,
+      trackingId: 1,
+      carrierPartner: 1,
+      cancellationRemark: 1,
+      placeOrderDate: 1,
+      shippingDate: 1,
+      deliveryDate: 1,
+      cancellationDate: 1,
       createdAt: 1,
       updatedAt: 1,
       items: {
@@ -1549,56 +1567,56 @@ const myOrderDetails = asyncHandler(async (req, res) => {
   );
 });
 
-const updateOrderStatus = asyncHandler(async (req, res) => {
-  const { orderId, status, paymentStatus, productId } = req.body;
-  const userId = req.user.userId;
+// const updateOrderStatus = asyncHandler(async (req, res) => {
+//   const { orderId, status, paymentStatus, productId } = req.body;
+//   const userId = req.user.userId;
 
-  // ensure order exists for this buyer
-  const existing = await Order.findOne({ orderId, buyerId: userId });
-  if (!existing) {
-    throw new ApiError(404, "Order not found");
-  }
+//   // ensure order exists for this buyer
+//   const existing = await Order.findOne({ orderId, buyerId: userId });
+//   if (!existing) {
+//     throw new ApiError(404, "Order not found");
+//   }
 
-  const updates = {};
-  if (paymentStatus) {
-    updates.paymentStatus = paymentStatus;
-  }
+//   const updates = {};
+//   if (paymentStatus) {
+//     updates.paymentStatus = paymentStatus;
+//   }
 
-  let updatedOrder;
+//   let updatedOrder;
 
-  if (status && productId) {
-    const result = await Order.updateOne(
-      { orderId, buyerId: userId, "items.productId": productId },
-      { $set: { "items.$.status": status, ...updates } }
-    );
+//   if (status && productId) {
+//     const result = await Order.updateOne(
+//       { orderId, buyerId: userId, "items.productId": productId },
+//       { $set: { "items.$.status": status, ...updates } }
+//     );
 
-    if (result.modifiedCount === 0) {
-      throw new ApiError(400, "Product not found in order or no update made");
-    }
-  } else if (status) {
-    await Order.updateMany(
-      { orderId, buyerId: userId },
-      {
-        $set: {
-          "items.$[].status": status,
-          status,   // also update order-level status
-          ...updates
-        }
-      }
-    );
-  } else if (paymentStatus) {
-    await Order.updateMany(
-      { orderId, buyerId: userId },
-      { $set: updates }
-    );
-  }
+//     if (result.modifiedCount === 0) {
+//       throw new ApiError(400, "Product not found in order or no update made");
+//     }
+//   } else if (status) {
+//     await Order.updateMany(
+//       { orderId, buyerId: userId },
+//       {
+//         $set: {
+//           "items.$[].status": status,
+//           status,   // also update order-level status
+//           ...updates
+//         }
+//       }
+//     );
+//   } else if (paymentStatus) {
+//     await Order.updateMany(
+//       { orderId, buyerId: userId },
+//       { $set: updates }
+//     );
+//   }
 
-  updatedOrder = await Order.find({ orderId, buyerId: userId });
+//   updatedOrder = await Order.find({ orderId, buyerId: userId });
 
-  return res.json(
-    new ApiResponse(200, "Order status updated successfully", updatedOrder)
-  );
-});
+//   return res.json(
+//     new ApiResponse(200, "Order status updated successfully", updatedOrder)
+//   );
+// });
 
 
 
@@ -1785,6 +1803,15 @@ const orderDetails = asyncHandler(async (req, res) => {
                 }
               ]
             }
+          }
+        },
+        seller: {
+          name: "$seller.name",
+          email: "$seller.email",
+          mobile: "$seller.mobile",
+          address: "$seller.address",
+          profile_image: {
+            $ifNull: ["$seller.profile_image", `${process.env.APP_URL}/placeholder/image_place.png`]
           }
         }
       }
@@ -2011,6 +2038,13 @@ const updateOrderDeliveryStatus = asyncHandler(async (req, res) => {
 
 
 
+const testFun = asyncHandler(async (req, res) => {
+  // Your test function logic here
+
+  const result = await updateOrderStatus("ORDER_1755581543984YP21UFA4BU9", "paid", "placed", "pi_3Rxi9kQX56NWuV5X2U07B5on", "user-01010", ["68a409eef5502ea313e2893e"]);
+  throw new ApiError(400, "Test function error");
+
+});
 
 export {
   upsertCategory,
@@ -2045,12 +2079,13 @@ export {
   myOrders,
   checkKYCStatus,
   loginExpress,
-  updateOrderStatus,
+  // updateOrderStatus,
   getAllOrders,
   getAllCategorires,
   getAllProducts,
   updateProductStatus,
   orderDetails,
   updateOrderDeliveryStatus,
-  myOrderDetails
+  myOrderDetails,
+  testFun
 };
