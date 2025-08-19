@@ -1,12 +1,18 @@
-import { placeOrder } from "../controllers/marketplace.controller.js";
+import fs from "fs";
+// import { placeOrder } from "../controllers/marketplace.controller.js";
 import Cart from "../models/addtocart.model.js";
 import Order from "../models/orders.model.js";
+import Product from "../models/product.model.js";
 import TicketBooking from "../models/ticketBooking.model.js";
 import { User } from "../models/user.model.js";
 import VirtualEvent from "../models/virtualEvent.model.js";
 import { generateAndSendTicket } from "../services/generateTicket.js";
 import { ApiError } from "./ApiError.js";
 import { isValidObjectId } from "./isValidObjectId.js";
+import { sendEmail } from "../services/emailService.js";
+import { generateOrderReceiptHTML } from "../emails/orderReceipt.js";
+import { generatePDFfromHTML } from "./generatePDFfromHTML.js";
+import { uploadImage } from "./awsS3Utils.js";
 
 export const updateVirtualEventStatus = async (bookingId, bookingStatus, paymentStatus, paymentIntentId = null) => {
     try {
@@ -134,7 +140,133 @@ export const updateOrderStatus = async (
     product_ids
 ) => {
     try {
-        const orders = await Order.find({ orderId });
+
+        const aggregation = [];
+
+        aggregation.push({ $match: { orderId } });
+        aggregation.push({
+            $lookup: {
+                from: "deliveryaddresses",
+                localField: "shippingAddressId",
+                foreignField: "_id",
+                as: "shippingAddress"
+            }
+        });
+        aggregation.push({
+            $unwind: {
+                path: "$shippingAddress",
+                preserveNullAndEmptyArrays: true
+            }
+        });
+
+        aggregation.push({
+            $lookup: {
+                from: "products",
+                localField: "items.productId",
+                foreignField: "_id",
+                as: "product"
+            }
+        });
+
+
+        aggregation.push({
+            $lookup: {
+                from: 'users',
+                localField: 'sellerId',
+                foreignField: 'userId',
+                as: 'seller'
+            }
+        });
+
+        aggregation.push({
+            $unwind: {
+                path: "$seller",
+                preserveNullAndEmptyArrays: true
+            }
+        });
+
+        aggregation.push({
+            $lookup: {
+                from: 'users',
+                localField: 'buyerId',
+                foreignField: 'userId',
+                as: 'userDetails'
+            }
+        });
+
+        aggregation.push({
+            $unwind: {
+                path: "$userDetails",
+                preserveNullAndEmptyArrays: true
+            }
+        });
+
+        aggregation.push({
+            $project: {
+                _id: 0,
+                orderId: 1,
+                buyerId: 1,
+                shippingAddress: {
+                    name: "$shippingAddress.name",
+                    mobile: "$shippingAddress.mobile",
+                    alternate_mobile: "$shippingAddress.alternate_mobile",
+                    address: "$shippingAddress.address",
+                    city: "$shippingAddress.city",
+                    state: "$shippingAddress.state",
+                    country: "$shippingAddress.country",
+                    pincode: "$shippingAddress.pincode"
+                },
+                totalAmount: 1,
+                currency: 1,
+                paymentStatus: 1,
+                createdAt: 1,
+                updatedAt: 1,
+                items: {
+                    $map: {
+                        input: "$items",
+                        as: "item",
+                        in: {
+                            $mergeObjects: [
+                                "$$item",
+                                {
+                                    product: {
+                                        $arrayElemAt: [
+                                            {
+                                                $filter: {
+                                                    input: "$product",
+                                                    as: "prod",
+                                                    cond: { $eq: ["$$prod._id", "$$item.productId"] }
+                                                }
+                                            },
+                                            0
+                                        ]
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                },
+                seller: {
+                    name: "$seller.name",
+                    email: "$seller.email",
+                    mobile: "$seller.mobile",
+                    address: "$seller.address",
+                    city: "$seller.city",
+                    state: "$seller.state",
+                    country: "$seller.country",
+                    profile_image: { $ifNull: ["$seller.profile_image", `${process.env.APP_URL}/placeholder/person.png`] }
+                },
+                buyer: {
+                    name: "$userDetails.name",
+                    email: "$userDetails.email",
+                    mobile: "$userDetails.mobile",
+                    profile_image: { $ifNull: ["$userDetails.profile_image", `${process.env.APP_URL}/placeholder/person.png`] }
+                }
+            }
+        });
+
+
+        const orders = await Order.aggregate(aggregation);
         if (!orders || orders.length === 0) {
             throw new ApiError(404, "Order not found");
         }
@@ -148,6 +280,15 @@ export const updateOrderStatus = async (
 
         if (paymentStatus === "paid" && userId && product_ids?.length > 0) {
             await Cart.deleteMany({ userId, productId: { $in: product_ids } });
+
+            for (const order of orders) {
+                for (const item of order.items) {
+                    await Product.updateOne(
+                        { _id: item.productId },
+                        { $inc: { product_quantity: -item.quantity } }
+                    );
+                }
+            }
         }
 
         let updateQuery = {};
@@ -164,10 +305,63 @@ export const updateOrderStatus = async (
             updateQuery = { $set: updates };
         }
 
-        // apply to all vendor orders with same orderId
         const result = await Order.updateMany({ orderId }, updateQuery);
 
-        // return updated documents
+        const htmlEmailContent = fs.readFileSync("./src/emails/orderConfirmation.html", "utf-8");
+        const emailContent = htmlEmailContent
+            .replace("{{name}}", orders[0].buyer.name)
+            .replace("{{orderId}}", orderId)
+            .replace("{{orderDate}}", new Date().toLocaleDateString())
+            .replace("{{itemTables}}", orders.map(
+                order => order.items.map(item => `<div class="order-item">
+                    <span>${item.product.name}</span>
+                    <span>${item.product.price}</span>
+                </div>`).join(""))
+            )
+            .replace("{{totalPrice}}", orders.map(order => order.totalPrice).reduce((a, b) => a + b, 0))
+            .replace("{{shippingAddress}}", `${orders[0]?.shippingAddress?.mobile}, ${orders[0]?.shippingAddress?.alternate_mobile}, ${orders[0]?.shippingAddress?.address} ,${orders[0]?.shippingAddress?.city} , ${orders[0]?.shippingAddress?.state}, ${orders[0]?.shippingAddress?.country}, ${orders[0]?.shippingAddress?.pincode}`);
+
+
+        const send = await sendEmail(orders[0].buyer.email, "Order Confirmation", emailContent);
+        if (!send.success) {
+            throw new ApiError(500, "Failed to send order confirmation email");
+        }
+
+
+        // // Send order placed mail to vendors
+        await Promise.all(orders.map(async order => {
+            const vendorEmailContent = fs.readFileSync("./src/emails/vendorOrderConfirmation.html", "utf-8");
+            const vendorEmail = vendorEmailContent
+                .replace("{{vendorName}}", order.seller.name)
+                .replace("{{orderNumber}}", orderId)
+                .replace("{{customerName}}", order.buyer.name)
+                .replace("{{customerEmail}}", order.buyer.email)
+                .replace("{{customerPhone}}", order.buyer.mobile)
+                .replace("{{shippingAddress}}", `${order?.shippingAddress?.mobile}, ${order?.shippingAddress?.alternate_mobile}, ${order?.shippingAddress?.address} ,${order?.shippingAddress?.city} , ${order?.shippingAddress?.state}, ${order?.shippingAddress?.country}, ${order?.shippingAddress?.pincode}`)
+                .replace("{{orderItems}}", order.items.map(item => `<div class="order-item">
+                <span>${item.product.product_name}</span>
+                <span>${item.product.product_price - (item.product.product_price * item.product.product_discount) / 100}</span>
+            </div>`).join(""));
+            const sellerEmail = order.seller.email;
+
+            const orderReceipt = generateOrderReceiptHTML(order);
+            // const generatedReceipt = await generatePDFfromHTML(orderReceipt);
+            const generatedReceipt = await generatePDFfromHTML(orderReceipt);
+
+
+            const attachments = [
+                {
+                    filename: `order-${orderId}.pdf`,
+                    content: generatedReceipt,
+                    contentType: 'application/pdf',
+                }
+            ]
+            const sendVendorEmail = await sendEmail(sellerEmail, "New Order Confirmation", vendorEmail, attachments);
+            if (!sendVendorEmail.success) {
+                throw new ApiError(500, "Failed to send vendor order confirmation email");
+            }
+        }));
+
         const updatedOrders = await Order.find({ orderId });
         return updatedOrders;
     } catch (error) {
@@ -175,3 +369,4 @@ export const updateOrderStatus = async (
         throw new ApiError(500, "Failed to update order status", error.message);
     }
 };
+

@@ -2038,13 +2038,13 @@ const updateOrderDeliveryStatus = asyncHandler(async (req, res) => {
 
 
 
-const testFun = asyncHandler(async (req, res) => {
-  // Your test function logic here
+// const testFun = asyncHandler(async (req, res) => {
+//   // Your test function logic here
 
-  const result = await updateOrderStatus("ORDER_1755581543984YP21UFA4BU9", "paid", "placed", "pi_3Rxi9kQX56NWuV5X2U07B5on", "user-01010", ["68a409eef5502ea313e2893e"]);
-  throw new ApiError(400, "Test function error");
+//   const result = await updateOrderStatus("ORDER_1755581543984YP21UFA4BU9", "paid", "placed", "pi_3Rxi9kQX56NWuV5X2U07B5on", "user-01010", ["68a409eef5502ea313e2893e"]);
+//   throw new ApiError(400, "Test function error");
 
-});
+// });
 
 export {
   upsertCategory,
@@ -2087,5 +2087,4 @@ export {
   orderDetails,
   updateOrderDeliveryStatus,
   myOrderDetails,
-  testFun
 };
