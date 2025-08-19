@@ -12,7 +12,7 @@ import {
   updateAddressSchema,
   addToCartSchema,
   orderPlaceSchema,
-  updateOrderStatusSchema,
+  // updateOrderStatusSchema,
   updateOrderDeliveryStatusSchema
 } from "../validators/marketplaceValidator.js";
 import {
@@ -46,7 +46,7 @@ import {
   removeProductFromCart,
   refreshUrl,
   myOrders,
-  updateOrderStatus,
+  // updateOrderStatus,
   getAllOrders,
   checkKYCStatus,
   loginExpress,
@@ -55,7 +55,8 @@ import {
   updateProductStatus,
   orderDetails,
   updateOrderDeliveryStatus,
-  myOrderDetails
+  myOrderDetails,
+  testFun
 } from "../controllers/marketplace.controller.js";
 
 const router = Router();
@@ -188,6 +189,7 @@ router.get('/login-express', verifyJWT, loginExpress);
 // web apis
 router.get('/get-all-products',verifyJWT,getAllProducts);
 router.put('/updateProduct/:productId',verifyJWT,updateProductStatus);
+router.post('/test',testFun);
 
 
 export default router;
