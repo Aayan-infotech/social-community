@@ -738,7 +738,7 @@ const addToCart = asyncHandler(async (req, res) => {
   const existingCartItem = await Cart.findOne({ userId, productId });
   if (existingCartItem) {
     // If it exists, update the quantity
-    existingCartItem.quantity += quantity;
+    existingCartItem.quantity += Number(quantity);
     await existingCartItem.save();
   } else {
     const cartData = {
