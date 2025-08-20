@@ -1,11 +1,5 @@
-// import pdfMake from 'pdfmake/build/pdfmake.js';
-// import pdfFonts from 'pdfmake/build/vfs_fonts.js';
-// import htmlToPdfmake from 'html-to-pdfmake';
-import { JSDOM } from 'jsdom';
 import { ApiError } from './ApiError.js';
 import pdf from 'html-pdf-node';
-
-
 
 const generatePDFfromHTML = async (htmlContent) => {
     try {
