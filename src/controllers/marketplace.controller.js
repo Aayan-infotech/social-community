@@ -342,8 +342,8 @@ const updateProduct = asyncHandler(async (req, res) => {
   }
   let product_image = product.product_image;
 
-  if (remove_images !== "") {
-    const removeImages = remove_images.split(",");
+  if (remove_images) {
+    const removeImages = Array.isArray(remove_images) ? remove_images : JSON.parse(remove_images);
     for (let i = 0; i < removeImages.length; i++) {
       const imageUrl = removeImages[i];
       const deleteImage = await deleteObject(imageUrl);
@@ -1217,8 +1217,6 @@ const placeOrder = asyncHandler(async (req, res) => {
     return acc;
   }, {});
 
-  console.log(vendorGroups);
-
 
 
   // Create ONE Stripe PaymentIntent for full order
@@ -1234,9 +1232,7 @@ const placeOrder = asyncHandler(async (req, res) => {
 
   const savedOrders = [];
   for (const [sellerId, items] of Object.entries(vendorGroups)) {
-    console.log(`Processing orders for seller: ${sellerId}`);
     const vendorTotal = items.reduce((sum, i) => sum + i.amount * i.quantity, 0);
-    console.log(`Total amount for seller ${sellerId}: ${vendorTotal}`);
 
     const orderDoc = new Order({
       orderId,                  // SAME for all vendors
@@ -1930,6 +1926,8 @@ const getAllProducts = asyncHandler(async (req, res) => {
             product_discount: 1,
             product_description: 1,
             product_quantity: 1,
+            category_id: 1,
+            subcategory_id: 1,
             category_name: "$category.category_name",
             subcategory_name: "$subcategory.subcategory_name",
             user_id: "$user.userId",
@@ -1995,8 +1993,6 @@ const updateOrderDeliveryStatus = asyncHandler(async (req, res) => {
   if (!orderId) {
     throw new ApiError(400, "Order ID is required");
   }
-  console.log(orderId);
-  console.log("Seller ID:", userId);
 
   const order = await Order.findOne({ orderId, sellerId: userId });
   if (!order) {

@@ -1,42 +1,27 @@
-import pdfMake from 'pdfmake/build/pdfmake.js';
-import pdfFonts from 'pdfmake/build/vfs_fonts.js';
-import htmlToPdfmake from 'html-to-pdfmake';
+// import pdfMake from 'pdfmake/build/pdfmake.js';
+// import pdfFonts from 'pdfmake/build/vfs_fonts.js';
+// import htmlToPdfmake from 'html-to-pdfmake';
 import { JSDOM } from 'jsdom';
-import puppeteer from 'puppeteer';
+import { ApiError } from './ApiError.js';
+import pdf from 'html-pdf-node';
 
-pdfMake.vfs = pdfFonts;
 
-const { window } = new JSDOM('');
 
-// const generatePDFfromHTML = async (htmlContent) => {
-//     try {
-//         const pdfContent = htmlToPdfmake(htmlContent, { window, tableAutoSize: true, });
-//         const docDefinition = { content: pdfContent };
-
-//         const pdfBuffer = await new Promise((resolve, reject) => {
-//             pdfMake.createPdf(docDefinition).getBuffer((buffer) => {
-//                 resolve(buffer);
-//             });
-//         });
-
-//         return pdfBuffer;
-//     } catch (error) {
-//         console.error('Error generating PDF from HTML:', error);
-//         throw new Error('Failed to generate PDF');
-//     }
-// }
-
-const generatePDFfromHTML = async (htmlContent) =>{
+const generatePDFfromHTML = async (htmlContent) => {
     try {
-        const browser = await puppeteer.launch();
-        const page = await browser.newPage();
-        await page.setContent(htmlContent);
-        const pdfBuffer = await page.pdf();
-        await browser.close();
+        let file = { content: htmlContent };
+        let options = {
+            format: 'A4',
+            margin: { top: "20px", bottom: "20px" },
+        };
+
+        let pdfBuffer = await pdf.generatePdf(file, options);
+
         return pdfBuffer;
+
     } catch (error) {
         console.error('Error generating PDF from HTML:', error);
-        throw new Error('Failed to generate PDF');
+        throw new ApiError(500, 'Failed to generate PDF');
     }
 }
 
