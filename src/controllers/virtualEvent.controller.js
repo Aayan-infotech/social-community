@@ -11,6 +11,7 @@ import { generateAndSendTicket } from "../services/generateTicket.js";
 import {
   changeDateTimeZone,
   convertTo12Hour,
+  currentDateTime,
   generateRandomPassword,
   generateTicketId,
   generateUniqueUsername,
@@ -156,9 +157,40 @@ const getEvents = asyncHandler(async (req, res) => {
   const aggregation = [];
 
   aggregation.push({
+    $addFields: {
+      fullEventEndDate: {
+        $dateFromString: {
+          dateString: {
+            $concat: [
+              { $dateToString: { format: "%Y-%m-%d", date: "$eventEndDate" } },
+              "T",
+              "$eventTimeEnd",
+              ":00Z"
+            ]
+          }
+        }
+      },
+      fullEventStartDate: {
+        $dateFromString: {
+          dateString: {
+            $concat: [
+              { $dateToString: { format: "%Y-%m-%d", date: "$eventStartDate" } },
+              "T",
+              "$eventTimeStart",
+              ":00Z"
+            ]
+          }
+        }
+      }
+    }
+  });
+
+  // get the current date and time in given timezone
+  const dateTime = currentDateTime(timezone);
+
+  aggregation.push({
     $match: {
-      // eventStartDate: { $gte: new Date() },
-      eventEndDate: { $gte: new Date() },
+      fullEventEndDate: { $gt: dateTime },
       status: "approved",
       userId: { $ne: userId }
     },
@@ -304,7 +336,7 @@ const myEvents = asyncHandler(async (req, res) => {
     $match: { userId: userId },
   });
 
-  aggregation.push({
+aggregation.push({
     $addFields: {
       fullEventEndDate: {
         $dateFromString: {
@@ -333,13 +365,15 @@ const myEvents = asyncHandler(async (req, res) => {
     }
   });
 
+  const dateTime = currentDateTime(timezone);
+
   if (type === "upcoming") {
     aggregation.push({
-      $match: { fullEventStartDate: { $gte: new Date() } },
+      $match: { fullEventStartDate: { $gte: dateTime } },
     });
   } else if (type === "past") {
     aggregation.push({
-      $match: { fullEventEndDate: { $lt: new Date() } },
+      $match: { fullEventEndDate: { $lt: dateTime } },
     });
   }
 
