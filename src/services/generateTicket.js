@@ -27,9 +27,7 @@ async function generateAndSendTicket(eventDetails, recipientEmail) {
 
         // Generate HTML ticket
         const ticketHTML = createTicketHTML(ticketData);
-        console.log(ticketHTML);
         const pdfBuffer = await generatePDFfromHTML(ticketHTML);
-        console.log(pdfBuffer);
 
         const mailOptions = {
             subject: `🎫 Your Ticket for ${eventDetails.eventName}`,

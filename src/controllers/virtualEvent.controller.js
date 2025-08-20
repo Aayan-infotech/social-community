@@ -1349,9 +1349,6 @@ const ticketExhaust = asyncHandler(async (req, res) => {
   }
 
 
-
-  //   throw new ApiError(400, "Ticket is not booked");
-
   const updatedTicket = await TicketBooking.findOneAndUpdate(
     { ticketId: ticketId },
     {

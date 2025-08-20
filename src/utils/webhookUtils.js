@@ -345,10 +345,7 @@ export const updateOrderStatus = async (
             const sellerEmail = order.seller.email;
 
             const orderReceipt = generateOrderReceiptHTML(order);
-            console.log(orderReceipt);
-            // const generatedReceipt = await generatePDFfromHTML(orderReceipt);
             const generatedReceipt = await generatePDFfromHTML(orderReceipt);
-            console.log(generatedReceipt);
 
 
             const attachments = [
@@ -359,7 +356,6 @@ export const updateOrderStatus = async (
                 }
             ]
             const sendVendorEmail = await sendEmail(sellerEmail, "New Order Confirmation", vendorEmail, attachments);
-            console.log(sendVendorEmail);
             if (!sendVendorEmail.success) {
                 throw new ApiError(500, "Failed to send vendor order confirmation email");
             }
