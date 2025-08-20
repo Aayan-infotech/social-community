@@ -304,13 +304,42 @@ const myEvents = asyncHandler(async (req, res) => {
     $match: { userId: userId },
   });
 
+  aggregation.push({
+    $addFields: {
+      fullEventEndDate: {
+        $dateFromString: {
+          dateString: {
+            $concat: [
+              { $dateToString: { format: "%Y-%m-%d", date: "$eventEndDate" } },
+              "T",
+              "$eventTimeEnd",
+              ":00Z"
+            ]
+          }
+        }
+      },
+      fullEventStartDate: {
+        $dateFromString: {
+          dateString: {
+            $concat: [
+              { $dateToString: { format: "%Y-%m-%d", date: "$eventStartDate" } },
+              "T",
+              "$eventTimeStart",
+              ":00Z"
+            ]
+          }
+        }
+      }
+    }
+  });
+
   if (type === "upcoming") {
     aggregation.push({
-      $match: { eventStartDate: { $gte: new Date() } },
+      $match: { fullEventStartDate: { $gte: new Date() } },
     });
   } else if (type === "past") {
     aggregation.push({
-      $match: { eventEndDate: { $lt: new Date() } },
+      $match: { fullEventEndDate: { $lt: new Date() } },
     });
   }
 
@@ -756,9 +785,9 @@ const bookTickets = asyncHandler(async (req, res) => {
 const repayment = asyncHandler(async (req, res) => {
   const { bookingId } = req.body;
 
-  if(bookingId === undefined || bookingId === null) {
+  if (bookingId === undefined || bookingId === null) {
     throw new ApiError(400, "Booking ID is required");
-  } 
+  }
 
   if (!isValidObjectId(bookingId)) {
     throw new ApiError(400, "Invalid booking ID");
