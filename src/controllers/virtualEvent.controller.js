@@ -305,9 +305,7 @@ const myEvents = asyncHandler(async (req, res) => {
       "Invalid type parameter. Must be 'all', 'upcoming', or 'past'"
     );
   }
-
-  const searchKeyword = req.query.searchKeyword?.trim();
-  const sortField = req.query.sortField || "createdAt";
+  const {searchKeyword,sortField = "createdAt", statusFilter} = req.query;
   const sortOrder = req.query.sortOrder === "asc" ? 1 : -1;
 
   const allowedSortFields = [
@@ -336,7 +334,7 @@ const myEvents = asyncHandler(async (req, res) => {
     $match: { userId: userId },
   });
 
-aggregation.push({
+  aggregation.push({
     $addFields: {
       fullEventEndDate: {
         $dateFromString: {
@@ -384,6 +382,14 @@ aggregation.push({
           { eventName: { $regex: searchKeyword, $options: "i" } },
           { eventLocation: { $regex: searchKeyword, $options: "i" } }
         ]
+      }
+    });
+  }
+
+  if (statusFilter) {
+    aggregation.push({
+      $match: {
+        status: statusFilter,
       }
     });
   }
