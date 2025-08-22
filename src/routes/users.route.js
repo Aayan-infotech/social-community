@@ -47,7 +47,8 @@ import {
   getAllVendors,
   updatePage,
   updateFAQ,
-  deleteFAQ
+  deleteFAQ,
+  deleteStory
 } from "../controllers/users.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { validateRequest } from "../middlewares/validation.middleware.js";
@@ -148,6 +149,7 @@ router.post(
 );
 
 router.get("/get-stories", verifyJWT, getStories);
+router.delete("/delete-story/:storyId", verifyJWT, deleteStory);
 
 router.post("/delete-account-request", verifyJWT, deleteAccountRequest);
 

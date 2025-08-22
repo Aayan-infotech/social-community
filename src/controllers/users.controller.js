@@ -9,6 +9,7 @@ import {
   compressVideo,
   uploadVideo,
   uploadImage,
+  getVideoDuration,
 } from "../utils/awsS3Utils.js";
 import { FriendsModel } from "../models/friends.model.js";
 import sendPushNotification from "../utils/sendPushNotification.js";
@@ -1120,11 +1121,17 @@ const addStory = asyncHandler(async (req, res) => {
     if (storyFile && storyFile.length) {
       // const uploadStatus = await uploadImage(storyFile[0]);
       if (mediaType === "image") {
-        const uploadStatus = await saveCompressedImage(storyFile[0], 200);
+        const uploadStatus = await saveCompressedImage(storyFile[0], 600);
         if (uploadStatus.success) {
           mediaUrl = uploadStatus.thumbnailUrl;
         }
       } else if (mediaType === "video") {
+
+        const videoDuration = await getVideoDuration(storyFile[0].path);
+        if (videoDuration > 30) {
+          throw new ApiError(400, "Video duration should not exceed 30 seconds");
+        }
+
         const compressedVideo = await compressVideo(
           storyFile[0].path,
           "./public/temp"
@@ -1198,6 +1205,7 @@ const getStories = asyncHandler(async (req, res) => {
         _id: "$userId",
         stories: {
           $push: {
+            id: "$_id",
             mediaType: "$mediaType",
             mediaUrl: "$mediaUrl",
             description: "$description",
@@ -1255,6 +1263,21 @@ const getStories = asyncHandler(async (req, res) => {
   }
 
   res.json(new ApiResponse(200, "Get the Stories Successfully", stories));
+});
+
+const deleteStory = asyncHandler(async (req,res) =>{
+  const { storyId } = req.params;
+  const userId = req.user.userId;
+
+  const story = await Story.findOne({ _id: storyId, userId });
+  if (!story) {
+    throw new ApiError(404, "Story not found");
+  }
+  if ( story.mediaUrl) {
+    await deleteObject(story.mediaUrl);
+  }
+  await Story.deleteOne({ _id: storyId });
+  res.json(new ApiResponse(200, "Story deleted successfully",null));
 });
 
 const getAllUsers = asyncHandler(async (req, res) => {
@@ -2751,5 +2774,6 @@ export {
   getAllVendors,
   updatePage,
   updateFAQ,
-  deleteFAQ
+  deleteFAQ,
+  deleteStory
 };

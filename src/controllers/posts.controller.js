@@ -186,6 +186,12 @@ const updatePost = asyncHandler(async function (req, res) {
     if (file.path && fs.existsSync(file.path)) {
       fs.unlinkSync(file.path);
     }
+
+    // remove the previous from s3
+    const previousMedia = post.media;
+    if (previousMedia && previousMedia !== media) {
+      await deleteObject(previousMedia);
+    }
   }
 
   // Update post fields
@@ -193,7 +199,7 @@ const updatePost = asyncHandler(async function (req, res) {
   post.description = description || post.description;
   post.type = type || post.type;
   post.media = media;
-  post.mediaType = mediaType;
+  post.mediaType = mediaType ? mediaType : "text";
   post.mediaWidth = width;
   post.mediaHeight = height;
   post.mediaAspectRatio = aspectRatio;
@@ -1074,28 +1080,32 @@ const deletePost = asyncHandler(async (req, res) => {
   if (!isValidObjectId(postId)) {
     throw new ApiError(400, "Invalid post ID");
   }
-
+  console.log(postId);
   const post = await PostModel.findById(postId);
+  console.log(post);
   // delete post images and videos from s3
   if (!post) {
     throw new ApiError(404, "Post not found");
   }
   if (post.media) {
     const media = post.media;
+    console.log(media);
     if (Array.isArray(media)) {
       for (const file of media) {
         const fileName = file.split("/").pop();
         await deleteObject(fileName);
       }
     } else {
+      console.log(media);
       const fileName = media.split("/").pop();
-      await deleteObject(fileName);
+      const result = await deleteObject(fileName);
+      console.log(result);
     }
   }
 
   await PostModel.deleteOne({ _id: postId });
 
-  res.json(new ApiResponse(200, "Post deleted successfully"));
+  res.json(new ApiResponse(200, "Post deleted successfully",null));
 });
 
 
