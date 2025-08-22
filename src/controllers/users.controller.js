@@ -604,12 +604,28 @@ const getFriendSuggestionList = asyncHandler(async (req, res) => {
 
   const friends = friendList?.friends || [];
 
+  // friends friends to suggestion list
+  const FOFUser = await FriendsModel.find({
+    userId: { $in: friends },
+  });
+
+  const friendsOfFriends = FOFUser.flatMap(friend => friend.friends);
+
+
   const baseMatchPipeline = [
-    { $match: { city: user?.city } },
-    { $match: { role: "user" } },
-    { $match: { userId: { $ne: userId } } },
-    { $match: { userId: { $nin: friends } } },
-    { $match: { isDeleted: { $ne: true } } },
+    {
+      $match: {
+        userId: { $nin: friends, $ne: userId },
+        role: "user",
+        isDeleted: { $ne: true },
+        $or: [
+          { city: user?.city },
+          { country: user?.country },
+          { state: user?.state },
+          { userId: { $in: friendsOfFriends } },
+        ],
+      },
+    },
   ];
 
   const aggregation = [];
@@ -1663,12 +1679,12 @@ const updateFAQ = asyncHandler(async (req, res) => {
   res.json(new ApiResponse(200, "FAQ updated successfully", faq));
 });
 
-const deleteFAQ = asyncHandler(async (req,res) =>{
+const deleteFAQ = asyncHandler(async (req, res) => {
   const { faqId } = req.params;
 
   const faq = await FAQModel.findByIdAndDelete(faqId);
-  if(!faq){
-     throw new ApiError(404, "FAQ not found");
+  if (!faq) {
+    throw new ApiError(404, "FAQ not found");
   }
 
   res.json(new ApiResponse(200, "FAQ deleted successfully"));
