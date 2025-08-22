@@ -665,6 +665,8 @@ const getFriendSuggestionList = asyncHandler(async (req, res) => {
         $arrayElemAt: ["$firstMutualFriendDetails", 0],
       },
       mutualFriendsCount: { $size: { $ifNull: ["$mutualFriends", []] } },
+      totalFriends: { $size: { $ifNull: ["$friends_data.friends", []] } },
+      isFoF: { $cond: [{ $in: ["$userId", friendsOfFriends] }, 1, 0] },
     },
   });
 
@@ -685,6 +687,14 @@ const getFriendSuggestionList = asyncHandler(async (req, res) => {
         },
       ],
       as: "friend_request_sended",
+    },
+  });
+
+  aggregation.push({
+    $sort: {
+      isFoF: -1,
+      totalFriends: -1,
+      createdAt: -1,
     },
   });
 

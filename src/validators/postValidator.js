@@ -16,30 +16,9 @@ const postValidationSchema = Joi.object({
     "any.only": 'Type must be either "social" or "professional".',
     "any.required": "Type is required.",
   }),
-  media: Joi.array()
-    .items(
-      Joi.object({
-        url: Joi.string().uri().required().messages({
-          "string.uri": "Media URL must be a valid URI.",
-          "any.required": "Media URL is required.",
-        }),
-        type: Joi.string().valid("image", "video").messages({
-          "string.base": "Media type must be a string.",
-          "any.only": 'Media type must be either "image" or "video".',
-          "any.required": "Media type is required.",
-        }),
-        size: Joi.number()
-          .max(5 * 1024 * 1024)
-          .messages({
-            "number.max": "Media size must not exceed 5MB.",
-          }), // Max 5MB
-      })
-    )
-    .max(5)
-    .optional()
-    .messages({
-      "array.max": "You can upload up to 5 media files.",
-    }),
+  media: Joi.string().optional().allow("").messages({
+    "string.base": "media must be a string.",
+  }),
 });
 
 const postLikeDislikeSchema = Joi.object({

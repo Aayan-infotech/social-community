@@ -100,7 +100,7 @@ const createPost = asyncHandler(async (req, res) => {
     type,
     userId: req.user.userId,
     media,
-    mediaType,
+    mediaType: mediaType ? mediaType : "text",
     mediaWidth: mediaWidth,
     mediaHeight: mediaHeight,
     mediaAspectRatio: mediaAspectRatio,
