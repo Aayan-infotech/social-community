@@ -79,6 +79,7 @@ const deleteObject = async (imageUrl) => {
 const saveCompressedImage = async (file, width, height) => {
   try {
     const resizedBuffer = await sharp(file.path)
+      .rotate()
       .resize(width)
       .toFormat("webp")
       .toBuffer();
