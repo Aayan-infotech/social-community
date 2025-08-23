@@ -23,14 +23,15 @@ import {
   saveDeviceDetailsSchema
 } from "../validators/userValidator.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
+import { checkVersion } from "../middlewares/checkVersion.js";
 
 
 const router = Router();
 
-router.route("/signup").post(validateRequest(userValidationSchema), signup);
-router.route("/login").post(validateRequest(loginValidationSchema), loginUser);
-router.post("/forgot-password", forgotPassword);
-router.post("/reset-password", verifyJWT, resetPassword);
+router.route("/signup").post(validateRequest(userValidationSchema), checkVersion, signup);
+router.route("/login").post(validateRequest(loginValidationSchema), checkVersion, loginUser);
+router.post("/forgot-password", checkVersion, forgotPassword);
+router.post("/reset-password", verifyJWT, checkVersion, resetPassword);
 router.post("/verify-otp", verifyOtp);
 router.post("/resend-otp", resendOTP);
 router.post("/set-password", validateRequest(setPasswordValidationSchema), setPassword);
