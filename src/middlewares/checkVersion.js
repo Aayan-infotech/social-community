@@ -5,7 +5,7 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 export const checkVersion = asyncHandler(async (req, res, next) => {
     const version = req.header("appVersion");
     if (!version) {
-        throw new ApiError(400, "App version is required");
+        throw new ApiError(400, "You are using an older version of the app. Please update to the latest version.");
     }
 
      const latestVersionDoc = await Version.findOne().sort({ createdAt: -1 });
