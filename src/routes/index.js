@@ -9,6 +9,7 @@ import nearbyRoutes from './nearby.route.js';
 import marketPlacesRoutes from './marketplace.route.js';
 import chatRoutes from './chat.route.js';
 import virtualEventsRoutes from './virtualEvent.route.js';
+import interestRoutes from './interest.route.js';
 
 const router = express.Router();
 
@@ -22,5 +23,6 @@ router.use('/nearby', nearbyRoutes);
 router.use('/marketplace', marketPlacesRoutes);
 router.use('/chat', chatRoutes);
 router.use('/virtual-events',virtualEventsRoutes);
+router.use('/interests', interestRoutes);
 
 export default router;
