@@ -78,7 +78,8 @@ export const getInterestList = asyncHandler(async (req, res) => {
 
 
 export const getInterestCategoryList = asyncHandler(async (req, res) => {
-    const categories = await InterestCategoryList.find();
+    const type = req.query.type || "social";
+    const categories = await InterestCategoryList.find({ type });
     return res.json(new ApiResponse(200, "Interest categories fetched successfully", categories));
 });
 

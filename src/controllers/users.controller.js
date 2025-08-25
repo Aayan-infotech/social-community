@@ -28,6 +28,7 @@ import FAQModel from "../models/FAQ.model.js";
 import Skill from "../models/skills.model.js";
 import InterestInProfileModel from "../models/matrimonialProfileInterest.model.js";
 import InterestCategoryList from "../models/InterestCategoryList.model.js";
+import UserInterest from "../models/userInterest.model.js";
 
 const getUserProfile = asyncHandler(async (req, res) => {
   const userId = req.query.user_id || req.user.userId;
@@ -117,9 +118,15 @@ const getUserProfile = asyncHandler(async (req, res) => {
   const userInterests = await InterestCategoryList.find({ type: "social" });
   totalFields += userInterests.length;
 
-  const completenessPercentage = Math.round((filledFields / totalFields) * 100);
+  console.log("userInterests:", userInterests);
+  await Promise.all(userInterests.map(async interest => {
+    const userInterest = await UserInterest.findOne({ userId: userProfile.userId, categoryId: interest._id });
+    if (userInterest) {
+      filledFields++;
+    }
+  }));
 
-  console.log("completenessPercentage:", completenessPercentage);
+  const completenessPercentage = Math.round((filledFields / totalFields) * 100);
 
   if (!user.length) {
     throw new ApiError(404, "User not found");
