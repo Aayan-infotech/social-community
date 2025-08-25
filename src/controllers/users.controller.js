@@ -87,13 +87,16 @@ const getUserProfile = asyncHandler(async (req, res) => {
     },
   });
 
+  const BasicDetailsFields = ["name", "email", "mobile", "country", "state", "city", "gender"];
+
+
   const user = await User.aggregate(aggregation);
 
   if (!user.length) {
     throw new ApiError(404, "User not found");
   }
 
-  res.json(new ApiResponse(200, "User profile fetched successfully", user[0]));
+  res.json(new ApiResponse(200, "User profile fetched successfully", { ...user[0], completeness: 50 }));
 });
 
 const updateUserProfile = asyncHandler(async (req, res) => {
@@ -1265,7 +1268,7 @@ const getStories = asyncHandler(async (req, res) => {
   res.json(new ApiResponse(200, "Get the Stories Successfully", stories));
 });
 
-const deleteStory = asyncHandler(async (req,res) =>{
+const deleteStory = asyncHandler(async (req, res) => {
   const { storyId } = req.params;
   const userId = req.user.userId;
 
@@ -1273,11 +1276,11 @@ const deleteStory = asyncHandler(async (req,res) =>{
   if (!story) {
     throw new ApiError(404, "Story not found");
   }
-  if ( story.mediaUrl) {
+  if (story.mediaUrl) {
     await deleteObject(story.mediaUrl);
   }
   await Story.deleteOne({ _id: storyId });
-  res.json(new ApiResponse(200, "Story deleted successfully",null));
+  res.json(new ApiResponse(200, "Story deleted successfully", null));
 });
 
 const getAllUsers = asyncHandler(async (req, res) => {
