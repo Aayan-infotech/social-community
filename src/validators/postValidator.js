@@ -16,8 +16,12 @@ const postValidationSchema = Joi.object({
     "any.only": 'Type must be either "social" or "professional".',
     "any.required": "Type is required.",
   }),
-  media: Joi.string().optional().allow("").messages({
-    "string.base": "media must be a string.",
+  // media: Joi.string().optional().allow("").messages({
+  //   "string.base": "media must be a string.",
+  // }),
+  media: Joi.string().required().messages({
+    "string.base": "Media must be a string.",
+    "any.required": "Media is required to create a post.",
   }),
 });
 
