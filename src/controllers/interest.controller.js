@@ -1,10 +1,10 @@
 import mongoose from "mongoose";
-import InterestCategoryList from "../models/interestCategoryList.model.js";
+import InterestCategoryList from "../models/InterestCategoryList.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { isValidObjectId } from "../utils/isValidObjectId.js";
-import InterestList from "../models/interestList.model.js";
+import InterestList from "../models/InterestList.model.js";
 
 
 

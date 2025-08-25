@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-const interestCategoryListSchema = new mongoose.Schema({
+const InterestCategoryListSchema = new mongoose.Schema({
     category: {
         type: String,
         required: true,
@@ -15,6 +15,6 @@ const interestCategoryListSchema = new mongoose.Schema({
     versionKey: false
 });
 
-const InterestCategoryList = mongoose.model("InterestCategoryList", interestCategoryListSchema);
+const InterestCategoryList = mongoose.model("InterestCategoryList", InterestCategoryListSchema);
 
 export default InterestCategoryList;

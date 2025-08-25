@@ -22,5 +22,4 @@ const InterestListSchema = new mongoose.Schema({
 
 
 const InterestList = mongoose.model("InterestList", InterestListSchema);
-
 export default InterestList;
