@@ -104,7 +104,6 @@ const getUserProfile = asyncHandler(async (req, res) => {
     }
   });
 
-  // ✅ Add profile image check
   totalFields++;
   if (userProfile.profile_image && !userProfile.profile_image.includes("placeholder")) {
     filledFields++;
@@ -118,7 +117,6 @@ const getUserProfile = asyncHandler(async (req, res) => {
   const userInterests = await InterestCategoryList.find({ type: "social" });
   totalFields += userInterests.length;
 
-  console.log("userInterests:", userInterests);
   await Promise.all(userInterests.map(async interest => {
     const userInterest = await UserInterest.findOne({ userId: userProfile.userId, categoryId: interest._id });
     if (userInterest) {
