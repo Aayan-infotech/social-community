@@ -229,7 +229,7 @@ const getPosts = asyncHandler(async function (req, res) {
 
   let aggregation = [];
   aggregation.push({
-    $match: { userId: { $eq: userId }, type: { $eq: type } },
+    $match: { userId: { $eq: userId }, type: { $eq: type }, mediaType: { $ne: "text" } },
   });
   aggregation.push({
     $lookup: {
