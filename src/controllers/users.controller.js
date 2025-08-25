@@ -27,6 +27,7 @@ import PageModel from "../models/pages.model.js";
 import FAQModel from "../models/FAQ.model.js";
 import Skill from "../models/skills.model.js";
 import InterestInProfileModel from "../models/matrimonialProfileInterest.model.js";
+import InterestCategoryList from "../models/InterestCategoryList.model.js";
 
 const getUserProfile = asyncHandler(async (req, res) => {
   const userId = req.query.user_id || req.user.userId;
@@ -87,16 +88,44 @@ const getUserProfile = asyncHandler(async (req, res) => {
     },
   });
 
-  const BasicDetailsFields = ["name", "email", "mobile", "country", "state", "city", "gender"];
-
 
   const user = await User.aggregate(aggregation);
+
+  const userProfile = user[0];
+
+  const basicDetailsFields = ["name", "email", "mobile", "country", "state", "city", "gender"];
+  let totalFields = basicDetailsFields.length;
+  let filledFields = 0;
+
+  basicDetailsFields.forEach(field => {
+    if (userProfile[field] && userProfile[field].toString().trim() !== "") {
+      filledFields++;
+    }
+  });
+
+  // ✅ Add profile image check
+  totalFields++;
+  if (userProfile.profile_image && !userProfile.profile_image.includes("placeholder")) {
+    filledFields++;
+  }
+
+  totalFields++;
+  if (userProfile.bio && userProfile.bio.trim() !== "") {
+    filledFields++;
+  }
+
+  const userInterests = await InterestCategoryList.find({ type: "social" });
+  totalFields += userInterests.length;
+
+  const completenessPercentage = Math.round((filledFields / totalFields) * 100);
+
+  console.log("completenessPercentage:", completenessPercentage);
 
   if (!user.length) {
     throw new ApiError(404, "User not found");
   }
 
-  res.json(new ApiResponse(200, "User profile fetched successfully", { ...user[0], completeness: 50 }));
+  res.json(new ApiResponse(200, "User profile fetched successfully", { ...userProfile, completeness: completenessPercentage }));
 });
 
 const updateUserProfile = asyncHandler(async (req, res) => {

@@ -29,3 +29,16 @@ export const addInterestSchema = Joi.object({
     "any.required": `"categoryId" is a required field`
   })
 });
+
+export const addUserInterestSchema = Joi.object({
+  categoryId: Joi.string().required().messages({
+    "string.base": `"categoryId" should be a type of 'text'`,
+    "string.empty": `"categoryId" cannot be an empty field`,
+    "any.required": `"categoryId" is a required field`
+  }),
+  interestIds: Joi.array().items(Joi.string().required()).required().messages({
+    "array.base": `"interestIds" should be an array`,
+    "array.empty": `"interestIds" cannot be an empty field`,
+    "any.required": `"interestIds" is a required field`
+  })
+});

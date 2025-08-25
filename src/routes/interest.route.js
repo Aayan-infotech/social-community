@@ -1,8 +1,8 @@
 import { Router } from "express";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 import { validateRequest } from "../middlewares/validation.middleware.js";
-import { addInterestCategorySchema, addInterestSchema } from "../validators/interestValidator.js";
-import { addInterest, addInterestCategory, getInterestCategoryList, getInterestList } from "../controllers/interest.controller.js";
+import { addInterestCategorySchema, addInterestSchema , addUserInterestSchema} from "../validators/interestValidator.js";
+import { addInterest, addInterestCategory, getInterestCategoryList, getInterestList ,addUserInterest } from "../controllers/interest.controller.js";
 
 
 
@@ -13,5 +13,6 @@ router.post('/add', verifyJWT, validateRequest(addInterestSchema), addInterest);
 
 router.get('/categoryList',verifyJWT,getInterestCategoryList);
 router.get('/list/:categoryId',verifyJWT,getInterestList);
+router.put('/addUserInterests',verifyJWT,validateRequest(addUserInterestSchema),addUserInterest);
 
 export default router;
