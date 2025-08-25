@@ -8,6 +8,7 @@ import InterestList from "../models/InterestList.model.js";
 
 
 
+
 export const addInterestCategory = asyncHandler(async (req, res) => {
     const { category, type } = req.body;
 

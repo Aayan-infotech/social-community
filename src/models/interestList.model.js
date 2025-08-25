@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-const interestListSchema = new mongoose.Schema({
+const InterestListSchema = new mongoose.Schema({
     name:{
         type: String,
         required: true
@@ -21,6 +21,6 @@ const interestListSchema = new mongoose.Schema({
 });
 
 
-const InterestList = mongoose.model("InterestList", interestListSchema);
+const InterestList = mongoose.model("InterestList", InterestListSchema);
 
 export default InterestList;
