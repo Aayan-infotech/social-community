@@ -4,7 +4,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { isValidObjectId } from "../utils/isValidObjectId.js";
-import InterestList from "../models/InterestList.model.js";
+import InterestList from "../models/interestList.model.js";
 
 
 
