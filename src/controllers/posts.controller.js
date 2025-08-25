@@ -216,6 +216,7 @@ const getPosts = asyncHandler(async function (req, res) {
   const limit = Math.max(1, parseInt(req.query.limit) || 10);
   const skip = (page - 1) * limit;
   const userId = req.query.userId || req.user.userId;
+  const type = req.query.type || "social";
 
   const getUser = await User.find({ userId });
   if (!getUser.length > 0) {
@@ -228,7 +229,7 @@ const getPosts = asyncHandler(async function (req, res) {
 
   let aggregation = [];
   aggregation.push({
-    $match: { userId: { $eq: userId } },
+    $match: { userId: { $eq: userId }, type: { $eq: type } },
   });
   aggregation.push({
     $lookup: {
