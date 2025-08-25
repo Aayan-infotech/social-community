@@ -20,6 +20,7 @@ const interestListSchema = new mongoose.Schema({
     versionKey: false
 });
 
+
 const InterestList = mongoose.model("InterestList", interestListSchema);
 
 export default InterestList;
