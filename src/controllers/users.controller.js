@@ -268,6 +268,12 @@ const getProfessionalProfile = asyncHandler(async (req, res) => {
     },
   });
   aggregation.push({
+    $unwind: {
+      path: "$friendsData",
+      preserveNullAndEmptyArrays: true,
+    },
+  });
+  aggregation.push({
     $lookup: {
       from: "posts",
       localField: "userId",
@@ -311,11 +317,53 @@ const getProfessionalProfile = asyncHandler(async (req, res) => {
 
   const user = await User.aggregate(aggregation);
 
-  if (!user.length) {
+  const userProfile = user[0];
+
+
+  // add the completeness of the professional profile
+  const basicDetailsFields = ["name", "email", "mobile", "city", "gender", "bio", "state", "country", "aboutMe", "referralCode"];
+  const professionalDetailsFields = ["education", "experience"];
+
+  let totalFields = basicDetailsFields.length + professionalDetailsFields.length;
+  let filledFields = 0;
+
+  basicDetailsFields.forEach(field => {
+    if (userProfile[field]) {
+      filledFields++;
+    }
+  });
+
+
+  totalFields++;
+  if (userProfile.professional_image && !userProfile.professional_image.includes("placeholder")) {
+    filledFields++;
+  }
+
+  professionalDetailsFields.forEach(field => {
+    if (Array.isArray(userProfile[field]) && userProfile[field].length > 0) {
+      filledFields++;
+    }
+  });
+
+
+  const userInterests = await InterestCategoryList.find({ type: "professional" });
+  totalFields += userInterests.length;
+
+  await Promise.all(userInterests.map(async interest => {
+    const userInterest = await UserInterest.findOne({ userId: userProfile.userId, categoryId: interest._id });
+    if (userInterest) {
+      filledFields++;
+    }
+  }));
+
+
+  const completenessPercentage = Math.round((filledFields / totalFields) * 100);
+
+  if (!userProfile) {
     throw new ApiError(404, "User not found");
   }
 
-  res.json(new ApiResponse(200, "User profile fetched successfully", user[0]));
+  res.json(new ApiResponse(200, "User profile fetched successfully", { ...userProfile, completeness: completenessPercentage }));
 });
 
 // Friends
