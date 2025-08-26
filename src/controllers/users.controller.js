@@ -686,6 +686,8 @@ const getFriendSuggestionList = asyncHandler(async (req, res) => {
   }
 
   const userId = user?.userId;
+  const userInterestsDocs = await UserInterest.find({ userId: userId }).select("interestId");
+  const userInterestsArray = userInterestsDocs.map(i => i.interestId);
   const friendList = await FriendsModel.findOne({ userId });
 
   const friends = friendList?.friends || [];
@@ -745,6 +747,10 @@ const getFriendSuggestionList = asyncHandler(async (req, res) => {
     },
   });
 
+
+
+
+
   aggregation.push({
     $addFields: {
       firstMutualFriendDetails: {
@@ -776,8 +782,48 @@ const getFriendSuggestionList = asyncHandler(async (req, res) => {
     },
   });
 
+
+  aggregation.push({
+    $lookup: {
+      from: "userinterests",
+      localField: "userId",
+      foreignField: "userId",
+      as: "userInterests"
+    }
+  });
+
+  // 2. Extract only interestId array
+  aggregation.push({
+    $addFields: {
+      userInterests: {
+        $map: {
+          input: "$userInterests",
+          as: "ui",
+          in: "$$ui.interestId"
+        }
+      }
+    }
+  });
+
+  // 3. Find mutual interests
+  aggregation.push({
+    $addFields: {
+      mutualInterests: {
+        $setIntersection: [userInterestsArray, "$userInterests"] // userInterestsArray is current user’s interests
+      },
+      mutualInterestsCount: {
+        $size: {
+          $setIntersection: [userInterestsArray, "$userInterests"]
+        }
+      }
+    }
+  });
+
+
+
   aggregation.push({
     $sort: {
+      mutualInterestsCount: -1,
       isFoF: -1,
       totalFriends: -1,
       createdAt: -1,
