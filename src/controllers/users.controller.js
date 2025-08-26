@@ -138,7 +138,7 @@ const updateUserProfile = asyncHandler(async (req, res) => {
 
   const userExists = await User.findOne({ _id: { $ne: req.user._id } });
 
-  let profile_image = req.user?.profile_image ? req.user?.profile_image : "";
+  let profile_image = req.user?.profile_image ? req.user?.profile_image : null;
 
   if (req.files && req.files.profile_image) {
     // Delete the previous profile image from AWS

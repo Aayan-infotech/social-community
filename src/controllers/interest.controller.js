@@ -28,6 +28,113 @@ export const addInterestCategory = asyncHandler(async (req, res) => {
 });
 
 
+export const getInterestCategory = asyncHandler(async (req, res) => {
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.max(1, parseInt(req.query.limit) || 10);
+    const skip = (page - 1) * limit;
+
+    const { search, sortBy, sortOrder, type } = req.query;
+    const aggregation = [];
+
+    const role = req.user.role;
+
+    if (!role.includes("admin")) {
+        throw new ApiError(403, "You are not authorized to access this resource");
+    }
+
+    if (search) {
+        aggregation.push({
+            $match: {
+                $or: [
+                    { category: { $regex: search, $options: "i" } },
+                    { type: { $regex: search, $options: "i" } }
+                ]
+            }
+        })
+    }
+
+    if (type) {
+        aggregation.push({
+            $match: {
+                type: type
+            }
+        });
+    }
+
+    aggregation.push({
+        $sort: {
+            [sortBy]: sortOrder === "desc" ? -1 : 1
+        }
+    });
+
+
+    aggregation.push({
+        $facet: {
+            interestsCategories: [
+                { $skip: skip },
+                { $limit: limit },
+                {
+                    $project: {
+                        _id: 1,
+                        category: 1,
+                        type: 1
+                    }
+                }
+            ],
+            totalCount: [{ $count: "count" }],
+        }
+    });
+
+    const result = await InterestCategoryList.aggregate(aggregation);
+
+    const interestsCategories = result[0]?.interestsCategories || [];
+    const totalCount = result[0]?.totalCount[0]?.count || 0;
+    const totalPages = Math.ceil(totalCount / limit);
+
+    res.json(
+        new ApiResponse(
+            200,
+            interestsCategories.length ? "Interest categories fetched successfully" : "No interest categories found",
+            {
+                interestsCategories,
+                total_page: totalPages,
+                current_page: page,
+                total_records: totalCount,
+                per_page: limit,
+            }
+        )
+    );
+});
+
+export const updateInterestCategory = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { category, type } = req.body;
+
+    if (!isValidObjectId(id)) {
+        throw new ApiError(400, "Invalid category ID");
+    }
+
+    const existingCategory = await InterestCategoryList.findById(id);
+    if (!existingCategory) {
+        throw new ApiError(404, "Category not found");
+    }
+
+    // check the same category and type
+    const duplicateCategory = await InterestCategoryList.findOne({ category, type });
+    if (duplicateCategory && duplicateCategory._id.toString() !== id) {
+        throw new ApiError(400, "Category with the same name and type already exists");
+    }
+
+    existingCategory.category = category;
+    existingCategory.type = type;
+
+    await existingCategory.save();
+
+    return res.json(new ApiResponse(200, "Interest category updated successfully", existingCategory));
+});
+
+
+
 export const addInterest = asyncHandler(async (req, res) => {
     const { name, categoryId } = req.body;
 
@@ -55,6 +162,108 @@ export const addInterest = asyncHandler(async (req, res) => {
     });
 
     return res.json(new ApiResponse(200, "Interest added successfully", newInterest));
+});
+
+export const getInterests = asyncHandler(async (req, res) => {
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.max(1, parseInt(req.query.limit) || 10);
+    const skip = (page - 1) * limit;
+
+    const { search, sortBy, sortOrder, type, category } = req.query;
+
+    const aggregation = [];
+
+    aggregation.push({
+        $lookup: {
+            from: "interestcategorylists",
+            localField: "categoryId",
+            foreignField: "_id",
+            as: "category"
+        }
+    });
+
+    aggregation.push({
+        $unwind: {
+            path: "$category",
+            preserveNullAndEmptyArrays: true
+        }
+    });
+
+    if (search) {
+        aggregation.push({
+            $match: {
+                $or: [
+                    { name: { $regex: search, $options: "i" } },
+                    { "category.category": { $regex: search, $options: "i" } },
+                    { type: { $regex: search, $options: "i" } }
+                ]
+            }
+        });
+    }
+
+    if (type) {
+        aggregation.push({
+            $match: {
+                type: { $regex: type, $options: "i" }
+            }
+        });
+    }
+
+    if (category) {
+        aggregation.push({
+            $match: {
+                "category.category": { $regex: category, $options: "i" }
+            }
+        });
+    }
+
+    aggregation.push({
+        $sort: {
+            [sortBy]: sortOrder === "desc" ? -1 : 1
+        }
+    });
+
+    aggregation.push({
+        $facet: {
+            interests: [
+                { $skip: skip },
+                { $limit: limit },
+                {
+                    $project: {
+                        _id: 1,
+                        name: 1,
+                        category: "$category.category",
+                        type: 1
+                    }
+                }
+            ],
+            totalCount: [
+                { $count: "count" }
+            ]
+        }
+    });
+
+
+    const result = await InterestList.aggregate(aggregation);
+
+    const interests = result[0]?.interests || [];
+    const totalCount = result[0]?.totalCount[0]?.count || 0;
+    const totalPages = Math.ceil(totalCount / limit);
+
+    res.json(
+        new ApiResponse(
+            200,
+            interests.length ? "Interests fetched successfully" : "No interests found",
+            {
+                interests,
+                total_page: totalPages,
+                current_page: page,
+                total_records: totalCount,
+                per_page: limit,
+            }
+        )
+    );
+
 });
 
 
@@ -86,7 +295,7 @@ export const getInterestCategoryList = asyncHandler(async (req, res) => {
 
 
 export const addUserInterest = asyncHandler(async (req, res) => {
-    const userId = req.user.userId;   
+    const userId = req.user.userId;
     const { categoryId, interestIds } = req.body;
 
     if (!isValidObjectId(categoryId)) {

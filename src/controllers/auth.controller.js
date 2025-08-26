@@ -258,7 +258,7 @@ const loginUser = asyncHandler(async (req, res) => {
     throw new ApiError(500, "Something went wrong while logging in");
   }
 
-  loggedInUser.profile_image = loggedInUser.profile_image || `${process.env.APP_URL}/images/default-profile.png`;
+  loggedInUser.profile_image = loggedInUser.profile_image || `${process.env.APP_URL}/images/image_place.png`;
 
   // cookies
   const options = {
