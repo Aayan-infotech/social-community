@@ -233,6 +233,7 @@ export const getInterests = asyncHandler(async (req, res) => {
                         _id: 1,
                         name: 1,
                         category: "$category.category",
+                        categoryId: "$category._id",
                         type: 1
                     }
                 }
@@ -264,6 +265,40 @@ export const getInterests = asyncHandler(async (req, res) => {
         )
     );
 
+});
+
+
+export const updateInterest = asyncHandler(async (req,res) =>{
+    const { id } = req.params;
+    const { name, categoryId } = req.body;
+
+    if (!isValidObjectId(id)) {
+        throw new ApiError(400, "Invalid interest ID");
+    }
+
+    const interest = await InterestList.findById(id);
+    if (!interest) {
+        throw new ApiError(404, "Interest not found");
+    }
+
+    const category = await InterestCategoryList.findById(categoryId);
+    if (!category) {
+        throw new ApiError(404, "Category not found");
+    }
+
+    // check if the interest name is already taken
+    const existingInterest = await InterestList.findOne({ name, categoryId });
+    if (existingInterest && existingInterest._id.toString() !== id) {
+        throw new ApiError(400, "Interest name already exists in this category");
+    }
+
+    interest.name = name;
+    interest.categoryId = categoryId;
+    interest.type = category.type;
+
+    await interest.save();
+
+    res.json(new ApiResponse(200, "Interest updated successfully", interest));
 });
 
 
