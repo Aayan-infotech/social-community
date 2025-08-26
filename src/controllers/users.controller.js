@@ -621,6 +621,20 @@ const getFriendList = asyncHandler(async (req, res) => {
       },
     },
     {
+      $lookup:{
+        from: "friends",
+        localField: "userId",
+        foreignField: "userId",
+        as: "friends_data"
+      }
+    },
+    {
+      $unwind: {
+        path: "$friends_data",
+        preserveNullAndEmptyArrays: true
+      }
+    },  
+    {
       $facet: {
         friends: [
           { $skip: skip },
@@ -636,6 +650,8 @@ const getFriendList = asyncHandler(async (req, res) => {
               state: 1,
               city: 1,
               gender: 1,
+              bio: 1,
+              friendsCount: { $size: { $ifNull: ["$friends_data.friends", []] } },
               profile_image: {
                 $ifNull: [
                   "$profile_image",

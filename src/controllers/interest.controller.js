@@ -170,6 +170,7 @@ export const getInterests = asyncHandler(async (req, res) => {
     const skip = (page - 1) * limit;
 
     const { search, sortBy, sortOrder, type, category } = req.query;
+    console.log("search", search, "type", type, "category", category, "sortBy", sortBy, "sortOrder", sortOrder);
 
     const aggregation = [];
 
@@ -212,7 +213,7 @@ export const getInterests = asyncHandler(async (req, res) => {
     if (category) {
         aggregation.push({
             $match: {
-                "category.category": { $regex: category, $options: "i" }
+                "categoryId": new mongoose.Types.ObjectId(category)
             }
         });
     }
@@ -268,7 +269,7 @@ export const getInterests = asyncHandler(async (req, res) => {
 });
 
 
-export const updateInterest = asyncHandler(async (req,res) =>{
+export const updateInterest = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const { name, categoryId } = req.body;
 
@@ -309,12 +310,27 @@ export const getInterestList = asyncHandler(async (req, res) => {
     }
 
 
+    const userInterestsDocs = await UserInterest.find({ userId: req.user.userId }).select("interestId");
+    const userInterestsArray = userInterestsDocs.map(i => i.interestId);
+
     const aggregation = [];
     aggregation.push({
         $match: {
             categoryId: new mongoose.Types.ObjectId(categoryId)
         }
     });
+
+    aggregation.push({
+        $addFields: {
+            isSelected: {
+                $cond: {
+                    if: { $in: ["$_id", userInterestsArray] },
+                    then: true,
+                    else: false
+                }
+            }
+        }
+    })
 
     const interests = await InterestList.aggregate(aggregation);
     return res.json(new ApiResponse(200, "Interest list fetched successfully", interests));
