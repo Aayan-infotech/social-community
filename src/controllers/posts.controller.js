@@ -394,6 +394,8 @@ const getComments = asyncHandler(async (req, res) => {
   if (!post) {
     throw new ApiError(404, "Post not found");
   }
+  
+  const timezone = req.headers.timezone || "UTC";
 
   const page = Math.max(1, parseInt(req.query.page) || 1);
   const limit = Math.max(1, parseInt(req.query.limit) || 10);
@@ -427,17 +429,26 @@ const getComments = asyncHandler(async (req, res) => {
     $limit: limit,
   });
 
+
+
   aggregation.push({
     $project: {
       "user.name": 1,
       "user.profile_image": 1,
       "user.userId": 1,
       comment: 1,
-      createdAt: 1,
+      createdAt: {
+        $dateToString: {
+          date: "$createdAt",
+          format: "%Y-%m-%d %H:%M:%S",
+          timezone: timezone
+        }
+      }
     },
   });
 
   const comments = await CommentModel.aggregate(aggregation);
+
 
   if (comments.length === 0) {
     return res.json(new ApiResponse(200, "No comments found", []));
@@ -1106,7 +1117,7 @@ const deletePost = asyncHandler(async (req, res) => {
 
   await PostModel.deleteOne({ _id: postId });
 
-  res.json(new ApiResponse(200, "Post deleted successfully",null));
+  res.json(new ApiResponse(200, "Post deleted successfully", null));
 });
 
 
