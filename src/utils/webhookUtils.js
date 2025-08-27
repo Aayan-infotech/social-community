@@ -1,5 +1,4 @@
 import fs from "fs";
-// import { placeOrder } from "../controllers/marketplace.controller.js";
 import Cart from "../models/addtocart.model.js";
 import Order from "../models/orders.model.js";
 import Product from "../models/product.model.js";
@@ -12,7 +11,7 @@ import { isValidObjectId } from "./isValidObjectId.js";
 import { sendEmail } from "../services/emailService.js";
 import { generateOrderReceiptHTML } from "../emails/orderReceipt.js";
 import { generatePDFfromHTML } from "./generatePDFfromHTML.js";
-import { uploadImage } from "./awsS3Utils.js";
+
 
 export const updateVirtualEventStatus = async (bookingId, bookingStatus, paymentStatus, paymentIntentId = null) => {
     try {
@@ -314,12 +313,12 @@ export const updateOrderStatus = async (
             .replace("{{orderDate}}", new Date().toLocaleDateString())
             .replace("{{itemTables}}", orders.map(
                 order => order.items.map(item => `<div class="order-item">
-                    <span>${item.product.name}</span>
-                    <span>${item.product.price}</span>
+                    <span>${item.product.product_name}</span>
+                    <span>${Number(item.product.product_price) - Number((item.product.product_price * item.product.product_discount) / 100).toFixed(2)}</span>
                 </div>`).join(""))
             )
-            .replace("{{totalPrice}}", orders.map(order => order.totalPrice).reduce((a, b) => a + b, 0))
-            .replace("{{shippingAddress}}", `${orders[0]?.shippingAddress?.mobile}, ${orders[0]?.shippingAddress?.alternate_mobile}, ${orders[0]?.shippingAddress?.address} ,${orders[0]?.shippingAddress?.city} , ${orders[0]?.shippingAddress?.state}, ${orders[0]?.shippingAddress?.country}, ${orders[0]?.shippingAddress?.pincode}`);
+            .replace("{{totalPrice}}", orders.reduce((sum, order) => sum + Number(order.totalAmount), 0))
+            .replace("{{shippingAddress}}", `${orders[0]?.shippingAddress?.mobile}, ${orders[0]?.shippingAddress?.alternate_mobile}, ${orders[0]?.shippingAddress?.name}, ${orders[0]?.shippingAddress?.address} ,${orders[0]?.shippingAddress?.city} , ${orders[0]?.shippingAddress?.state}, ${orders[0]?.shippingAddress?.country}, ${orders[0]?.shippingAddress?.pincode}`);
 
 
         const send = await sendEmail(orders[0].buyer.email, "Order Confirmation", emailContent);
@@ -347,6 +346,7 @@ export const updateOrderStatus = async (
             const orderReceipt = generateOrderReceiptHTML(order);
             const generatedReceipt = await generatePDFfromHTML(orderReceipt);
 
+            // const outputFile = fs.writeFileSync(`./public/temp/${orderId}.pdf`, generatedReceipt);
 
             const attachments = [
                 {

@@ -7,137 +7,62 @@ export const generateOrderReceiptHTML = (orderData) => {
     const totalQuantity = items.reduce((acc, item) => acc + item.quantity, 0);
 
     return `
-    <html>
-    <head>
-        <style>
-            body {
-                font-family: Arial, sans-serif;
-                font-size: 12px;
-                color: #333;
-                margin: 20px;
-            }
-            .invoice-container {
-                border: 1px solid #ddd;
-                padding: 20px;
-                border-radius: 8px;
-                background: #fff;
-            }
-            .invoice-header {
-                font-size: 24px;
-                font-weight: bold;
-                text-align: center;
-                margin-bottom: 20px;
-                color: #2c3e50;
-                text-transform: uppercase;
-            }
-            .seller-section {
-                margin-bottom: 15px;
-                padding: 10px;
-                border: 1px solid #ddd;
-                border-radius: 6px;
-                background: #f9f9f9;
-            }
-            .seller-title {
-                font-weight: bold;
-                margin-bottom: 5px;
-                color: #2c3e50;
-            }
-            .seller-name {
-                font-size: 14px;
-                font-weight: bold;
-                color: #16a085;
-            }
-            .section-title {
-                font-weight: bold;
-                margin-bottom: 5px;
-                color: #2c3e50;
-                text-decoration: underline;
-            }
-            .invoice-to-section {
-                margin-bottom: 20px;
-            }
-            .invoice-to, .invoice-details {
-                font-size: 12px;
-                line-height: 1.5;
-                background: #fcfcfc;
-                border-radius: 6px;
-            }
-            table.items-table {
-                width: 100%;
-                border-collapse: collapse;
-                margin-top: 15px;
-            }
-            table.items-table th {
-                background: #2c3e50;
-                color: #fff;
-                text-align: center;
-                padding: 8px;
-                font-size: 11px;
-            }
-            table.items-table td {
-                border: 1px solid #ddd;
-                padding: 6px;
-            }
-            table.items-table tbody tr:nth-child(even) {
-                background: #f9f9f9;
-            }
-            table.items-table tfoot td {
-                font-weight: bold;
-                background: #ecf0f1;
-            }
-            .amount-words {
-                margin-top: 10px;
-                font-weight: bold;
-                font-style: italic;
-                color: #34495e;
-            }
-            .terms-conditions {
-                margin-top: 20px;
-                font-size: 11px;
-                color: #555;
-            }
-            .terms-title {
-                font-weight: bold;
-                margin-bottom: 5px;
-                color: #2c3e50;
-            }
-        </style>
-    </head>
-    <body>
-        <div class="invoice-container">
-            <div class="invoice-header">INVOICE</div>
+    <div class="invoice-container">
+            <h1 class="invoiceHeader" style="color:#2c3e50;text-align:center;">INVOICE</h1>
+            <table>
+               <thead>
+                   <tr>
+                       <th style="width: 50%;border:none;">Seller/Sold By</th>
+                   </tr>
+               </thead>
+                <tbody>
+                    <tr>
+                        <td style="width: 50%;border:none;"><strong>Seller Name:</strong> ${seller.name}</td>
+                    </tr>
+                    <tr>
+                        <td style="border:none;"><strong>Seller Address:</strong> ${seller.address} , ${seller.city}, ${seller.state}, ${seller.country}</td>
+                    </tr>
+                    <tr>
+                        <td style="border:none;"><strong>Seller Phone:</strong> ${seller.mobile}</td>
+                    </tr>
+                    <tr>
+                        <td style="border:none;"><strong>Seller Email:</strong> ${seller.email}</td>
+                    </tr>
+                </tbody>
+            </table>
 
-            <div class="seller-section">
-                <div class="seller-title">Sold By / Seller</div>
-                <div class="seller-info">
-                    <div class="seller-name">${seller.name}</div>
-                    <div class="seller-details">
-                        <p>${seller.address}</p>
-                        <p>${seller.city}, ${seller.state}, ${seller.country}</p>
-                        <p>Phone : ${seller.mobile}</p>
-                    </div>
-                </div>
-            </div>
 
-            <div class="invoice-to-section" style="display: flex; gap: 10px;">
-                <div class="invoice-to" style="flex: 1; border: 1px solid #ddd; padding: 10px;">
-                    <div class="section-title">Bill To</div>
-                    <p><strong>Name :</strong> ${buyer.name}</p>
-                    <p><strong>Address :</strong> ${shippingAddress.address}</p>
-                    <p><strong>City :</strong> ${shippingAddress.city}</p>
-                    <p><strong>State :</strong> ${shippingAddress.state}</p>
-                    <p><strong>ZIP Code :</strong> ${shippingAddress.pincode}</p>
-                    <p><strong>Country :</strong> ${shippingAddress.country}</p>
-                </div>
-                <div class="invoice-details" style="flex: 1; border: 1px solid #ddd; padding: 10px;">
-                    <p><strong>Order ID :</strong> ${orderId}</p>
-                    <p><strong>Invoice Number :</strong> ${invoiceNumber}</p>
-                    <p><strong>Invoice Date :</strong> ${new Date().toLocaleDateString()}</p>
-                    <p><strong>Payment Method :</strong> ${paymentMethod}</p>
-                </div>
-            </div>
+            <table>
+            <thead>
+                <tr>
+                    <th style="border:none;">Bill To</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td style="border:none;"><strong>Name:</strong> ${buyer.name}</td>
+                </tr>
+                <tr>
+                    <td style="border:none;"><strong>Phone:</strong> ${buyer.mobile}</td>
+                </tr>
+                <tr>
+                    <td style="border:none;"><strong>Email:</strong> ${buyer.email}</td>
+                </tr>
+                 <tr>
+                    <td style="border:none;"><strong>Address:</strong> ${shippingAddress.address}, ${shippingAddress.city}, ${shippingAddress.state}, ${shippingAddress.country}</td>
+                </tr>
+                <tr>
+                    <td style="border:none;"><strong>Phone:</strong> ${shippingAddress.mobile}</td>
+                </tr>
+                <tr>
+                    <td style="border:none;"><strong>Alternate Phone:</strong> ${shippingAddress.alternate_mobile}</td>
+                </tr>
+            </tbody>
+            </table>
 
-            <table class="items-table">
+
+
+            <table class="items-table" style="width:100%;">
                 <thead>
                     <tr>
                         <th>Item #</th>
@@ -188,8 +113,6 @@ export const generateOrderReceiptHTML = (orderData) => {
                 </ol>
             </div>
         </div>
-    </body>
-    </html>
     `;
 };
 

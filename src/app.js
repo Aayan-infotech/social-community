@@ -5,6 +5,7 @@ import routes from "./routes/index.js";
 import passport from "passport";
 import './config/passport.js';
 import { handleWebhooks } from "./services/stripeService.js";
+import storyCleanup from "./cron/storyCleanup.js";
 
 const app = express();
 
@@ -27,5 +28,6 @@ app.use(passport.initialize());
 app.use("/api/", routes);
 app.get("/", (req, res, next) => res.end("Hello world"));
 
+storyCleanup.start();
 
 export { app };
