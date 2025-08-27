@@ -2521,6 +2521,7 @@ const searchAllUsers = asyncHandler(async (req, res) => {
               $and: [
                 { $eq: ["$senderId", "$$senderId"] },
                 { $eq: ["$receiverId", "$$receiverId"] },
+                { $ne: ["$status", "rejected"] },
               ],
             },
           },
