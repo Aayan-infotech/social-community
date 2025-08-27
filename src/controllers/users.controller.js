@@ -293,6 +293,38 @@ const getProfessionalProfile = asyncHandler(async (req, res) => {
       postsCount: { $size: "$postsData" },
     },
   });
+
+ aggregation.push({
+    $lookup: {
+      from: "userinterests",
+      localField: "userId",
+      foreignField: "userId",
+      as: "userInterests",
+    },
+  });
+
+  aggregation.push({
+    $lookup: {
+      from: "interestlists",
+      localField: "userInterests.interestId",
+      foreignField: "_id",
+      as: "interestDetails",
+    },
+  });
+
+  // Filter professional only
+  aggregation.push({
+    $addFields: {
+      interests: {
+        $filter: {
+          input: "$interestDetails",
+          as: "int",
+          cond: { $eq: ["$$int.type", "professional"] }
+        }
+      }
+    }
+  });
+
   aggregation.push({
     $project: {
       _id: 0,
@@ -312,6 +344,7 @@ const getProfessionalProfile = asyncHandler(async (req, res) => {
       friendsCount: 1,
       postsCount: 1,
       education: 1,
+      interests: { name: 1 }
     },
   });
 
