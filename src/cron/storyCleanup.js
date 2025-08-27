@@ -3,7 +3,7 @@ import { Story } from "../models/story.model.js";
 import { deleteObject } from "../utils/awsS3Utils.js";
 
 
-const storyCleanup = cron.schedule("*/10 * * * *", async () => {
+const storyCleanup = cron.schedule("0 * * * *", async () => {
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
 
