@@ -1809,7 +1809,10 @@ const orderDetails = asyncHandler(async (req, res) => {
           profile_image: {
             $ifNull: ["$seller.profile_image", `${process.env.APP_URL}/placeholder/image_place.png`]
           }
-        }
+        },
+        cancellationRemark: 1,
+        trackingId: 1,
+        carrierPartner: 1
       }
     }
   ];
@@ -2040,6 +2043,8 @@ const updateOrderDeliveryStatus = asyncHandler(async (req, res) => {
 //   const result = await updateOrderStatus("ORDER_1755581543984YP21UFA4BU9", "paid", "placed", "pi_3Rxi9kQX56NWuV5X2U07B5on", "user-01010", ["68a409eef5502ea313e2893e"]);
 //   throw new ApiError(400, "Test function error");
 
+
+
 // });
 
 export {
@@ -2083,4 +2088,5 @@ export {
   orderDetails,
   updateOrderDeliveryStatus,
   myOrderDetails,
+  // testFun
 };
