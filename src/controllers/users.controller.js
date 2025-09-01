@@ -294,7 +294,7 @@ const getProfessionalProfile = asyncHandler(async (req, res) => {
     },
   });
 
- aggregation.push({
+  aggregation.push({
     $lookup: {
       from: "userinterests",
       localField: "userId",
@@ -654,7 +654,7 @@ const getFriendList = asyncHandler(async (req, res) => {
       },
     },
     {
-      $lookup:{
+      $lookup: {
         from: "friends",
         localField: "userId",
         foreignField: "userId",
@@ -666,7 +666,7 @@ const getFriendList = asyncHandler(async (req, res) => {
         path: "$friends_data",
         preserveNullAndEmptyArrays: true
       }
-    },  
+    },
     {
       $facet: {
         friends: [
@@ -2909,6 +2909,57 @@ const getAllVendors = asyncHandler(async (req, res) => {
   );
 });
 
+const storyLike = asyncHandler(async (req, res) => {
+  const { storyId } = req.body;
+
+  const story = await Story.findById(storyId);
+  if (!story) {
+    throw new ApiError(404, "Story not found");
+  }
+  const userId = req.user.userId;
+
+
+
+  if (story.likedBy.some((like) => like.toString() === userId)) {
+    story.likes -= 1;
+    story.likedBy = story.likedBy.filter((like) => like.toString() !== userId);
+  } else {
+    story.likes += 1;
+    story.likedBy.push(userId);
+  }
+  await story.save();
+
+  res.json(new ApiResponse(200, "Story liked successfully", story));
+});
+
+const getStoryLikedBy = asyncHandler(async (req, res) => {
+  const { storyId } = req.query;
+
+  const aggregation = [];
+
+  aggregation.push({
+    $match: { _id: new mongoose.Types.ObjectId(storyId) },
+  });
+  aggregation.push({
+    $project: {
+      likedBy: 1
+    }
+  });
+
+  const result = await Story.aggregate(aggregation);
+  console.log(result);
+  const story = result[0];
+  if (!story) {
+    throw new ApiError(404, "Story not found");
+  }
+  const likedByUserIds = story.likedBy;
+  const likedByUsers = await User.find({ userId: { $in: likedByUserIds } }, "name profile_image");
+
+
+  res.json(new ApiResponse(200, "Fetched story likes successfully", likedByUsers));
+
+});
+
 export {
   getUserProfile,
   updateUserProfile,
@@ -2957,5 +3008,7 @@ export {
   updatePage,
   updateFAQ,
   deleteFAQ,
-  deleteStory
+  deleteStory,
+  storyLike,
+  getStoryLikedBy
 };

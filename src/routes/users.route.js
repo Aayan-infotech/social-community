@@ -48,7 +48,9 @@ import {
   updatePage,
   updateFAQ,
   deleteFAQ,
-  deleteStory
+  deleteStory,
+  storyLike,
+  getStoryLikedBy
 } from "../controllers/users.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { validateRequest } from "../middlewares/validation.middleware.js";
@@ -63,6 +65,7 @@ import {
   saveResourcesSchema,
   addPagesSchema,
   saveFAQSchema,
+  storyLikeSchema,
   updateMatrimonialProfileSchema,
   sendNotificationSchema,
   updateUserDetailsSchema, 
@@ -213,5 +216,7 @@ router.post('/remove-friend', verifyJWT, removeFriend);
 
 router.get('/get-all-event-organizers', verifyJWT, getAllEventOrganizers);
 router.get('/get-all-vendors', verifyJWT, getAllVendors);
+router.post('/story-like', verifyJWT, validateRequest(storyLikeSchema), storyLike);
+router.get("/storyLikedBy",verifyJWT,getStoryLikedBy);
 
 export default router;

@@ -602,6 +602,14 @@ const updateUserDetailsSchema = Joi.object({
   }),
 });
 
+const storyLikeSchema = Joi.object({
+  storyId: Joi.string().required().messages({
+    "string.base": "Story Id must be a string.",
+    "string.empty": "Story Id is required.",
+    "any.required": "Story Id is required.",
+  }),
+});
+
 export {
   userValidationSchema,
   loginValidationSchema,
@@ -622,5 +630,6 @@ export {
   updateMatrimonialProfileSchema,
   sendNotificationSchema,
   updateUserDetailsSchema,
-  updateFAQSchema
+  updateFAQSchema,
+  storyLikeSchema
 };

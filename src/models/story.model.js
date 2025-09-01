@@ -22,6 +22,17 @@ const storySchema = new mongoose.Schema(
       default: null,
       required: false,
     },
+    likes: {
+      type: Number,
+      default: 0,
+      required: false,
+    },
+    likedBy: [
+      {
+        type: String,
+        ref: "user",
+      },
+    ],
   },
   { timestamps: true }
 );
