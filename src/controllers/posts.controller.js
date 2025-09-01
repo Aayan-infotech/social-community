@@ -732,6 +732,20 @@ const getShortsVideo = asyncHandler(async (req, res) => {
       },
     },
     {
+      $addFields: {
+        isLiked: {
+          $gt: [
+            {
+              $size: {
+                $setIntersection: [[req.user.userId], "$likedBy"],
+              },
+            },
+            0,
+          ],
+        },
+      },
+    },
+    {
       $unwind: "$user",
     },
     {
@@ -752,6 +766,7 @@ const getShortsVideo = asyncHandler(async (req, res) => {
               type: 1,
               media: 1,
               likes: 1,
+              isLiked: 1,
               comment_count: { $size: "$comments" },
             },
           },
