@@ -112,6 +112,14 @@ export const getAllJobs = asyncHandler(async (req, res) => {
       as: "user",
     },
   });
+
+  aggregation.push({
+    $unwind: {
+      path: "$user",
+      preserveNullAndEmptyArrays: true
+    }
+  });
+
   aggregation.push({
     $facet: {
       jobs: [
