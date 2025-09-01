@@ -305,7 +305,7 @@ const myEvents = asyncHandler(async (req, res) => {
       "Invalid type parameter. Must be 'all', 'upcoming', or 'past'"
     );
   }
-  const {searchKeyword,sortField = "createdAt", statusFilter} = req.query;
+  const { searchKeyword, sortField = "createdAt", statusFilter } = req.query;
   const sortOrder = req.query.sortOrder === "asc" ? 1 : -1;
 
   const allowedSortFields = [
@@ -1026,6 +1026,21 @@ const getBooking = asyncHandler(async (req, res) => {
   aggregation.push({
     $unwind: "$eventDetails",
   });
+
+
+  //   const qrCodeData = {
+  //   ticketId: booking.ticketId,
+  //   eventId: booking.eventId._id,
+  //   eventName: booking.eventId.eventName,
+  //   eventLocation: booking.eventId.eventLocation,
+  // };
+
+  // // base 64 encode the qrCodeData
+  // const qrCodeDataEncoded = Buffer.from(JSON.stringify(qrCodeData)).toString(
+  //   "base64"
+  // );
+
+  // wanted to include QR code data in the booking details
 
   aggregation.push({
     $facet: {
@@ -1858,6 +1873,49 @@ const getEventDashboard = asyncHandler(async (req, res) => {
   );
 });
 
+
+
+const getTicketDetails = asyncHandler(async (req, res) => {
+  const { ticketId } = req.params;
+
+  if (!isValidObjectId(ticketId)) {
+    throw new ApiError(400, "Invalid ticket ID");
+  }
+
+
+  const booking = await TicketBooking.findById(ticketId).populate(
+    "eventId",
+    "eventName eventLocation eventStartDate eventEndDate ticketPrice userId"
+  );
+  if (!booking) {
+    throw new ApiError(404, "Booking not found");
+  }
+
+  if (booking.bookingStatus !== 'booked') {
+    throw new ApiError(400, "Complete the payment to view ticket details");
+  }
+
+  const qrCodeData = {
+    ticketId: booking.ticketId,
+    eventId: booking.eventId._id,
+    eventName: booking.eventId.eventName,
+    eventLocation: booking.eventId.eventLocation,
+  };
+
+  // base 64 encode the qrCodeData
+  const qrCodeDataEncoded = Buffer.from(JSON.stringify(qrCodeData)).toString(
+    "base64"
+  );
+
+
+  res.json(
+    new ApiResponse(200, "Ticket details fetched successfully", {
+      booking,
+      qrCodeData: qrCodeDataEncoded,
+    })
+  );
+});
+
 export {
   addEvent,
   getEvents,
@@ -1879,5 +1937,6 @@ export {
   getEventDetails,
   updateEventStatus,
   getEventDashboard,
-  repayment
+  repayment,
+  getTicketDetails
 };

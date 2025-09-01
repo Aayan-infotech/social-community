@@ -31,7 +31,11 @@ const virtualEventSchema = Joi.object({
     "number.base": "Ticket price must be a number",
     "any.required": "Ticket price is required",
   }),
-  noOfSlots: Joi.string().optional().allow(''),
+  noOfSlots: Joi.number().optional().allow('').min(1).max(10000000).messages({
+    "number.base": "Number of slots must be a number",
+    "number.min": "Number of slots must be at least 1",
+    "number.max": "Number of slots must be less than or equal to 10000000",
+  }),
   isFreeEvent: Joi.boolean().default(false),
 });
 

@@ -25,6 +25,10 @@ export const jobValidationSchema = joi.object({
     "object.base": "Job image should be a string",
     "object.empty": "Job image is optional",
   }),
+  requiredSkills: joi.string().required().messages({
+    "string.empty": "Required skills are required",
+    "any.required": "Required skills are required",
+  }),
 });
 
 export const applyJobSchema = joi.object({
@@ -88,4 +92,8 @@ export const editJobValidationSchema = joi.object({
     "object.base": "Job image should be a string",
     "object.empty": "Job image is optional",
   }),
+  requiredSkills: joi.string().required().messages({
+    "string.empty": "Required skills are required",
+    "any.required": "Required skills are required",
+  })
 });

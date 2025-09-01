@@ -10,6 +10,7 @@ const jobSchema = new mongoose.Schema(
     salary:{type:String,default:null},
     jobImage:{ type: String, default: null },
     isDeleted: { type: Boolean, default: false },
+    requiredSkills: { type: [String], default: [] },
   },
   { timestamps: true }
 );

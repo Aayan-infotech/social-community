@@ -14,9 +14,11 @@ import fs from "fs";
 import { isValidObjectId } from "../utils/isValidObjectId.js";
 import { sendEmail } from "../services/emailService.js";
 import { User } from "../models/user.model.js";
+import InterestList from "../models/interestList.model.js";
+import InterestCategoryList from "../models/InterestCategoryList.model.js";
 
 export const addJob = asyncHandler(async (req, res) => {
-  const { description, location, companyName, position, salary } = req.body;
+  const { description, location, companyName, position, salary, requiredSkills } = req.body;
   const userId = req.user.userId;
 
   let jobImage = null;
@@ -33,6 +35,35 @@ export const addJob = asyncHandler(async (req, res) => {
     }
   }
 
+  // check if required skills are in the interest list
+  const requiredSkillsArray = requiredSkills.split(',').map(skill => skill.trim());
+
+
+  if (requiredSkillsArray.length > 0) {
+    requiredSkillsArray.forEach(async (skill) => {
+      const interest = await InterestList.findOne({ name: skill, type: "professional" });
+      if (!interest) {
+        let category = await InterestCategoryList.findOne({
+          category: "Others",
+          type: "professional"
+        });
+
+        if (!category) {
+          category = await InterestCategoryList.create({
+            category: "Others",
+            type: "professional"
+          });
+        }
+        await InterestList.create({
+          name: skill,
+          categoryId: category._id,
+          type: "professional"
+        });
+      }
+
+    });
+  }
+
   const newJob = await JobModel.create({
     description,
     location,
@@ -41,6 +72,7 @@ export const addJob = asyncHandler(async (req, res) => {
     userId,
     salary,
     jobImage,
+    requiredSkills: requiredSkillsArray,
   });
 
   res.json(new ApiResponse(200, "Job added successfully", newJob));
@@ -73,6 +105,14 @@ export const getAllJobs = asyncHandler(async (req, res) => {
     },
   });
   aggregation.push({
+    $lookup: {
+      from: "users",
+      localField: "userId",
+      foreignField: "userId",
+      as: "user",
+    },
+  });
+  aggregation.push({
     $facet: {
       jobs: [
         { $skip: skip },
@@ -91,8 +131,10 @@ export const getAllJobs = asyncHandler(async (req, res) => {
             location: 1,
             companyName: 1,
             position: 1,
-            salary: 1,
+            salary: { $ifNull: ["$salary", "Negotiable"] },
             jobImage: 1,
+            requiredSkills: 1,
+            createdAt:1,
             totalApplications: { $size: "$appliedJobs" },
           },
         },
@@ -324,7 +366,7 @@ export const getApplicantList = asyncHandler(async (req, res) => {
 });
 
 export const editJob = asyncHandler(async (req, res) => {
-  const { jobId, description, location, companyName, position, salary } =
+  const { jobId, description, location, companyName, position, salary, requiredSkills } =
     req.body;
   const userId = req.user.userId;
 
@@ -360,6 +402,36 @@ export const editJob = asyncHandler(async (req, res) => {
     }
   }
 
+  const requiredSkillsArray = requiredSkills.split(',').map(skill => skill.trim());
+
+  if (requiredSkillsArray.length > 0) {
+    requiredSkillsArray.forEach(async (skill) => {
+      const interest = await InterestList.findOne({ name: skill, type: "professional" });
+      if (!interest) {
+        let category = await InterestCategoryList.findOne({
+          category: "Others",
+          type: "professional"
+        });
+
+        if (!category) {
+          category = await InterestCategoryList.create({
+            category: "Others",
+            type: "professional"
+          });
+        }
+        await InterestList.create({
+          name: skill,
+          categoryId: category._id,
+          type: "professional"
+        });
+      }
+
+    });
+  }
+
+
+
+
   const updatedJob = await JobModel.findByIdAndUpdate(
     jobId,
     {
@@ -369,6 +441,7 @@ export const editJob = asyncHandler(async (req, res) => {
       position,
       salary,
       jobImage: jobImage || job.jobImage,
+      requiredSkills: requiredSkillsArray,
     },
     { new: true }
   );
@@ -535,3 +608,50 @@ export const updateApplicantStatus = asyncHandler(async (req, res) => {
     )
   );
 });
+
+
+export const getSkillsSuggestion = asyncHandler(async (req, res) => {
+  const { search } = req.query;
+  if (!search && search === '') {
+    throw new ApiError(400, "Search  is required");
+  }
+
+
+  const interestAggregation = [];
+
+  // Always filter professional type
+  interestAggregation.push({
+    $match: { type: "professional" }
+  });
+
+  // Add search filter if provided
+  if (search) {
+    interestAggregation.push({
+      $match: {
+        name: { $regex: search, $options: "i" }
+      }
+    });
+  }
+
+  // Limit results
+  interestAggregation.push({ $limit: 20 });
+
+  // Project only needed fields
+  interestAggregation.push({
+    $project: {
+      name: 1,
+      _id: 0
+    }
+  });
+
+  const result = await InterestList.aggregate(interestAggregation);
+
+  res.json(
+    new ApiResponse(
+      200,
+      result.length ? "Skills fetched successfully" : "No skills found",
+      result
+    )
+  );
+});
+

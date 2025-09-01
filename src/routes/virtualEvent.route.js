@@ -33,7 +33,8 @@ import {
     getEventDetails,
     updateEventStatus,
     getEventDashboard,
-    repayment
+    repayment,
+    getTicketDetails
 } from "../controllers/virtualEvent.controller.js";
 import { verifyEventAuth } from "../middlewares/eventAuth.middleware.js";
 
@@ -100,5 +101,7 @@ router.get('/getEventDetails/:eventId',verifyJWT,getEventDetails);
 router.put('/updateEvent/:eventId',verifyJWT,updateEventStatus);
 
 router.get('/getEventDashboard',verifyJWT,getEventDashboard);
+
+router.get('/get-ticket/:ticketId',verifyJWT,getTicketDetails)
 
 export default router;

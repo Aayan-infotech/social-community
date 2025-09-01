@@ -170,7 +170,6 @@ export const getInterests = asyncHandler(async (req, res) => {
     const skip = (page - 1) * limit;
 
     const { search, sortBy, sortOrder, type, category } = req.query;
-    console.log("search", search, "type", type, "category", category, "sortBy", sortBy, "sortOrder", sortOrder);
 
     const aggregation = [];
 
