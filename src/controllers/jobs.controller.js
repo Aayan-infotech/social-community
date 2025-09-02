@@ -739,6 +739,7 @@ export const professionalHomeFeed = asyncHandler(async (req, res) => {
             userId: 1,
             salary: { $ifNull: ["$salary", 'Negotiable'] },
             jobImage: { $ifNull: ["$jobImage", 'default-job-image.png'] },
+            requiredSkills: 1,
             createdAt: 1,
             "user.name": 1,
             "user.email": 1,
