@@ -16,6 +16,7 @@ import { sendEmail } from "../services/emailService.js";
 import { User } from "../models/user.model.js";
 import InterestList from "../models/interestList.model.js";
 import InterestCategoryList from "../models/InterestCategoryList.model.js";
+import PostModel from "../models/posts.model.js";
 
 export const addJob = asyncHandler(async (req, res) => {
   const { description, location, companyName, position, salary, requiredSkills } = req.body;
@@ -142,7 +143,7 @@ export const getAllJobs = asyncHandler(async (req, res) => {
             salary: { $ifNull: ["$salary", "Negotiable"] },
             jobImage: 1,
             requiredSkills: 1,
-            createdAt:1,
+            createdAt: 1,
             totalApplications: { $size: "$appliedJobs" },
           },
         },
@@ -663,3 +664,128 @@ export const getSkillsSuggestion = asyncHandler(async (req, res) => {
   );
 });
 
+
+export const professionalHomeFeed = asyncHandler(async (req, res) => {
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.max(1, parseInt(req.query.limit) || 10);
+  const skip = (page - 1) * limit;
+  const userId = req.user.userId;
+
+  const aggregation = [];
+  aggregation.push({
+    $match: {
+      type: "professional",
+    },
+  });
+
+  aggregation.push({
+    $lookup:{
+      from: "users",
+      localField: "userId",
+      foreignField: "userId",
+      as: "user",
+    }
+  });
+
+  aggregation.push({
+    $unwind: {
+      path: "$user",
+      preserveNullAndEmptyArrays: true,
+    },
+  });
+
+  aggregation.push({
+    $project: {
+      _id: 1,
+      title: 1,
+      description: 1,
+      media: 1,
+      mediaType: 1,
+      userId: 1,
+      "user.name": 1,
+      "user.email": 1,
+      "user.profile_image": 1,
+      createdAt: 1,
+      type: { $literal: "post" },
+    },
+  });
+
+  aggregation.push({
+    $unionWith: {
+      coll: "jobs", // collection name of JobModel
+      pipeline: [
+        { $match: { isDeleted: false } },
+        {
+          $lookup: {
+            from: "users",
+            localField: "userId",
+            foreignField: "userId",
+            as: "user",
+          },
+        },
+        {
+          $unwind: {
+            path: "$user",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+        {
+          $project: {
+            _id: 1,
+            description: 1,
+            location: 1,
+            companyName: 1,
+            position: 1,
+            userId: 1,
+            salary: { $ifNull: ["$salary", 'Negotiable'] },
+            jobImage: { $ifNull: ["$jobImage", 'default-job-image.png'] },
+            createdAt: 1,
+            "user.name": 1,
+            "user.email": 1,
+            "user.profile_image": 1,
+            type: { $literal: "job" }, // Explicitly mark as job
+          },
+        },
+      ],
+    },
+  });
+  aggregation.push({
+    $sort: {
+      createdAt: -1,
+    },
+  });
+
+  aggregation.push({
+    $facet: {
+      metadata: [{ $count: "total" }],
+      data: [{ $skip: skip }, { $limit: limit }],
+    },
+  });
+  aggregation.push({
+    $project: {
+      data: 1,
+      total: { $ifNull: [{ $arrayElemAt: ["$metadata.total", 0] }, 0] },
+    },
+  });
+
+
+  const result = await PostModel.aggregate(aggregation);
+
+  const feed = result[0]?.data || [];
+  const totalCount = result[0]?.total || 0;
+  const totalPages = Math.ceil(totalCount / limit);
+
+  res.json(
+    new ApiResponse(
+      200,
+      totalCount ? "Posts fetched successfully" : "No posts found",
+      {
+        feed,
+        total_page: totalPages,
+        current_page: page,
+        total_records: totalCount,
+        per_page: limit,
+      }
+    )
+  );
+});

@@ -20,7 +20,8 @@ import {
   deleteJob,
   getApplicantDetails,
   updateApplicantStatus,
-  getSkillsSuggestion
+  getSkillsSuggestion,
+  professionalHomeFeed
 } from "../controllers/jobs.controller.js";
 
 const router = Router();
@@ -73,5 +74,7 @@ router.get("/get-applicant-details", verifyJWT, getApplicantDetails);
 router.put("/update-applicant-status", verifyJWT, updateApplicantStatus);
 
 router.get('/get-skills-suggestion', verifyJWT, getSkillsSuggestion);
+
+router.get('/professional-home-feed', verifyJWT, professionalHomeFeed);
 
 export default router;
