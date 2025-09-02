@@ -1390,7 +1390,7 @@ const ticketExhaust = asyncHandler(async (req, res) => {
   updatedTicket.user = user;
 
   return res.json(
-    new ApiResponse(200, "Ticket exhausted successfully", updatedTicket)
+    new ApiResponse(200, "Ticket Verified successfully", updatedTicket)
   );
 });
 
@@ -1891,7 +1891,7 @@ const getTicketDetails = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Booking not found");
   }
 
-  if (booking.bookingStatus !== 'booked') {
+  if (booking.paymentStatus !== 'completed') {
     throw new ApiError(400, "Complete the payment to view ticket details");
   }
 

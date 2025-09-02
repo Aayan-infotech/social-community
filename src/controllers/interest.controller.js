@@ -327,9 +327,19 @@ export const getInterestList = asyncHandler(async (req, res) => {
                     then: true,
                     else: false
                 }
-            }
+            },
+            sortOrder: {
+                $cond: [{ $eq: ["$name", "N/A"] }, 0, 1], // N/A → 0, others → 1
+            },
         }
-    })
+    });
+
+    aggregation.push({
+        $sort: {
+            sortOrder: 1,
+            name: 1
+        }
+    });
 
     const interests = await InterestList.aggregate(aggregation);
     return res.json(new ApiResponse(200, "Interest list fetched successfully", interests));
