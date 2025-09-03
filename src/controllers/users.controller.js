@@ -1391,6 +1391,7 @@ const getStories = asyncHandler(async (req, res) => {
             mediaUrl: "$mediaUrl",
             description: "$description",
             createdAt: "$createdAt",
+            likes: "$likes",
             isLiked: {
               $cond: {
                 if: { $in: [userId, "$likedBy"] },
