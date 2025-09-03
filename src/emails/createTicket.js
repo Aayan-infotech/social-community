@@ -28,20 +28,20 @@ function createTicketHTML(ticketData) {
             border-radius: 20px;
             box-shadow: 0 20px 40px rgba(0,0,0,0.1);
             overflow: hidden;
-            max-width: 600px;
+            max-width: 700px;
             width: 100%;
             position: relative;
         }
         
         .ticket-header {
             background: linear-gradient(135deg, #ff6b6b, #ffd93d);
-            padding: 30px;
+            padding: 25px 30px;
             text-align: center;
             color: white;
             position: relative;
         }
         
-        .ticket-header::before {
+        .ticket-header::after {
             content: '';
             position: absolute;
             bottom: -10px;
@@ -53,34 +53,91 @@ function createTicketHTML(ticketData) {
         }
         
         .event-title {
-            font-size: 28px;
+            font-size: 32px;
             font-weight: bold;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
         }
         
-        .event-subtitle {
-            font-size: 16px;
-            opacity: 0.9;
-        }
-        
-        .ticket-body {
-            padding: 40px 30px;
+        .ticket-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 0;
             background: white;
         }
         
-        .ticket-info {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            margin-bottom: 30px;
+        .ticket-table td {
+            padding: 20px;
+            vertical-align: top;
+            border: none;
         }
         
-        .info-item {
-            padding: 15px;
+        .qr-section {
+            width: 200px;
+            text-align: center;
             background: #f8f9ff;
+            border-right: 2px dashed #ddd;
+            position: relative;
+        }
+        
+        .qr-code {
+            width: 160px;
+            height: 160px;
+            background: white;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        .qr-code img {
+            width: 140px;
+            height: 140px;
             border-radius: 10px;
-            border-left: 4px solid #667eea;
+        }
+        
+        .scan-text {
+            font-size: 12px;
+            color: #666;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-bottom: 15px;
+        }
+        
+        .ticket-id {
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            color: #666;
+            background: #e9ecef;
+            padding: 6px 10px;
+            border-radius: 5px;
+            display: inline-block;
+            transform: rotate(-90deg);
+            white-space: nowrap;
+            position: absolute;
+            left: -25px;
+            top: 50%;
+            transform-origin: center;
+        }
+        
+        .data-section {
+            background: white;
+        }
+        
+        .info-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .info-table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .info-table tr:last-child td {
+            border-bottom: none;
         }
         
         .info-label {
@@ -88,68 +145,75 @@ function createTicketHTML(ticketData) {
             color: #666;
             text-transform: uppercase;
             font-weight: bold;
-            margin-bottom: 5px;
+            width: 120px;
+            background: #f8f9ff;
+            border-right: 3px solid #667eea;
         }
         
         .info-value {
             font-size: 16px;
             color: #333;
             font-weight: 600;
+            background: white;
         }
         
-        .ticket-footer {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 20px 30px;
-            background: #f8f9ff;
-            border-top: 2px dashed #ddd;
+        .price-row .info-value {
+            color: #ff6b6b;
+            font-size: 18px;
+            font-weight: bold;
         }
         
-        .ticket-id {
-            font-family: 'Courier New', monospace;
-            font-size: 14px;
-            color: #666;
-            background: #e9ecef;
-            padding: 8px 12px;
-            border-radius: 5px;
+        .attendee-row .info-value {
+            color: #667eea;
+            font-weight: bold;
         }
         
-        .qr-placeholder {
-            width: 80px;
-            height: 80px;
-            background: linear-gradient(45deg, #333, #666);
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 10px;
-            text-align: center;
-        }
-        
-        .validity {
-            text-align: center;
-            margin-top: 20px;
-            padding: 15px;
+        .validity-section {
             background: #fff3cd;
-            border-radius: 8px;
-            border: 1px solid #ffeaa7;
+            border-top: 2px dashed #ffeaa7;
+            text-align: center;
         }
         
         .validity-text {
             color: #856404;
-            font-size: 14px;
+            font-size: 13px;
+            line-height: 1.4;
+            margin: 0;
         }
         
-        @media (max-width: 600px) {
-            .ticket-info {
-                grid-template-columns: 1fr;
+        .warning-icon {
+            font-size: 16px;
+            margin-right: 8px;
+        }
+        
+        @media (max-width: 650px) {
+            .ticket-table {
+                display: block;
             }
             
-            .ticket-footer {
-                flex-direction: column;
-                gap: 15px;
+            .ticket-table tbody,
+            .ticket-table tr,
+            .ticket-table td {
+                display: block;
+                width: 100%;
+            }
+            
+            .qr-section {
+                width: 100%;
+                border-right: none;
+                border-bottom: 2px dashed #ddd;
+                text-align: center;
+                padding: 20px;
+            }
+            
+            .ticket-id {
+                position: static;
+                transform: none;
+                margin-top: 10px;
+            }
+            
+            .data-section {
+                padding: 0;
             }
         }
     </style>
@@ -157,57 +221,68 @@ function createTicketHTML(ticketData) {
 <body>
     <div class="ticket-container">
         <div class="ticket-header">
-            <h1 class="event-title">${ticketData.eventName}</h1>
+            <h1 class="event-title" style="color:#2c3e50;text-align:center;">${ticketData.eventName}</h1>
         </div>
         
-        <div class="ticket-body">
-            <div class="ticket-info">
-                <div class="info-item">
-                    <div class="info-label">Date</div>
-                    <div class="info-value">${ticketData.date}</div>
-                </div>
-                <div class="info-item">
-                    <div class="info-label">Time</div>
-                    <div class="info-value">${ticketData.time}</div>
-                </div>
-                <div class="info-item">
-                    <div class="info-label">Venue</div>
-                    <div class="info-value">${ticketData.venue}</div>
-                </div>
-                <div class="info-item">
-                    <div class="info-label">No of Tickets</div>
-                    <div class="info-value">${ticketData.noOfTickets}</div>
-                </div>
-                <div class="info-item">
-                    <div class="info-label">Attendee</div>
-                    <div class="info-value">${ticketData.attendeeName}</div>
-                </div>
-                <div class="info-item">
-                    <div class="info-label">Price</div>
-                    <div class="info-value">$${ticketData.price}</div>
-                </div>
-            </div>
-            
-            <div class="validity">
-                <p class="validity-text">
-                    ⚠️ Please arrive 30 minutes before the event starts. 
-                    This ticket is non-transferable and must be presented with valid ID.
-                </p>
-            </div>
-        </div>
-        
-        <div class="ticket-footer">
-            <div class="ticket-id">
-                Ticket ID: ${ticketData.ticketId}
-            </div>
-            <div class="qr-placeholder" style="background: none; padding: 0;">
-                <img src="${ticketData.qrData}" alt="QR Code" style="width: 80px; height: 80px;" />
-            </div>
-        </div>
+        <table class="ticket-table">
+            <tbody>
+                <tr>
+                    <td class="qr-section" rowspan="2">
+                        <div class="scan-text">Scan to Verify</div>
+                        <div class="qr-code">
+                            <img src="${ticketData.qrData}" alt="QR Code" />
+                        </div>
+                        <div class="ticket-id">
+                            ID: ${ticketData.ticketId}
+                        </div>
+                    </td>
+                    
+                    <td class="data-section">
+                        <table class="info-table" data-pdfmake="{&quot;widths&quot;:[&quot;auto&quot;,&quot;*&quot;]}">
+                            <tr>
+                                <td class="info-label">Event Date</td>
+                                <td class="info-value">${ticketData.date}</td>
+                            </tr>
+                            <tr>
+                                <td class="info-label">Event Time</td>
+                                <td class="info-value">${ticketData.time}</td>
+                            </tr>
+                            <tr>
+                                <td class="info-label">Venue</td>
+                                <td class="info-value">${ticketData.venue}</td>
+                            </tr>
+                            <tr>
+                                <td class="info-label">Quantity</td>
+                                <td class="info-value">${ticketData.noOfTickets} Ticket(s)</td>
+                            </tr>
+                            <tr class="attendee-row">
+                                <td class="info-label">Attendee</td>
+                                <td class="info-value">${ticketData.attendeeName}</td>
+                            </tr>
+                            <tr class="price-row">
+                                <td class="info-label">Total Price</td>
+                                <td class="info-value">$${ticketData.price}</td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+                
+                <tr>
+                    <td class="validity-section">
+                        <p class="validity-text">
+                            <span class="warning-icon">⚠️</span>
+                            Please arrive 30 minutes before the event starts.<br>
+                            This ticket is non-transferable and must be presented with valid ID.
+                        </p>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
     </div>
 </body>
 </html>`;
 }
+
 export {
     createTicketHTML
 };
