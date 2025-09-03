@@ -256,6 +256,8 @@ const updateProfileSchema = Joi.object({
     .min(10)
     .max(200)
     .trim()
+    .optional()
+    .allow("")
     .messages({
       "string.max": "Bio must not exceed 200 characters.",
     }),

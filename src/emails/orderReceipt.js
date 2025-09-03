@@ -9,7 +9,7 @@ export const generateOrderReceiptHTML = (orderData) => {
     return `
     <div class="invoice-container">
             <h1 class="invoiceHeader" style="color:#2c3e50;text-align:center;">INVOICE</h1>
-            <table>
+            <table data-pdfmake="{&quot;widths&quot;:[500]}">
                <thead>
                    <tr>
                        <th style="width: 50%;border:none;">Seller/Sold By</th>
@@ -32,7 +32,7 @@ export const generateOrderReceiptHTML = (orderData) => {
             </table>
 
 
-            <table>
+            <table data-pdfmake="{&quot;widths&quot;:[500]}">
             <thead>
                 <tr>
                     <th style="border:none;">Bill To</th>
@@ -62,7 +62,7 @@ export const generateOrderReceiptHTML = (orderData) => {
 
 
 
-            <table class="items-table" style="width:100%;">
+            <table class="items-table" data-pdfmake="{&quot;widths&quot;:[100,&quot;*&quot;,&quot;auto&quot;,&quot;auto&quot;,&quot;auto&quot;,&quot;auto&quot;,&quot;auto&quot;]}">
                 <thead>
                     <tr>
                         <th>Item #</th>

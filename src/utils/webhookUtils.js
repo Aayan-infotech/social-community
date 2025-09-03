@@ -346,7 +346,6 @@ export const updateOrderStatus = async (
             const orderReceipt = generateOrderReceiptHTML(order);
             const generatedReceipt = await generatePDFfromHTML(orderReceipt);
 
-            // const outputFile = fs.writeFileSync(`./public/temp/${orderId}.pdf`, generatedReceipt);
 
             const attachments = [
                 {
