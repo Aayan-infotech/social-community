@@ -714,7 +714,7 @@ export const professionalHomeFeed = asyncHandler(async (req, res) => {
     $unionWith: {
       coll: "jobs", // collection name of JobModel
       pipeline: [
-        { $match: { isDeleted: false } },
+        { $match: { isDeleted: false, userId : { $ne: userId } } },
         {
           $lookup: {
             from: "users",
