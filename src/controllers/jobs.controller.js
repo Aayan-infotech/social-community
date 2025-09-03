@@ -679,7 +679,7 @@ export const professionalHomeFeed = asyncHandler(async (req, res) => {
   });
 
   aggregation.push({
-    $lookup:{
+    $lookup: {
       from: "users",
       localField: "userId",
       foreignField: "userId",
@@ -714,7 +714,7 @@ export const professionalHomeFeed = asyncHandler(async (req, res) => {
     $unionWith: {
       coll: "jobs", // collection name of JobModel
       pipeline: [
-        { $match: { isDeleted: false, userId : { $ne: userId } } },
+        { $match: { userId: { $ne: userId }, isDeleted: false } },
         {
           $lookup: {
             from: "users",
