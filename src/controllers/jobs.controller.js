@@ -790,3 +790,117 @@ export const professionalHomeFeed = asyncHandler(async (req, res) => {
     )
   );
 });
+
+
+export const getJobApplication = asyncHandler(async (req, res) => {
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.max(1, parseInt(req.query.limit) || 10);
+  const skip = (page - 1) * limit;
+  const userId = req.user.userId;
+
+  console.log("userId:", userId);
+
+  const aggregation = [];
+  aggregation.push({
+    $match: {
+      userId: userId,
+    },
+  });
+  aggregation.push({
+    $lookup: {
+      from: "jobs",
+      localField: "jobId",
+      foreignField: "_id",
+      as: "jobDetails",
+    }
+  });
+
+  aggregation.push({
+    $unwind: {
+      path: "$jobDetails",
+      preserveNullAndEmptyArrays: true,
+    },
+  });
+
+  aggregation.push({
+    $lookup: {
+      from: "users",
+      localField: "userId",
+      foreignField: "userId",
+      as: "userDetails",
+    },
+  });
+
+  aggregation.push({
+    $unwind: {
+      path: "$userDetails",
+      preserveNullAndEmptyArrays: true,
+    },
+  });
+
+  aggregation.push({
+    $lookup: {
+      from: "resumes",
+      localField: "resumeId",
+      foreignField: "_id",
+      as: "resumeDetails",
+    }
+  });
+
+  aggregation.push({
+    $unwind: {
+      path: "$resumeDetails",
+      preserveNullAndEmptyArrays: true,
+    },
+  });
+
+
+  aggregation.push({
+    $facet: {
+      applications: [
+        { $skip: skip },
+        { $limit: limit },
+        {
+          $project: {
+            _id: 1,
+            userId: 1,
+            jobId: 1,
+            status: 1,
+            appliedAt: 1,
+            email: 1,
+            phone: 1,
+            currentCTC: 1,
+            expectedCTC: 1,
+            noticePeriod: 1,
+            jobDetails: 1,
+            "userDetails.name": 1,
+            "userDetails.email": 1,
+            "userDetails.profile_image": { $ifNull: ["$userDetails.profile_image", `${process.env.APP_URL}/placeholder/image_place.png`] },
+            resume: "$resumeDetails.resume",
+          },
+        },
+      ],
+      totalCount: [{ $count: "count" }]
+    }
+  })
+
+  const result = await ApplyJobModel.aggregate(aggregation);
+  console.log("Job applications:", result);
+  const applications = result[0]?.applications || [];
+  const totalCount = result[0]?.totalCount[0]?.count || 0;
+  const totalPages = Math.ceil(totalCount / limit);
+
+  res.json(
+    new ApiResponse(
+      200,
+      applications.length ? "Job applications fetched successfully" : "No job applications found",
+      {
+        applications,
+        total_page: totalPages,
+        current_page: page,
+        total_records: totalCount,
+        per_page: limit,
+      }
+    )
+  );
+});
