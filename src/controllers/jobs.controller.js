@@ -798,7 +798,6 @@ export const getJobApplication = asyncHandler(async (req, res) => {
   const skip = (page - 1) * limit;
   const userId = req.user.userId;
 
-  console.log("userId:", userId);
 
   const aggregation = [];
   aggregation.push({
@@ -885,7 +884,6 @@ export const getJobApplication = asyncHandler(async (req, res) => {
   })
 
   const result = await ApplyJobModel.aggregate(aggregation);
-  console.log("Job applications:", result);
   const applications = result[0]?.applications || [];
   const totalCount = result[0]?.totalCount[0]?.count || 0;
   const totalPages = Math.ceil(totalCount / limit);
