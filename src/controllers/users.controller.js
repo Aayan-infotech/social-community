@@ -2511,10 +2511,18 @@ const searchAllUsers = asyncHandler(async (req, res) => {
   });
 
   aggregation.push({
+    $unwind: {
+      path: "$friends_data",
+      preserveNullAndEmptyArrays: true,
+    },
+  });
+
+  aggregation.push({
     $addFields: {
       hasFriend: {
-        $gt: [{ $size: "$friends_data" }, 0],
+        $in: [userId, { $ifNull: ["$friends_data.friends", []] }],
       },
+      friendsCount: { $size: { $ifNull: ["$friends_data.friends", []] } },
     },
   });
 
@@ -2554,6 +2562,8 @@ const searchAllUsers = asyncHandler(async (req, res) => {
             country: 1,
             state: 1,
             city: 1,
+            bio: 1,
+            friendsCount: 1,
             profile_image: {
               $ifNull: [
                 "$profile_image",
