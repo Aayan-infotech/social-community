@@ -145,6 +145,7 @@ export const getAllJobs = asyncHandler(async (req, res) => {
             requiredSkills: 1,
             createdAt: 1,
             totalApplications: { $size: "$appliedJobs" },
+            isApplied: { $in: [req.user.userId, "$appliedJobs.userId"] },
           },
         },
       ],
