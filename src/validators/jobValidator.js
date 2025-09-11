@@ -57,9 +57,8 @@ export const applyJobSchema = joi.object({
     "string.empty": "Expected CTC is optional",
     "string.base": "Expected CTC should be a string",
   }),
-  noticePeriod: joi.string().optional().messages({
-    "string.empty": "Notice period is optional",
-    "string.base": "Notice period should be a string",
+  noticePeriod: joi.number().optional().messages({
+    "number.base": "Notice period should be a number",
   }),
 });
 

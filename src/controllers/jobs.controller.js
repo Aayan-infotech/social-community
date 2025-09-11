@@ -731,6 +731,14 @@ export const professionalHomeFeed = asyncHandler(async (req, res) => {
           },
         },
         {
+          $lookup: {
+            from: "appliedjobs",
+            localField: "_id",
+            foreignField: "jobId",
+            as: "appliedJobs",
+          },
+        },
+        {
           $project: {
             _id: 1,
             description: 1,
@@ -746,6 +754,7 @@ export const professionalHomeFeed = asyncHandler(async (req, res) => {
             "user.email": 1,
             "user.profile_image": 1,
             type: { $literal: "job" }, // Explicitly mark as job
+            isApplied: { $in: [userId, "$appliedJobs.userId"] },
           },
         },
       ],
