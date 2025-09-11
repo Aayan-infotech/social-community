@@ -354,7 +354,7 @@ const getProfessionalProfile = asyncHandler(async (req, res) => {
 
 
   // add the completeness of the professional profile
-  const basicDetailsFields = ["name", "email", "mobile", "city", "gender", "bio", "state", "country", "aboutMe", "referralCode"];
+  const basicDetailsFields = ["name", "email", "mobile", "gender", "aboutMe", "referralCode"];
   const professionalDetailsFields = ["education", "experience"];
 
   let totalFields = basicDetailsFields.length + professionalDetailsFields.length;
