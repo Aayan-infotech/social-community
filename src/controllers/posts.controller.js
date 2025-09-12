@@ -21,6 +21,8 @@ import { Education } from "../models/education.model.js";
 import { Experience } from "../models/experience.model.js";
 import mongoose from "mongoose";
 import ReportedPost from "../models/reportedPost.model.js";
+import { FriendsModel } from "../models/friends.model.js";
+import UserInterest from "../models/userInterest.model.js";
 
 const createPost = asyncHandler(async (req, res) => {
   const { title, description, type } = req.body;
@@ -394,7 +396,7 @@ const getComments = asyncHandler(async (req, res) => {
   if (!post) {
     throw new ApiError(404, "Post not found");
   }
-  
+
   const timezone = req.headers.timezone || "UTC";
 
   const page = Math.max(1, parseInt(req.query.page) || 1);
@@ -799,234 +801,433 @@ const getShortsVideo = asyncHandler(async (req, res) => {
   );
 });
 
+// const getHomeFeed = asyncHandler(async (req, res) => {
+//   const page = Math.max(1, parseInt(req.query.page) || 1);
+//   const limit = Math.max(1, parseInt(req.query.limit) || 10);
+//   const skip = (page - 1) * limit;
+//   const type = req.query.type || "social";
+//   if (type !== "social" && type !== "professional") {
+//     throw new ApiError(
+//       400,
+//       "Invalid type. Type should be either social or professional"
+//     );
+//   }
+
+//   // add filter global , local and trending
+//   const filter = req.query.filter || "global";
+//   if (filter !== "global" && filter !== "local" && filter !== "trending") {
+//     throw new ApiError(
+//       400,
+//       "Invalid filter. Filter should be either global, local or trending"
+//     );
+//   }
+
+//   const [education, experience] = await Promise.all([
+//     Education.aggregate([
+//       { $match: { userId: req.user.userId, isDeleted: { $ne: true }, role: "user" } },
+//       {
+//         $group: {
+//           _id: null,
+//           institutionNames: { $addToSet: "$institutionName" },
+//           degrees: { $addToSet: "$degree" },
+//           fieldsOfStudy: { $addToSet: "$fieldOfStudy" },
+//           skills: { $addToSet: "$skills" },
+//         },
+//       },
+//     ]),
+//     Experience.aggregate([
+//       { $match: { userId: req.user.userId, isDeleted: { $ne: true }, role: "user" } },
+//       {
+//         $group: {
+//           _id: null,
+//           companyNames: { $addToSet: "$companyName" },
+//           locations: { $addToSet: "$location" },
+//           skills: { $addToSet: "$skills" },
+//         },
+//       },
+//     ]),
+//   ]);
+
+//   const uniqueInstitutionNames = education[0]?.institutionNames || [];
+//   const uniqueDegrees = education[0]?.degrees || [];
+//   const uniqueFieldsOfStudy = education[0]?.fieldsOfStudy || [];
+//   const uniqueEducationSkills = education[0]?.skills || [];
+//   const uniqueLocations = experience[0]?.locations || [];
+//   const uniqueCompanyNames = experience[0]?.companyNames || [];
+//   const uniqueExperienceSkills = experience[0]?.skills || [];
+
+//   const optionalFilters = [];
+//   if (filter === "local") {
+//     optionalFilters.push({ "user.city": req.user.city });
+//   } else if (filter === "global" || filter === "trending") {
+//     optionalFilters.push({});
+//   }
+
+//   optionalFilters.push({
+//     $expr: {
+//       $gt: [
+//         {
+//           $size: {
+//             $setIntersection: [uniqueCompanyNames, "$experience.companyName"],
+//           },
+//         },
+//         0,
+//       ],
+//     },
+//   });
+//   optionalFilters.push({
+//     $expr: {
+//       $gt: [
+//         {
+//           $size: {
+//             $setIntersection: [
+//               uniqueInstitutionNames,
+//               "$education.institutionName",
+//             ],
+//           },
+//         },
+//         0,
+//       ],
+//     },
+//   });
+//   optionalFilters.push({
+//     $expr: {
+//       $gt: [
+//         {
+//           $size: {
+//             $setIntersection: [uniqueDegrees, "$education.degree"],
+//           },
+//         },
+//         0,
+//       ],
+//     },
+//   });
+//   optionalFilters.push({
+//     $expr: {
+//       $gt: [
+//         {
+//           $size: {
+//             $setIntersection: [uniqueFieldsOfStudy, "$education.fieldOfStudy"],
+//           },
+//         },
+//         0,
+//       ],
+//     },
+//   });
+//   optionalFilters.push({
+//     $expr: {
+//       $gt: [
+//         {
+//           $size: {
+//             $setIntersection: [uniqueLocations, "$experience.location"],
+//           },
+//         },
+//         0,
+//       ],
+//     },
+//   });
+//   optionalFilters.push({
+//     $expr: {
+//       $gt: [
+//         {
+//           $size: {
+//             $setIntersection: [uniqueCompanyNames, "$experience.companyName"],
+//           },
+//         },
+//         0,
+//       ],
+//     },
+//   });
+//   optionalFilters.push({
+//     $expr: {
+//       $gt: [
+//         {
+//           $size: {
+//             $setIntersection: [uniqueExperienceSkills, "$experience.skills"],
+//           },
+//         },
+//         0,
+//       ],
+//     },
+//   });
+//   optionalFilters.push({
+//     $expr: {
+//       $gt: [
+//         {
+//           $size: {
+//             $setIntersection: [uniqueEducationSkills, "$education.skills"],
+//           },
+//         },
+//         0,
+//       ],
+//     },
+//   });
+
+//   // add isLiked boolean field that logged in user liked the post or not
+
+//   const reportedPosts = await ReportedPost.find({
+//     reportedBy: req.user.userId,
+//   }).distinct("postId");
+
+
+//   const aggregation = [];
+//   aggregation.push({
+//     $match: { type: type, _id: { $nin: reportedPosts } },
+//   });
+
+//   // remove the post who isDeleted is true
+//   aggregation.push({
+//     $lookup: {
+//       from: "users",
+//       localField: "userId",
+//       foreignField: "userId",
+//       as: "user",
+//       pipeline: [
+//         {
+//           $match: {
+//             isDeleted: { $ne: true },
+//           },
+//         },
+//       ],
+//     },
+//   });
+//   aggregation.push({
+//     $unwind: {
+//       path: "$user",
+//     },
+//   });
+
+//   aggregation.push({
+//     $lookup: {
+//       from: "experiences",
+//       localField: "userId",
+//       foreignField: "userId",
+//       as: "experience",
+//     },
+//   });
+
+//   aggregation.push({
+//     $lookup: {
+//       from: "educations",
+//       localField: "userId",
+//       foreignField: "userId",
+//       as: "education",
+//     },
+//   });
+
+//   aggregation.push({
+//     $match: {
+//       $or: optionalFilters,
+//     },
+//   });
+
+//   if (filter === "trending") {
+//     aggregation.push({
+//       $sort: { likes: -1 },
+//     });
+//   } else {
+//     aggregation.push({
+//       $sort: { createdAt: -1 },
+//     });
+//   }
+
+//   aggregation.push({
+//     $addFields: {
+//       isLiked: {
+//         $gt: [
+//           {
+//             $size: {
+//               $setIntersection: [[req.user.userId], "$likedBy"],
+//             },
+//           },
+//           0,
+//         ],
+//       },
+//     },
+//   });
+
+
+//   aggregation.push({
+//     $facet: {
+//       posts: [
+//         { $skip: skip },
+//         { $limit: limit },
+//         {
+//           $project: {
+//             "user.name": 1,
+//             "user.profile_image": {
+//               $ifNull: [
+//                 "$user.profile_image",
+//                 `${req.protocol}://${req.get("host")}/placeholder/image_place.png`,
+//               ],
+//             },
+//             "user.userId": 1,
+//             title: 1,
+//             description: 1,
+//             type: 1,
+//             media: 1,
+//             mediaType: 1,
+//             likes: 1,
+//             isLiked: 1,
+//             comment_count: { $size: "$comments" },
+//             mediaWidth: 1,
+//             mediaHeight: 1,
+//             mediaAspectRatio: 1,
+//             mediaOrientation: 1,
+//           },
+//         },
+//       ],
+//       totalCount: [{ $count: "count" }],
+//     },
+//   });
+
+//   const result = await PostModel.aggregate(aggregation);
+//   const posts = result[0]?.posts || [];
+//   const totalCount = result[0]?.totalCount[0]?.count || 0;
+//   const totalPages = Math.ceil(totalCount / limit);
+
+//   res.json(
+//     new ApiResponse(
+//       200,
+//       posts.length ? "Home Feed fetched successfully" : "No Home Feed found",
+//       {
+//         posts,
+//         total_page: totalPages,
+//         current_page: page,
+//         total_records: totalCount,
+//         per_page: limit,
+//       }
+//     )
+//   );
+// });
+
+
+
 const getHomeFeed = asyncHandler(async (req, res) => {
   const page = Math.max(1, parseInt(req.query.page) || 1);
   const limit = Math.max(1, parseInt(req.query.limit) || 10);
   const skip = (page - 1) * limit;
   const type = req.query.type || "social";
-  if (type !== "social" && type !== "professional") {
-    throw new ApiError(
-      400,
-      "Invalid type. Type should be either social or professional"
-    );
+
+  if (!["social", "professional"].includes(type)) {
+    throw new ApiError(400, "Invalid type. Type should be either social or professional");
   }
 
-  // add filter global , local and trending
   const filter = req.query.filter || "global";
-  if (filter !== "global" && filter !== "local" && filter !== "trending") {
-    throw new ApiError(
-      400,
-      "Invalid filter. Filter should be either global, local or trending"
-    );
+  if (!["global", "local", "trending"].includes(filter)) {
+    throw new ApiError(400, "Invalid filter. Filter should be either global, local or trending");
   }
+
+  const reportedPosts = await ReportedPost.find({ reportedBy: req.user.userId }).distinct("postId");
+
+  const friendList = await FriendsModel.findOne({ userId: req.user.userId });
+  const friendIds = friendList?.friends || [];
+
 
   const [education, experience] = await Promise.all([
-    Education.aggregate([
-      { $match: { userId: req.user.userId, isDeleted: { $ne: true }, role: "user" } },
-      {
-        $group: {
-          _id: null,
-          institutionNames: { $addToSet: "$institutionName" },
-          degrees: { $addToSet: "$degree" },
-          fieldsOfStudy: { $addToSet: "$fieldOfStudy" },
-          skills: { $addToSet: "$skills" },
-        },
-      },
-    ]),
-    Experience.aggregate([
-      { $match: { userId: req.user.userId, isDeleted: { $ne: true }, role: "user" } },
-      {
-        $group: {
-          _id: null,
-          companyNames: { $addToSet: "$companyName" },
-          locations: { $addToSet: "$location" },
-          skills: { $addToSet: "$skills" },
-        },
-      },
-    ]),
+    Education.find({ userId: req.user.userId, isDeleted: { $ne: true } }),
+    Experience.find({ userId: req.user.userId, isDeleted: { $ne: true } }),
   ]);
 
-  const uniqueInstitutionNames = education[0]?.institutionNames || [];
-  const uniqueDegrees = education[0]?.degrees || [];
-  const uniqueFieldsOfStudy = education[0]?.fieldsOfStudy || [];
-  const uniqueEducationSkills = education[0]?.skills || [];
-  const uniqueLocations = experience[0]?.locations || [];
-  const uniqueCompanyNames = experience[0]?.companyNames || [];
-  const uniqueExperienceSkills = experience[0]?.skills || [];
 
-  const optionalFilters = [];
-  if (filter === "local") {
-    optionalFilters.push({ "user.city": req.user.city });
-  } else if (filter === "global" || filter === "trending") {
-    optionalFilters.push({});
-  }
+  const userInterestsFromDb = await UserInterest.find({ userId: req.user.userId })
+    .populate("categoryId", "category type")
+    .populate("interestId", "interestName") // adjust field name based on InterestList schema
+    .lean();
 
-  optionalFilters.push({
-    $expr: {
-      $gt: [
-        {
-          $size: {
-            $setIntersection: [uniqueCompanyNames, "$experience.companyName"],
-          },
-        },
-        0,
-      ],
-    },
-  });
-  optionalFilters.push({
-    $expr: {
-      $gt: [
-        {
-          $size: {
-            $setIntersection: [
-              uniqueInstitutionNames,
-              "$education.institutionName",
-            ],
-          },
-        },
-        0,
-      ],
-    },
-  });
-  optionalFilters.push({
-    $expr: {
-      $gt: [
-        {
-          $size: {
-            $setIntersection: [uniqueDegrees, "$education.degree"],
-          },
-        },
-        0,
-      ],
-    },
-  });
-  optionalFilters.push({
-    $expr: {
-      $gt: [
-        {
-          $size: {
-            $setIntersection: [uniqueFieldsOfStudy, "$education.fieldOfStudy"],
-          },
-        },
-        0,
-      ],
-    },
-  });
-  optionalFilters.push({
-    $expr: {
-      $gt: [
-        {
-          $size: {
-            $setIntersection: [uniqueLocations, "$experience.location"],
-          },
-        },
-        0,
-      ],
-    },
-  });
-  optionalFilters.push({
-    $expr: {
-      $gt: [
-        {
-          $size: {
-            $setIntersection: [uniqueCompanyNames, "$experience.companyName"],
-          },
-        },
-        0,
-      ],
-    },
-  });
-  optionalFilters.push({
-    $expr: {
-      $gt: [
-        {
-          $size: {
-            $setIntersection: [uniqueExperienceSkills, "$experience.skills"],
-          },
-        },
-        0,
-      ],
-    },
-  });
-  optionalFilters.push({
-    $expr: {
-      $gt: [
-        {
-          $size: {
-            $setIntersection: [uniqueEducationSkills, "$education.skills"],
-          },
-        },
-        0,
-      ],
-    },
-  });
+  const savedInterests = userInterestsFromDb.map(ui => ({
+    category: ui.categoryId?.category,
+    type: ui.categoryId?.type,
+    interest: ui.interestId?.interestName
+  }));
 
-  // add isLiked boolean field that logged in user liked the post or not
 
-  const reportedPosts = await ReportedPost.find({
-    reportedBy: req.user.userId,
-  }).distinct("postId");
-
+  const combinedUserInterests = [
+    ...new Set([
+      ...education.map((e) => e.fieldOfStudy).filter(Boolean),
+      ...education.flatMap((e) => e.skills || []),
+      ...experience.flatMap((ex) => ex.skills || []),
+      ...savedInterests.map((si) => si.category).filter(Boolean),
+      ...savedInterests.map((si) => si.interest).filter(Boolean),
+    ]),
+  ];
 
   const aggregation = [];
+
   aggregation.push({
-    $match: { type: type, _id: { $nin: reportedPosts } },
+    $match: {
+      type,
+      isDeleted: { $ne: true },
+      _id: { $nin: reportedPosts },
+    },
   });
 
-  // remove the post who isDeleted is true
   aggregation.push({
     $lookup: {
       from: "users",
       localField: "userId",
       foreignField: "userId",
       as: "user",
-      pipeline: [
-        {
-          $match: {
-            isDeleted: { $ne: true },
-          },
-        },
-      ],
+      pipeline: [{ $match: { isDeleted: { $ne: true } } }],
     },
   });
-  aggregation.push({
-    $unwind: {
-      path: "$user",
-    },
-  });
+  aggregation.push({ $unwind: "$user" });
 
-  aggregation.push({
-    $lookup: {
-      from: "experiences",
-      localField: "userId",
-      foreignField: "userId",
-      as: "experience",
-    },
-  });
+  if (filter === "local") {
+    aggregation.push({ $match: { "user.city": req.user.city } });
+  }
 
+  // scoring system
   aggregation.push({
-    $lookup: {
-      from: "educations",
-      localField: "userId",
-      foreignField: "userId",
-      as: "education",
-    },
-  });
-
-  aggregation.push({
-    $match: {
-      $or: optionalFilters,
+    $addFields: {
+      score: {
+        $add: [
+          { $cond: [{ $in: ["$userId", friendIds] }, 2, 0] }, // affinity boost
+          { $multiply: [{ $ifNull: ["$likes", 0] }, 0.2] },   // likes
+          { $multiply: [{ $size: { $ifNull: ["$comments", []] } }, 0.3] }, // comments
+          { $cond: [{ $in: ["$category", combinedUserInterests] }, 3, 0] }, // interest match
+          {
+            $cond: [
+              { $gte: ["$createdAt", new Date(Date.now() - 24 * 60 * 60 * 1000)] },
+              2,
+              0,
+            ],
+          }, 
+        ],
+      },
     },
   });
 
   if (filter === "trending") {
     aggregation.push({
-      $sort: { likes: -1 },
+      $addFields: {
+        trendingScore: {
+          $divide: [
+            {
+              $add: [
+                { $ifNull: ["$likes", 0] },
+                { $multiply: [{ $size: { $ifNull: ["$comments", []] } }, 2] },
+                { $multiply: [{ $ifNull: ["$shares", 0] }, 3] },
+              ],
+            },
+            {
+              $max: [
+                1,
+                {
+                  $divide: [
+                    { $subtract: [new Date(), "$createdAt"] },
+                    1000 * 60 * 60, // hours since post
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
     });
+    aggregation.push({ $sort: { trendingScore: -1 } });
   } else {
-    aggregation.push({
-      $sort: { createdAt: -1 },
-    });
+    aggregation.push({ $sort: { score: -1, createdAt: -1 } });
   }
 
   aggregation.push({
@@ -1035,7 +1236,7 @@ const getHomeFeed = asyncHandler(async (req, res) => {
         $gt: [
           {
             $size: {
-              $setIntersection: [[req.user.userId], "$likedBy"],
+              $setIntersection: [[req.user.userId], { $ifNull: ["$likedBy", []] }],
             },
           },
           0,
@@ -1043,7 +1244,6 @@ const getHomeFeed = asyncHandler(async (req, res) => {
       },
     },
   });
-
 
   aggregation.push({
     $facet: {
@@ -1063,15 +1263,13 @@ const getHomeFeed = asyncHandler(async (req, res) => {
             title: 1,
             description: 1,
             type: 1,
+            category: 1,
             media: 1,
             mediaType: 1,
             likes: 1,
             isLiked: 1,
-            comment_count: { $size: "$comments" },
-            mediaWidth: 1,
-            mediaHeight: 1,
-            mediaAspectRatio: 1,
-            mediaOrientation: 1,
+            comment_count: { $size: { $ifNull: ["$comments", []] } },
+            createdAt: 1,
           },
         },
       ],
@@ -1085,19 +1283,17 @@ const getHomeFeed = asyncHandler(async (req, res) => {
   const totalPages = Math.ceil(totalCount / limit);
 
   res.json(
-    new ApiResponse(
-      200,
-      posts.length ? "Home Feed fetched successfully" : "No Home Feed found",
-      {
-        posts,
-        total_page: totalPages,
-        current_page: page,
-        total_records: totalCount,
-        per_page: limit,
-      }
-    )
+    new ApiResponse(200, posts.length ? "Home Feed fetched successfully" : "No Home Feed found", {
+      posts,
+      total_page: totalPages,
+      current_page: page,
+      total_records: totalCount,
+      per_page: limit,
+    })
   );
 });
+
+
 
 const deletePost = asyncHandler(async (req, res) => {
   const postId = req.params.postId;
@@ -1107,26 +1303,21 @@ const deletePost = asyncHandler(async (req, res) => {
   if (!isValidObjectId(postId)) {
     throw new ApiError(400, "Invalid post ID");
   }
-  console.log(postId);
   const post = await PostModel.findById(postId);
-  console.log(post);
   // delete post images and videos from s3
   if (!post) {
     throw new ApiError(404, "Post not found");
   }
   if (post.media) {
     const media = post.media;
-    console.log(media);
     if (Array.isArray(media)) {
       for (const file of media) {
         const fileName = file.split("/").pop();
         await deleteObject(fileName);
       }
     } else {
-      console.log(media);
       const fileName = media.split("/").pop();
-      const result = await deleteObject(fileName);
-      console.log(result);
+      await deleteObject(fileName);
     }
   }
 
