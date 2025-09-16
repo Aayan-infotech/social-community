@@ -8,7 +8,7 @@ const InterestCategoryListSchema = new mongoose.Schema({
     type: {
         type: String,
         required: true,
-        enum: ["social", "professional"]
+        enum: ["social", "professional",'matrimonial']
     }
 },{
     timestamps: true,

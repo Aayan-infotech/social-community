@@ -2965,7 +2965,6 @@ const getStoryLikedBy = asyncHandler(async (req, res) => {
   });
 
   const result = await Story.aggregate(aggregation);
-  console.log(result);
   const story = result[0];
   if (!story) {
     throw new ApiError(404, "Story not found");
