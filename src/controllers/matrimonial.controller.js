@@ -10,6 +10,7 @@ import College from "../models/college.model.js";
 import Company from "../models/companies.model.js";
 import Degree from "../models/degree.model.js";
 import Position from "../models/positions.model.js";
+import { Country, State, City } from "country-state-city";
 
 export const addMatrimonialProfile = asyncHandler(async (req, res) => {
     const { profileFor, gender, name, age, dob, mobileNo, email, religion, community, livingIn, marryInOtherCaste, maritalStatus, noOfChildren, diet, height, weight, state, city, subCommunity, disability, highestQualification, college, workWith, workAs, annualIncome, workLocation, about } = req.body;
@@ -234,7 +235,7 @@ export const getProfileById = asyncHandler(async (req, res) => {
         throw new ApiError(400, "profileId parameter is required");
     }
 
-    const profile = await matrimonialProfilesModel.findOne({ _id: profileId, createdBy: req.user.userId }).lean();
+    const profile = await matrimonialProfilesModel.findOne({ _id: profileId }).lean();
     if (!profile) {
         throw new ApiError(404, "Profile not found");
     }
@@ -269,7 +270,7 @@ export const addIndentyProofDocument = asyncHandler(async (req, res) => {
         })
     );
 
-    profile.identityProof = uploadedFiles[0]; 
+    profile.identityProof = uploadedFiles[0];
     profile.isVerified = false;
     profile.documentName = documentName;
     profile.documentNumber = documentNumber;
@@ -281,13 +282,146 @@ export const addIndentyProofDocument = asyncHandler(async (req, res) => {
 });
 
 export const addFamilyDetails = asyncHandler(async (req, res) => {
-    const {fatherName, motherName, noOfBrother,noOfSister,livedWithFamily,financialStatus} = req.body;
+    const { fatherName, motherName, noOfBrothers, noOfSisters, livedWithFamily, financialStatus } = req.body;
     const profileId = req.params.profileId;
     if (!profileId || profileId.trim() === "") {
         throw new ApiError(400, "profileId parameter is required");
     }
 
-    throw new ApiError(500, "Not implemented yet");
 
-    
+    const profile = await matrimonialProfilesModel.findById({ _id: profileId });
+    if (!profile) {
+        throw new ApiError(404, "Profile not found");
+    }
+
+    profile.familyDetails = {
+        fatherName,
+        motherName,
+        noOfBrothers,
+        noOfSisters,
+        livedWithFamily,
+        financialStatus
+    };
+    await profile.save();
+
+    return res.json(new ApiResponse(200, "Family details added successfully", profile.familyDetails));
+});
+
+
+export const updateMatrimonialProfile = asyncHandler(async (req, res) => {
+    const { profileFor, gender, name, age, dob, mobileNo, email, religion, community, livingIn, marryInOtherCaste, maritalStatus, noOfChildren, diet, height, weight, state, city, subCommunity, disability, highestQualification, college, workWith, workAs, annualIncome, workLocation, about, documentName, documentNumber, fatherName, motherName, noOfBrothers, noOfSisters, livedWithFamily, financialStatus } = req.body;
+    const profileId = req.params.profileId;
+    if (!profileId || profileId.trim() === "") {
+        throw new ApiError(400, "profileId parameter is required");
+    }
+
+    // update the matrimonial profile
+    const profile = await matrimonialProfilesModel.findOne({ _id: profileId, createdBy: req.user.userId });
+    if (!profile) {
+        throw new ApiError(404, "Profile not found");
+    }
+
+    // update profile picture if provided
+    if (req.files && req.files.profilePicture) {
+        profile.profilePicture = await Promise.all(
+            req.files.profilePicture.map(async (file) => {
+                const filePath = await uploadImage(file);
+                if (!filePath.success) {
+                    throw new ApiError(500, "Failed to upload image");
+                }
+                return filePath.fileUrl;
+            })
+        );
+    }
+    if (req.files && req.files.identityProofDocument) {
+        profile.identityProof = await Promise.all(
+            req.files.identityProofDocument.map(async (file) => {
+                const filePath = await uploadImage(file);
+                if (!filePath.success) {
+                    throw new ApiError(500, "Failed to upload image");
+                }
+                return filePath.fileUrl;
+            })
+        )[0];
+        profile.isVerified = false;
+    }
+
+    profile.profileFor = profileFor;
+    profile.gender = gender;
+    profile.name = name;
+    profile.age = age;
+    profile.dob = dob;
+    profile.mobileNo = mobileNo;
+    profile.email = email;
+    profile.religion = religion;
+    profile.community = community;
+    profile.livingIn = livingIn;
+    profile.marryInOtherCaste = marryInOtherCaste;
+    profile.maritalStatus = maritalStatus;
+    profile.noOfChildren = noOfChildren;
+    profile.diet = diet;
+    profile.height = height;
+    profile.weight = weight;
+    profile.state = state;
+    profile.city = city;
+    profile.subCommunity = subCommunity;
+    profile.disability = disability;
+    profile.highestQualification = highestQualification;
+    profile.college = college;
+    profile.workWith = workWith;
+    profile.workAs = workAs;
+    profile.annualIncome = annualIncome;
+    profile.workLocation = workLocation;
+    profile.about = about;
+    profile.documentName = documentName;
+    profile.documentNumber = documentNumber;
+    profile.familyDetails = {
+        fatherName,
+        motherName,
+        noOfBrothers,
+        noOfSisters,
+        livedWithFamily,
+        financialStatus
+    };
+
+    console.log(profile);
+    await profile.save();
+
+    return res.json(new ApiResponse(200, "Profile updated successfully", profile));
+
+});
+
+
+
+export const getAllCountries = asyncHandler(async (req, res) => {
+    const countries = Country.getAllCountries();
+    const formattedCountries = countries.map(country => ({
+        name: country.name,
+        isoCode: country.isoCode
+    }));
+    return res.json(new ApiResponse(200, "Countries fetched successfully", formattedCountries));
+});
+
+export const getStatesByCountry = asyncHandler(async (req, res) => {
+    const countryIsoCode = req.params.countryCode;
+    if (!countryIsoCode || countryIsoCode.trim() === "") {
+        throw new ApiError(400, "countryIsoCode parameter is required");
+    }
+
+    const states = State.getStatesOfCountry(countryIsoCode);
+    return res.json(new ApiResponse(200, "States fetched successfully", states));
+});
+
+export const getCitiesByState = asyncHandler(async (req, res) => {
+    const countryCode = req.params.countryCode;
+    const stateCode = req.params.stateCode;
+    if (!countryCode || countryCode.trim() === "") {
+        throw new ApiError(400, "countryCode parameter is required");
+    }
+    if (!stateCode || stateCode.trim() === "") {
+        throw new ApiError(400, "stateCode parameter is required");
+    }
+
+    const cities = City.getCitiesOfState(countryCode, stateCode);
+    return res.json(new ApiResponse(200, "Cities fetched successfully", cities));
 });
