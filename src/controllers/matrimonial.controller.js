@@ -193,6 +193,7 @@ export const getAllProfiles = asyncHandler(async (req, res) => {
                 {
                     $project: {
                         name: 1,
+                        profileFor: 1,
                         age: 1,
                         gender: 1,
                         location: 1,
@@ -424,4 +425,156 @@ export const getCitiesByState = asyncHandler(async (req, res) => {
 
     const cities = City.getCitiesOfState(countryCode, stateCode);
     return res.json(new ApiResponse(200, "Cities fetched successfully", cities));
+});
+
+
+export const getMatrimonialProfileSuggesstions = asyncHandler(async (req, res) => {
+    const profileId = req.params.profileId;
+    const {
+        minAge,
+        maxAge,
+        minHeight,
+        maxHeight,
+        religion,
+        community,
+        location,
+        maritalStatus,
+        minIncome,
+        maxIncome
+    } = req.query;
+    const page = Math.max(1, parseInt(req.query.page)) || 1;
+    const limit = Math.max(1, parseInt(req.query.limit)) || 10;
+    const skip = (page - 1) * limit;
+
+
+    // Validate profileId
+    if (!profileId || profileId.trim() === "") {
+        throw new ApiError(400, "profileId parameter is required");
+    }
+
+    // Get the profile details of the given profileId
+    const profile = await matrimonialProfilesModel.findOne({ _id: profileId }).lean();
+    if (!profile) {
+        throw new ApiError(404, "Profile not found");
+    }
+
+    // Validate numeric inputs
+    const parsedMinAge = minAge ? parseInt(minAge) : undefined;
+    const parsedMaxAge = maxAge ? parseInt(maxAge) : undefined;
+    const parsedMinHeight = minHeight ? parseFloat(minHeight) : undefined;
+    const parsedMaxHeight = maxHeight ? parseFloat(maxHeight) : undefined;
+    const parsedMinIncome = minIncome ? parseInt(minIncome) : undefined;
+    const parsedMaxIncome = maxIncome ? parseInt(maxIncome) : undefined;
+    const parsedPage = parseInt(page);
+    const parsedLimit = parseInt(limit);
+
+    if ((parsedMinAge && isNaN(parsedMinAge)) || (parsedMaxAge && isNaN(parsedMaxAge))) {
+        throw new ApiError(400, "Invalid age range provided");
+    }
+    if ((parsedMinHeight && isNaN(parsedMinHeight)) || (parsedMaxHeight && isNaN(parsedMaxHeight))) {
+        throw new ApiError(400, "Invalid height range provided");
+    }
+    if ((parsedMinIncome && isNaN(parsedMinIncome)) || (parsedMaxIncome && isNaN(parsedMaxIncome))) {
+        throw new ApiError(400, "Invalid income range provided");
+    }
+    if (isNaN(parsedPage) || parsedPage < 1) {
+        throw new ApiError(400, "Invalid page number");
+    }
+    if (isNaN(parsedLimit) || parsedLimit < 1) {
+        throw new ApiError(400, "Invalid limit value");
+    }
+
+    // Build aggregation pipeline
+    const matchCriteria = {
+        _id: { $ne: profileId },
+        createdBy: { $ne: req.user.userId },
+        gender: { $ne: profile.gender },
+        // isVerified: true,
+    };
+
+    // Add filters dynamically
+    if (parsedMinAge || parsedMaxAge) {
+        matchCriteria.age = {};
+        if (parsedMinAge) matchCriteria.age.$gte = parsedMinAge;
+        if (parsedMaxAge) matchCriteria.age.$lte = parsedMaxAge;
+    }
+
+    if (parsedMinHeight || parsedMaxHeight) {
+        matchCriteria.height = {};
+        if (parsedMinHeight) matchCriteria.height.$gte = parsedMinHeight;
+        if (parsedMaxHeight) matchCriteria.height.$lte = parsedMaxHeight;
+    }
+
+    if (parsedMinIncome || parsedMaxIncome) {
+        matchCriteria.income = {};
+        if (parsedMinIncome) matchCriteria.income.$gte = parsedMinIncome;
+        if (parsedMaxIncome) matchCriteria.income.$lte = parsedMaxIncome;
+    }
+
+    if (religion) {
+        matchCriteria.religion = religion;
+    }
+
+    if (profile.marryInOtherCaste === false && profile.community) {
+        matchCriteria.community = profile.community;
+    } else if (community) {
+        matchCriteria.community = community;
+    }
+
+    if (location) {
+        matchCriteria.location = location;
+    }
+
+    if (maritalStatus) {
+        matchCriteria.maritalStatus = { $in: maritalStatus.split(",") }; // Support multiple statuses
+    }
+
+
+    const aggregation = [];
+    aggregation.push({ $match: matchCriteria });
+    aggregation.push({ $sort: { createdAt: -1 } });
+    aggregation.push({
+        $facet: {
+            profiles: [
+                { $skip: skip },
+                { $limit: limit },
+                {
+                    $project: {
+                        name: 1,
+                        age: 1,
+                        gender: 1,
+                        location: 1,
+                        createdAt: 1,
+                        religion: 1,
+                        community: 1,
+                        profilePicture: 1,
+                        subCommunity: 1,
+                        height: 1,
+                        income: 1,
+                        maritalStatus: 1
+                    }
+                }
+            ],
+            totalCount: [{ $count: "count" }]
+        }
+    });
+
+    const results = await matrimonialProfilesModel.aggregate(aggregation);
+    const profiles = results[0]?.profiles || [];
+    const totalCount = results[0]?.totalCount[0]?.count || 0;
+
+
+    return res.json(
+        new ApiResponse(
+            200,
+            "Matrimonial profile suggestions fetched successfully",
+            {
+                profiles: profiles,
+                total_page: Math.ceil(totalCount / limit),
+                current_page: page,
+                total_records: totalCount,
+                per_page: limit,
+            }
+        )
+    );
 });

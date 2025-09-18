@@ -538,6 +538,10 @@ const getMarketplaceProducts = asyncHandler(async (req, res) => {
   }
 
   aggregation.push({
+    $sort: { createdAt: -1 },
+  });
+
+  aggregation.push({
     $facet: {
       products: [
         { $skip: skip },

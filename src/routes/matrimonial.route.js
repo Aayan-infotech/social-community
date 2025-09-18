@@ -2,7 +2,7 @@ import { Router } from "express";
 import { validateRequest } from "../middlewares/validation.middleware.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 import { addFamilyDetailsSchema, addIndentyProofDocumentSchema, addMatrimonialSchema, updateMatrimonialSchema } from "../validators/matrimonialValidator.js";
-import { addFamilyDetails, addIndentyProofDocument, addMatrimonialProfile, getAllCountries, getAllProfiles, getCitiesByState, getColleges, getCommunities, getCompanies, getDegrees, getPositions, getProfileById, getStatesByCountry, getSubCommunities, updateMatrimonialProfile } from "../controllers/matrimonial.controller.js";
+import { addFamilyDetails, addIndentyProofDocument, addMatrimonialProfile, getAllCountries, getAllProfiles, getCitiesByState, getColleges, getCommunities, getCompanies, getDegrees, getMatrimonialProfileSuggesstions, getPositions, getProfileById, getStatesByCountry, getSubCommunities, updateMatrimonialProfile } from "../controllers/matrimonial.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import errorHandler from "../middlewares/errorhandler.middleware.js";
 
@@ -25,6 +25,9 @@ router.patch('/updateProfile/:profileId', verifyJWT, upload.fields([{ name: 'ide
 router.get('/countries',verifyJWT,getAllCountries);
 router.get('/states/:countryCode',verifyJWT,getStatesByCountry);
 router.get('/cities/:countryCode/:stateCode',verifyJWT,getCitiesByState);
+
+
+router.get('/getSuggestion/:profileId',verifyJWT,getMatrimonialProfileSuggesstions);
 
 
 export default router;
