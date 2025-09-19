@@ -1,12 +1,19 @@
 import mongoose from "mongoose";
 
 const interestInProfileSchema = new mongoose.Schema({
-    senderId: {
+    userId:{
         type: String,
+        required: true,
+        ref: 'User'
+    },
+    senderId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'MatrimonialProfile',
         required: true,
     },
     receiverId: {
-        type: String,
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'MatrimonialProfile',
         required: true,
     },
     status: {

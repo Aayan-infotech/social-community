@@ -1,8 +1,8 @@
 import { Router } from "express";
 import { validateRequest } from "../middlewares/validation.middleware.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
-import { addFamilyDetailsSchema, addIndentyProofDocumentSchema, addMatrimonialSchema, updateMatrimonialSchema } from "../validators/matrimonialValidator.js";
-import { addFamilyDetails, addIndentyProofDocument, addMatrimonialProfile, getAllCountries, getAllProfiles, getCitiesByState, getColleges, getCommunities, getCompanies, getDegrees, getMatrimonialProfileSuggesstions, getPositions, getProfileById, getStatesByCountry, getSubCommunities, updateMatrimonialProfile } from "../controllers/matrimonial.controller.js";
+import { addFamilyDetailsSchema, addIndentyProofDocumentSchema, addMatrimonialSchema, saveHobbiesSchema, sendInterestSchema, updateMatrimonialSchema } from "../validators/matrimonialValidator.js";
+import { acceptRejectInterest, addFamilyDetails, addIndentyProofDocument, addMatrimonialProfile, getAllCountries, getAllProfiles, getCitiesByState, getColleges, getCommunities, getCompanies, getDegrees, getInterestedProfiles, getMatrimonialProfileSuggesstions, getPositions, getProfileById, getStatesByCountry, getSubCommunities, saveHobbies, sendInterest, updateMatrimonialProfile } from "../controllers/matrimonial.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import errorHandler from "../middlewares/errorhandler.middleware.js";
 
@@ -28,6 +28,9 @@ router.get('/cities/:countryCode/:stateCode',verifyJWT,getCitiesByState);
 
 
 router.get('/getSuggestion/:profileId',verifyJWT,getMatrimonialProfileSuggesstions);
-
+router.post('/hobbies/:profileId',verifyJWT,validateRequest(saveHobbiesSchema),saveHobbies);
+router.post('/sendInterest/:profileId',verifyJWT,validateRequest(sendInterestSchema),sendInterest);
+router.put('/acceptRejectInterest',verifyJWT,acceptRejectInterest);
+router.get('/getInterestedProfile/:profileId',verifyJWT,getInterestedProfiles);
 
 export default router;

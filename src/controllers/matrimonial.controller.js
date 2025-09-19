@@ -11,6 +11,10 @@ import Company from "../models/companies.model.js";
 import Degree from "../models/degree.model.js";
 import Position from "../models/positions.model.js";
 import { Country, State, City } from "country-state-city";
+import Hobby from "../models/hobbies.model.js";
+import InterestInProfileModel from "../models/matrimonialProfileInterest.model.js";
+import { mongo } from "mongoose";
+import mongoose from "mongoose";
 
 export const addMatrimonialProfile = asyncHandler(async (req, res) => {
     const { profileFor, gender, name, age, dob, mobileNo, email, religion, community, livingIn, marryInOtherCaste, maritalStatus, noOfChildren, diet, height, weight, state, city, subCommunity, disability, highestQualification, college, workWith, workAs, annualIncome, workLocation, about } = req.body;
@@ -577,4 +581,192 @@ export const getMatrimonialProfileSuggesstions = asyncHandler(async (req, res) =
             }
         )
     );
+});
+
+
+export const saveHobbies = asyncHandler(async (req, res) => {
+    const profileId = req.params.profileId;
+    const { hobbiesIds } = req.body;
+    if (!profileId || profileId.trim() === "") {
+        throw new ApiError(400, "profileId parameter is required");
+    }
+    if (!hobbiesIds || !Array.isArray(hobbiesIds) || hobbiesIds.length === 0) {
+        throw new ApiError(400, "Please provide at least one hobby");
+    }
+
+    const hobbies = await Hobby.create({
+        userId: req.user.userId,
+        profileId,
+        hobbiesIds
+    });
+    return res.json(new ApiResponse(200, "Hobbies saved successfully", hobbies));
+});
+
+
+export const sendInterest = asyncHandler(async (req, res) => {
+    const { receiverId } = req.body;
+    const profileId = req.params.profileId;
+    if (!profileId || profileId.trim() === "") {
+        throw new ApiError(400, "profileId parameter is required");
+    }
+
+
+    const profile = await matrimonialProfilesModel.findById({ _id: profileId });
+    if (!profile) {
+        throw new ApiError(404, "Profile not found");
+    }
+
+    // check if the receiver profile exists 
+    const aggregation = [];
+    aggregation.push({
+        $match: {
+            $or: [
+                { senderId: new mongoose.Types.ObjectId(profileId), receiverId: new mongoose.Types.ObjectId(receiverId) },
+                { senderId: new mongoose.Types.ObjectId(receiverId), receiverId: new mongoose.Types.ObjectId(profileId) }
+            ],
+            status: { $in: ["pending", "accepted"] }
+        }
+    });
+
+    const existingInterest = await InterestInProfileModel.aggregate(aggregation);
+    if (existingInterest.length > 0) {
+        throw new ApiError(400, "Interest already sent or received for this profile");
+    }
+
+
+    const interest = await InterestInProfileModel.create({
+        userId: req.user.userId,
+        senderId: profileId,
+        receiverId: receiverId,
+        status: 'pending'
+    });
+
+    return res.json(new ApiResponse(200, "Interest sent successfully", interest));
+
+});
+
+
+export const acceptRejectInterest = asyncHandler(async (req, res) => {
+    const { interestId, action } = req.body;
+    if (!interestId || interestId.trim() === "") {
+        throw new ApiError(400, "interestId parameter is required");
+    }
+    if (!['accept', 'reject'].includes(action)) {
+        throw new ApiError(400, "Invalid action. Accepted values are: accept, reject");
+    }
+
+    const interest = await InterestInProfileModel.findById(interestId);
+    if (!interest) {
+        throw new ApiError(404, "Interest not found");
+    }
+
+    if (interest.status !== 'pending') {
+        throw new ApiError(400, `Interest already ${interest.status}`);
+    }
+    interest.status = action === 'accept' ? 'accepted' : 'rejected';
+    await interest.save();
+
+    return res.json(new ApiResponse(200, `Interest ${interest.status} successfully`, interest));
+});
+
+
+export const getInterestedProfiles = asyncHandler(async (req, res) => {
+    const profileId = req.params.profileId;
+    if (!profileId || profileId.trim() === "") {
+        throw new ApiError(400, "profileId parameter is required");
+    }
+
+    const page = Math.max(1, parseInt(req.query.page)) || 1;
+    const limit = Math.max(1, parseInt(req.query.limit)) || 10;
+    const skip = (page - 1) * limit;
+
+    const { type } = req.query;
+    if (!['send', 'received', 'accepted'].includes(type)) {
+        throw new ApiError(400, "Invalid type. Accepted values are: send, received, accepted");
+    }
+
+    const aggregation = [];
+
+    // Match Stage
+    if (type === 'send') {
+        aggregation.push({
+            $match: {
+                senderId: new mongoose.Types.ObjectId(profileId),
+                status: 'pending'
+            }
+        });
+    } else if (type === 'received') {
+        aggregation.push({
+            $match: {
+                receiverId: new mongoose.Types.ObjectId(profileId),
+                status: 'pending'
+            }
+        });
+    } else if (type === 'accepted') {
+        aggregation.push({
+            $match: {
+                $or: [
+                    { senderId: new mongoose.Types.ObjectId(profileId), status: 'accepted' },
+                    { receiverId: new mongoose.Types.ObjectId(profileId), status: 'accepted' }
+                ]
+            }
+        });
+    }
+
+    // Lookup profile details
+    aggregation.push({
+        $lookup: {
+            from: 'matrimonialprofiles',
+            localField: type === 'received' ? 'senderId' : 'receiverId',
+            foreignField: '_id',
+            as: 'profile'
+        }
+    });
+
+    aggregation.push({
+        $unwind: {
+            path: '$profile',
+            preserveNullAndEmptyArrays: true
+        }
+    });
+
+    aggregation.push({ $sort: { createdAt: -1 } });
+
+    // Facet for pagination + count
+    aggregation.push({
+        $facet: {
+            interests: [
+                { $skip: skip },
+                { $limit: limit },
+                {
+                    $project: {
+                        _id: 1,
+                        profileId: '$profile._id',
+                        name: '$profile.name',
+                        age: '$profile.age',
+                        location: '$profile.location',
+                        occupation: '$profile.occupation',
+                        education: '$profile.education',
+                        profilePicture: '$profile.profilePicture',
+                        status: 1,
+                    }
+                }
+            ],
+            totalCount: [{ $count: "count" }]
+        }
+    });
+
+    const result = await InterestInProfileModel.aggregate(aggregation);
+
+    const interests = result[0]?.interests || [];
+    const totalCount = result[0]?.totalCount[0]?.count || 0;
+    const totalPages = Math.ceil(totalCount / limit);
+
+    return res.json(new ApiResponse(200, "Interests fetched successfully", {
+        interests,
+        total_page: totalPages,
+        current_page: page,
+        total_records: totalCount,
+        per_page: limit,
+    }));
 });

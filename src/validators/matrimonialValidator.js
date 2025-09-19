@@ -426,3 +426,20 @@ export const updateMatrimonialSchema = joi.object({
         'any.required': 'livedWithFamily is a required field'
     }),
 });
+
+
+export const saveHobbiesSchema = joi.object({
+    hobbiesIds: joi.array().items(joi.string()).min(1).required().messages({
+        'array.base': 'hobbiesIds should be an array of strings',
+        'array.min': 'You must select at least one hobby',
+        'any.required': 'hobbiesIds is a required field'
+    })
+});
+
+export const sendInterestSchema = joi.object({
+    receiverId: joi.string().required().messages({
+        'string.base': 'receiverId should be a type of text',
+        'string.empty': 'receiverId cannot be an empty field',  
+        'any.required': 'receiverId is a required field'
+    })
+});
