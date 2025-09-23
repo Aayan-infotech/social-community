@@ -54,10 +54,9 @@ export const addMatrimonialSchema = joi.object({
         'any.required': 'community is a required field'
     }),
 
-    livingIn: joi.string().required().messages({
+    livingIn: joi.string().optional().messages({
         'string.base': 'livingIn should be a type of text',
         'string.empty': 'livingIn cannot be an empty field',
-        'any.required': 'livingIn is a required field'
     }),
 
     marryInOtherCaste: joi.boolean().default(false).required().messages({
