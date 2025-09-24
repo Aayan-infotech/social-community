@@ -49,13 +49,16 @@ export const addMatrimonialProfile = asyncHandler(async (req, res) => {
 
   // Check if a profile already exists for the user
   const existingProfile = await matrimonialProfilesModel.findOne({
-    createdBy,
-    profileFor,
-    name,
+    $or: [
+      { createdBy, profileFor, name },
+      { email },
+      { mobileNo },
+    ],
   });
   if (existingProfile) {
     throw new ApiError(400, "A profile with the same details already exists.");
   }
+
 
   if (community) {
     let communityDoc = await Community.findOne({ name: community.trim() });
@@ -285,12 +288,12 @@ export const getAllProfiles = asyncHandler(async (req, res) => {
         : "No profiles found",
       profiles.length > 0
         ? {
-            profiles,
-            total_page: totalPages,
-            current_page: page,
-            total_records: totalCount,
-            per_page: limit,
-          }
+          profiles,
+          total_page: totalPages,
+          current_page: page,
+          total_records: totalCount,
+          per_page: limit,
+        }
         : null
     )
   );
