@@ -567,16 +567,15 @@ export const getMatrimonialProfileSuggesstions = asyncHandler(
       minIncome,
       maxIncome,
     } = req.query;
+
     const page = Math.max(1, parseInt(req.query.page)) || 1;
     const limit = Math.max(1, parseInt(req.query.limit)) || 10;
     const skip = (page - 1) * limit;
 
-    // Validate profileId
     if (!profileId || profileId.trim() === "") {
       throw new ApiError(400, "profileId parameter is required");
     }
 
-    // Get the profile details of the given profileId
     const profile = await matrimonialProfilesModel
       .findOne({ _id: profileId })
       .lean();
@@ -584,71 +583,35 @@ export const getMatrimonialProfileSuggesstions = asyncHandler(
       throw new ApiError(404, "Profile not found");
     }
 
-    // Validate numeric inputs
-    const parsedMinAge = minAge ? parseInt(minAge) : undefined;
-    const parsedMaxAge = maxAge ? parseInt(maxAge) : undefined;
-    const parsedMinHeight = minHeight ? parseFloat(minHeight) : undefined;
-    const parsedMaxHeight = maxHeight ? parseFloat(maxHeight) : undefined;
-    const parsedMinIncome = minIncome ? parseInt(minIncome) : undefined;
-    const parsedMaxIncome = maxIncome ? parseInt(maxIncome) : undefined;
-    const parsedPage = parseInt(page);
-    const parsedLimit = parseInt(limit);
-
-    if (
-      (parsedMinAge && isNaN(parsedMinAge)) ||
-      (parsedMaxAge && isNaN(parsedMaxAge))
-    ) {
-      throw new ApiError(400, "Invalid age range provided");
-    }
-    if (
-      (parsedMinHeight && isNaN(parsedMinHeight)) ||
-      (parsedMaxHeight && isNaN(parsedMaxHeight))
-    ) {
-      throw new ApiError(400, "Invalid height range provided");
-    }
-    if (
-      (parsedMinIncome && isNaN(parsedMinIncome)) ||
-      (parsedMaxIncome && isNaN(parsedMaxIncome))
-    ) {
-      throw new ApiError(400, "Invalid income range provided");
-    }
-    if (isNaN(parsedPage) || parsedPage < 1) {
-      throw new ApiError(400, "Invalid page number");
-    }
-    if (isNaN(parsedLimit) || parsedLimit < 1) {
-      throw new ApiError(400, "Invalid limit value");
-    }
-
-    // Build aggregation pipeline
-    const matchCriteria = {
-      _id: { $ne: profileId },
+    // --- Base conditions (always apply) ---
+    const baseMatch = {
+      _id: { $ne: profile._id },
       createdBy: { $ne: req.user.userId },
       gender: { $ne: profile.gender },
-      // isVerified: true,
     };
 
-    // Add filters dynamically
-    if (parsedMinAge || parsedMaxAge) {
+    // --- Strict filters (preferences + query params) ---
+    const matchCriteria = { ...baseMatch };
+
+    if (minAge || maxAge) {
       matchCriteria.age = {};
-      if (parsedMinAge) matchCriteria.age.$gte = parsedMinAge;
-      if (parsedMaxAge) matchCriteria.age.$lte = parsedMaxAge;
+      if (minAge) matchCriteria.age.$gte = parseInt(minAge);
+      if (maxAge) matchCriteria.age.$lte = parseInt(maxAge);
     }
 
-    if (parsedMinHeight || parsedMaxHeight) {
+    if (minHeight || maxHeight) {
       matchCriteria.height = {};
-      if (parsedMinHeight) matchCriteria.height.$gte = parsedMinHeight;
-      if (parsedMaxHeight) matchCriteria.height.$lte = parsedMaxHeight;
+      if (minHeight) matchCriteria.height.$gte = parseFloat(minHeight);
+      if (maxHeight) matchCriteria.height.$lte = parseFloat(maxHeight);
     }
 
-    if (parsedMinIncome || parsedMaxIncome) {
+    if (minIncome || maxIncome) {
       matchCriteria.income = {};
-      if (parsedMinIncome) matchCriteria.income.$gte = parsedMinIncome;
-      if (parsedMaxIncome) matchCriteria.income.$lte = parsedMaxIncome;
+      if (minIncome) matchCriteria.income.$gte = parseInt(minIncome);
+      if (maxIncome) matchCriteria.income.$lte = parseInt(maxIncome);
     }
 
-    if (religion) {
-      matchCriteria.religion = religion;
-    }
+    if (religion) matchCriteria.religion = religion;
 
     if (profile.marryInOtherCaste === false && profile.community) {
       matchCriteria.community = profile.community;
@@ -656,96 +619,96 @@ export const getMatrimonialProfileSuggesstions = asyncHandler(
       matchCriteria.community = community;
     }
 
-    if (location) {
-      matchCriteria.location = location;
-    }
+    if (location) matchCriteria.location = location;
 
     if (maritalStatus) {
       matchCriteria.maritalStatus = { $in: maritalStatus.split(",") };
     }
 
-    const aggregation = [];
-    aggregation.push({ $match: matchCriteria });
-    aggregation.push({ $sort: { createdAt: -1 } });
-
-    aggregation.push({
-      $lookup: {
-        from: "interestinprofiles",
-        let: { receiverId: "$_id" },
-        pipeline: [
-          {
-            $match: {
-              $expr: {
-                $and: [
-                  {
-                    $eq: ["$senderId", new mongoose.Types.ObjectId(profileId)],
-                  },
-                  { $eq: ["$receiverId", "$$receiverId"] },
-                ],
+    // --- Helper function to build aggregation ---
+    const buildAggregation = (criteria) => [
+      { $match: criteria },
+      { $sort: { createdAt: -1 } },
+      {
+        $lookup: {
+          from: "interestinprofiles",
+          let: { receiverId: "$_id" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ["$senderId", new mongoose.Types.ObjectId(profileId)] },
+                    { $eq: ["$receiverId", "$$receiverId"] },
+                  ],
+                },
               },
             },
-          },
-          { $limit: 1 },
-        ],
-        as: "interestData",
-      },
-    });
-
-    aggregation.push({
-      $addFields: {
-        isInterestSend: {
-          $cond: [{ $gt: [{ $size: "$interestData" }, 0] }, true, false],
+            { $limit: 1 },
+          ],
+          as: "interestData",
         },
       },
-    });
-
-    aggregation.push({
-      $facet: {
-        profiles: [
-          { $skip: skip },
-          { $limit: limit },
-          {
-            $project: {
-              name: 1,
-              age: 1,
-              gender: 1,
-              location: 1,
-              createdAt: 1,
-              religion: 1,
-              community: 1,
-              profilePicture: 1,
-              subCommunity: 1,
-              height: 1,
-              income: 1,
-              maritalStatus: 1,
-              isVerified: 1,
-              isInterestSend: 1,
-            },
+      {
+        $addFields: {
+          isInterestSend: {
+            $cond: [{ $gt: [{ $size: "$interestData" }, 0] }, true, false],
           },
-        ],
-        totalCount: [{ $count: "count" }],
+        },
       },
-    });
+      {
+        $facet: {
+          profiles: [
+            { $skip: skip },
+            { $limit: limit },
+            {
+              $project: {
+                name: 1,
+                age: 1,
+                gender: 1,
+                location: 1,
+                createdAt: 1,
+                religion: 1,
+                community: 1,
+                profilePicture: 1,
+                subCommunity: 1,
+                height: 1,
+                income: 1,
+                maritalStatus: 1,
+                isVerified: 1,
+                isInterestSend: 1,
+              },
+            },
+          ],
+          totalCount: [{ $count: "count" }],
+        },
+      },
+    ];
 
-    const results = await matrimonialProfilesModel.aggregate(aggregation);
-    const profiles = results[0]?.profiles || [];
-    const totalCount = results[0]?.totalCount[0]?.count || 0;
+    // --- Run with strict filters first ---
+    let results = await matrimonialProfilesModel.aggregate(buildAggregation(matchCriteria));
+    let profiles = results[0]?.profiles || [];
+    let totalCount = results[0]?.totalCount[0]?.count || 0;
+
+    // --- If no profiles, fallback to base conditions ---
+    if (profiles.length === 0) {
+      results = await matrimonialProfilesModel.aggregate(buildAggregation(baseMatch));
+      profiles = results[0]?.profiles || [];
+      totalCount = results[0]?.totalCount[0]?.count || 0;
+    }
 
     return res.json(
-      new ApiResponse(
-        200,
-        "Matrimonial profile suggestions fetched successfully",
-        {
-          profiles: profiles,
-          total_page: Math.ceil(totalCount / limit),
-          current_page: page,
-          total_records: totalCount,
-          per_page: limit,
-        }
-      )
+      new ApiResponse(200, "Matrimonial profile suggestions fetched successfully", {
+        profiles,
+        total_page: Math.ceil(totalCount / limit),
+        current_page: page,
+        total_records: totalCount,
+        per_page: limit,
+      })
     );
   }
 );
+
 
 export const saveHobbies = asyncHandler(async (req, res) => {
   const profileId = req.params.profileId;
