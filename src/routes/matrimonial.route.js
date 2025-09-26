@@ -7,6 +7,11 @@ import {
   addMatrimonialSchema,
   saveHobbiesSchema,
   sendInterestSchema,
+  updateAboutSchema,
+  updateBasicDetailsSchema,
+  updateCareerSchema,
+  updateEducationSchema,
+  updateFamilySchema,
   updateMatrimonialSchema,
 } from "../validators/matrimonialValidator.js";
 import {
@@ -29,6 +34,11 @@ import {
   getSubCommunities,
   saveHobbies,
   sendInterest,
+  updateAbout,
+  updateBasicDetails,
+  updateCareer,
+  updateEducation,
+  updateFamily,
   updateMatrimonialProfile,
 } from "../controllers/matrimonial.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
@@ -105,6 +115,39 @@ router.get(
   "/getInterestedProfile/:profileId",
   verifyJWT,
   getInterestedProfiles
+);
+
+router.put(
+  "/basicDetails/:profileId",
+  verifyJWT,
+  validateRequest(updateBasicDetailsSchema),
+  updateBasicDetails
+);
+router.put(
+  "/updateAbout/:profileId",
+  verifyJWT,
+  validateRequest(updateAboutSchema),
+  updateAbout
+);
+
+router.put(
+  "/updateEducation/:profileId",
+  verifyJWT,
+  validateRequest(updateEducationSchema),
+  updateEducation
+);
+
+router.put(
+  "/updateCareer/:profileId",
+  verifyJWT,
+  validateRequest(updateCareerSchema),
+  updateCareer
+);
+router.put(
+  "/updatefamilyDetails/:profileId",
+  verifyJWT,
+  validateRequest(updateFamilySchema),
+  updateFamily
 );
 
 export default router;

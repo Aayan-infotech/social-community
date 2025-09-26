@@ -49,43 +49,10 @@ export const addMatrimonialProfile = asyncHandler(async (req, res) => {
 
   // Check if a profile already exists for the user
   const existingProfile = await matrimonialProfilesModel.findOne({
-    $or: [
-      { createdBy, profileFor, name },
-      { email },
-      { mobileNo },
-    ],
+    $or: [{ createdBy, profileFor, name }, { email }, { mobileNo }],
   });
   if (existingProfile) {
     throw new ApiError(400, "A profile with the same details already exists.");
-  }
-
-
-  if (community) {
-    let communityDoc = await Community.findOne({ name: community.trim() });
-
-    if (!communityDoc) {
-      const newCommunity = new Community({
-        religion: religion.trim(),
-        name: community.trim(),
-      });
-      await newCommunity.save();
-      communityDoc = newCommunity;
-    }
-
-    const communityId = communityDoc._id;
-    if (!communityId) {
-      throw new ApiError(
-        400,
-        "Please add community before adding sub-community"
-      );
-    }
-    if (subCommunity) {
-      const subCommunityDoc = await SubCommunity.updateOne(
-        { name: subCommunity.trim(), community: communityId },
-        { $setOnInsert: { name: subCommunity.trim(), community: communityId } },
-        { upsert: true }
-      );
-    }
   }
 
   if (college) {
@@ -134,7 +101,7 @@ export const addMatrimonialProfile = asyncHandler(async (req, res) => {
     marryInOtherCaste,
     maritalStatus,
     noOfChildren,
-    diet,
+    lifestyle: { diet },
     height,
     weight,
     state,
@@ -288,12 +255,12 @@ export const getAllProfiles = asyncHandler(async (req, res) => {
         : "No profiles found",
       profiles.length > 0
         ? {
-          profiles,
-          total_page: totalPages,
-          current_page: page,
-          total_records: totalCount,
-          per_page: limit,
-        }
+            profiles,
+            total_page: totalPages,
+            current_page: page,
+            total_records: totalCount,
+            per_page: limit,
+          }
         : null
     )
   );
@@ -638,7 +605,12 @@ export const getMatrimonialProfileSuggesstions = asyncHandler(
               $match: {
                 $expr: {
                   $and: [
-                    { $eq: ["$senderId", new mongoose.Types.ObjectId(profileId)] },
+                    {
+                      $eq: [
+                        "$senderId",
+                        new mongoose.Types.ObjectId(profileId),
+                      ],
+                    },
                     { $eq: ["$receiverId", "$$receiverId"] },
                   ],
                 },
@@ -686,29 +658,36 @@ export const getMatrimonialProfileSuggesstions = asyncHandler(
     ];
 
     // --- Run with strict filters first ---
-    let results = await matrimonialProfilesModel.aggregate(buildAggregation(matchCriteria));
+    let results = await matrimonialProfilesModel.aggregate(
+      buildAggregation(matchCriteria)
+    );
     let profiles = results[0]?.profiles || [];
     let totalCount = results[0]?.totalCount[0]?.count || 0;
 
     // --- If no profiles, fallback to base conditions ---
     if (profiles.length === 0) {
-      results = await matrimonialProfilesModel.aggregate(buildAggregation(baseMatch));
+      results = await matrimonialProfilesModel.aggregate(
+        buildAggregation(baseMatch)
+      );
       profiles = results[0]?.profiles || [];
       totalCount = results[0]?.totalCount[0]?.count || 0;
     }
 
     return res.json(
-      new ApiResponse(200, "Matrimonial profile suggestions fetched successfully", {
-        profiles,
-        total_page: Math.ceil(totalCount / limit),
-        current_page: page,
-        total_records: totalCount,
-        per_page: limit,
-      })
+      new ApiResponse(
+        200,
+        "Matrimonial profile suggestions fetched successfully",
+        {
+          profiles,
+          total_page: Math.ceil(totalCount / limit),
+          current_page: page,
+          total_records: totalCount,
+          per_page: limit,
+        }
+      )
     );
   }
 );
-
 
 export const saveHobbies = asyncHandler(async (req, res) => {
   const profileId = req.params.profileId;
@@ -915,4 +894,232 @@ export const getInterestedProfiles = asyncHandler(async (req, res) => {
       per_page: limit,
     })
   );
+});
+
+export const updateBasicDetails = asyncHandler(async (req, res) => {
+  const {
+    name,
+    height,
+    weight,
+    dob,
+    maritalStatus,
+    community,
+    subCommunity,
+    motherTongue,
+    country,
+    state,
+    city,
+    annualIncome,
+  } = req.body;
+  const profileId = req.params.profileId;
+
+  if (
+    !profileId ||
+    profileId.trim() === "" ||
+    profileId === undefined ||
+    profileId === null
+  ) {
+    throw new ApiError(400, "profileId parameter is required");
+  }
+
+  // update the basic details of matrimonial profile
+  const profile = await matrimonialProfilesModel.findOne({
+    _id: profileId,
+    createdBy: req.user.userId,
+  });
+
+  if (!profile) {
+    throw new ApiError(404, "Profile not found");
+  }
+
+  profile.name = name;
+  profile.height = height;
+  profile.weight = weight;
+  profile.dob = dob;
+  profile.maritalStatus = maritalStatus;
+  profile.community = community;
+  profile.subCommunity = subCommunity;
+  profile.motherTongue = motherTongue;
+  profile.country = country;
+  profile.state = state;
+  profile.city = city;
+  profile.annualIncome = annualIncome;
+  await profile.save();
+
+  return res.json(
+    new ApiResponse(200, "Basic details updated successfully", profile)
+  );
+});
+
+export const updateAbout = asyncHandler(async (req, res) => {
+  const { about, shortDescription, profileFor, disability, disabilityDetails } =
+    req.body;
+  const profileId = req.params.profileId;
+  if (
+    !profileId ||
+    profileId.trim() === "" ||
+    profileId === undefined ||
+    profileId === null
+  ) {
+    throw new ApiError(400, "profileId parameter is required");
+  }
+  const profile = await matrimonialProfilesModel.findOne({
+    _id: profileId,
+    createdBy: req.user.userId,
+  });
+  if (!profile) {
+    throw new ApiError(404, "Profile not found");
+  }
+
+  profile.about = about;
+  profile.shortDescription = shortDescription;
+  profile.profileFor = profileFor;
+  profile.disability = disability;
+  profile.disabilityDetails = disability === "no" ? "" : disabilityDetails;
+
+  await profile.save();
+  return res.json(
+    new ApiResponse(200, "About section updated successfully", profile)
+  );
+});
+
+export const updateEducation = asyncHandler(async (req, res) => {
+  const {
+    highestQualification,
+    educationAbout,
+    ugdegree,
+    college,
+    schoolName,
+  } = req.body;
+  const profileId = req.params.profileId;
+  if (
+    !profileId ||
+    profileId.trim() === "" ||
+    profileId === undefined ||
+    profileId === null
+  ) {
+    throw new ApiError(400, "profileId parameter is required");
+  }
+
+  const profile = await matrimonialProfilesModel.findOne({
+    _id: profileId,
+    createdBy: req.user.userId,
+  });
+
+  if (!profile) {
+    throw new ApiError(404, "Profile not found");
+  }
+
+  profile.highestQualification = highestQualification;
+  profile.educationAbout = educationAbout;
+  profile.ugdegree = ugdegree;
+  profile.college = college;
+  profile.schoolName = schoolName;
+  await profile.save();
+  return res.json(
+    new ApiResponse(200, "Education section updated successfully", profile)
+  );
+});
+
+export const updateCareer = asyncHandler(async (req, res) => {
+  const {
+    careerAbout,
+    employmentType,
+    organizationName,
+    occupation,
+    workLocation,
+  } = req.body;
+  const profileId = req.params.profileId;
+  if (
+    !profileId ||
+    profileId.trim() === "" ||
+    profileId === undefined ||
+    profileId === null
+  ) {
+    throw new ApiError(400, "profileId parameter is required");
+  }
+
+  const profile = await matrimonialProfilesModel.findOne({
+    _id: profileId,
+    createdBy: req.user.userId,
+  });
+
+  if (!profile) {
+    throw new ApiError(404, "Profile not found");
+  }
+
+  profile.careerAbout = careerAbout;
+  profile.employmentType = employmentType;
+  profile.workAs = occupation;
+  profile.workWith = organizationName;
+  profile.workLocation = workLocation;
+  await profile.save();
+  return res.json(
+    new ApiResponse(200, "Career section updated successfully", profile)
+  );
+});
+
+export const updateFamily = asyncHandler(async (req, res) => {
+  const {
+    familyAbout,
+    familyType,
+    fatherName,
+    motherName,
+    noOfBrothers,
+    noOfSisters,
+    marriedBrothers,
+    marriedSisters,
+    financialStatus,
+    livedWithFamily,
+    fatherOccupation,
+    motherOccupation,
+    familyIncome,
+    familyValues,
+    LivingWithParents,
+    familyLocation,
+  } = req.body;
+  const profileId = req.params.profileId;
+  if (
+    !profileId ||
+    profileId.trim() === "" ||
+    profileId === undefined ||
+    profileId === null
+  ) {
+    throw new ApiError(400, "profileId parameter is required");
+  }
+
+  const profile = await matrimonialProfilesModel
+    .findOne({
+      _id: profileId,
+      createdBy: req.user.userId,
+    })
+    .populate("familyDetails");
+  if (!profile) {
+    throw new ApiError(404, "Profile not found");
+  }
+
+  profile.familyDetails = {
+    about: familyAbout,
+    familyType: familyType,
+    fatherName: fatherName,
+    motherName: motherName,
+    noOfBrothers: noOfBrothers,
+    noOfSisters: noOfSisters,
+    marriedBrothers: marriedBrothers,
+    marriedSisters: marriedSisters,
+    financialStatus: financialStatus,
+    livedWithFamily: livedWithFamily,
+    fatherOccupation: fatherOccupation,
+    motherOccupation: motherOccupation,
+    familyIncome: familyIncome,
+    familyValues: familyValues,
+    LivingWithParents: LivingWithParents,
+    familyLocation: familyLocation,
+  };
+  await profile.save();
+  return res.json(
+    new ApiResponse(200, "Family section updated successfully", profile)
+  );
+  //
+  throw new ApiError(403, "This function is under development");
 });
