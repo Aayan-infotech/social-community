@@ -14,6 +14,7 @@ import Hobby from "../models/hobbies.model.js";
 import InterestInProfileModel from "../models/matrimonialProfileInterest.model.js";
 import mongoose from "mongoose";
 import VedicAstrology from "vedic-astrology";
+import { DesiredPartner } from "../models/desiredPartner.model.js";
 
 export const addMatrimonialProfile = asyncHandler(async (req, res) => {
   const {
@@ -1314,23 +1315,71 @@ export const updateHoroscope = asyncHandler(async (req, res) => {
 });
 
 export const updateLifestyle = asyncHandler(async (req, res) => {
-  throw new ApiError(403, "This function is under development");
+  const {
+    diet,
+    smoke,
+    drink,
+    openToPets,
+    OwnHouse,
+    OwnCar,
+    FoodCooked,
+    hobbies,
+    favoriteMusic,
+    favoritebooks,
+    dressStyle,
+    sports,
+    cuisine,
+  }= req.body;
+  const profileId = req.params.profileId;
+  if (
+    !profileId ||
+    profileId.trim() === "" ||
+    profileId === undefined ||
+    profileId === null
+  ) {
+    throw new ApiError(400, "profileId parameter is required");
+  }
+
+  const profile = await matrimonialProfilesModel.findOne({
+    _id: profileId,
+    createdBy: req.user.userId,
+  });
+
+  if (!profile) {
+    throw new ApiError(404, "Profile not found");
+  }
+
+  profile.lifestyle = {
+    diet,
+    smoke,
+    drink,
+    openToPets,
+    OwnHouse,
+    OwnCar,
+    FoodCooked,
+    hobbies,
+    favoriteMusic,
+    favoritebooks,
+    dressStyle,
+    sports,
+    cuisine,
+  };
+
+  await profile.save();
+  return res.json(
+    new ApiResponse(200, "Lifestyle section updated successfully", profile)
+  );
 });
 
 export const desiredPartner = asyncHandler(async (req, res) => {
   const {
-    ageRange,
-    heightRange,
+    ageFrom,
+    ageTo,
+    heightFrom,
+    heightTo,
     maritalStatus,
     religion,
-    community,
-    motherTongue,
-    country,
-    state,
-    city,
-    education,
-    occupation,
-    annualIncome,
+    motherTongue
   } = req.body;
   const userId = req.user.userId;
   const profileId = req.params.profileId;
@@ -1343,20 +1392,6 @@ export const desiredPartner = asyncHandler(async (req, res) => {
     throw new ApiError(400, "profileId parameter is required");
   }
 
-  console.log(
-    ageRange,
-    heightRange,
-    maritalStatus,
-    religion,
-    community,
-    motherTongue,
-    country,
-    state,
-    city,
-    education,
-    occupation,
-    annualIncome
-  );
   const profile = await matrimonialProfilesModel.findOne({
     _id: profileId,
     createdBy: userId,
@@ -1366,10 +1401,29 @@ export const desiredPartner = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Profile not found");
   }
 
-  // Validate and process the request data
-  // ...
+  const existingPreference = await DesiredPartner.findOne({
+    userId,
+    profileId,
+  });
+  if (existingPreference) {
+    throw new ApiError(400, "Preferences already set for this profile");
+  }
+
+  const newPreference = new DesiredPartner({
+    createdBy:userId,
+    profileId,
+    ageFrom,
+    ageTo,
+    heightFrom,
+    heightTo,
+    maritalStatus,
+    religion,
+    motherTongue,
+  });
+
+  await newPreference.save();
 
   return res.json(
-    new ApiResponse(200, "Desired partner preferences updated successfully")
+    new ApiResponse(200, "Desired partner preferences updated successfully", newPreference)
   );
 });

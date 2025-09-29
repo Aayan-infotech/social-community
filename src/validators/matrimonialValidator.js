@@ -860,10 +860,13 @@ export const desiredPartnersSchema = joi.object({
         'any.only': 'religion must be one of hindu, muslim, christian, sikh, jain, buddhist, parsi, others',
         'any.required': 'religion is a required field'
     }),
-    community: joi.array().items(joi.string()).min(1).required().messages({
+    community: joi.array().items(joi.string()).min(1).messages({
         'array.base': 'community should be an array of strings',
-        'array.min': 'You must select at least one community',
-        'any.required': 'community is a required field'
+        'array.min': 'You must select at least one community'
+    }),
+    motherTongue: joi.string().optional().allow('').messages({
+        'string.base': 'motherTongue should be a type of text',
+        'string.empty': 'motherTongue cannot be an empty field',
     }),
     country: joi.string().optional().allow('').messages({
         'string.base': 'country should be a type of text',
