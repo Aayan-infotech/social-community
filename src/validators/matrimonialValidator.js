@@ -823,14 +823,16 @@ export const updateLifeStyleSchema = joi.object({
 });
 
 export const desiredPartnersSchema = joi.object({
-    ageFrom: joi.number().min(18).required().messages({
+    ageFrom: joi.number().min(18).max(99).required().messages({
         'number.base': 'ageFrom should be a type of number',
         'number.min': 'ageFrom should be at least 18',
+        'number.max': 'ageFrom should be at most 99',
         'any.required': 'ageFrom is a required field'
     }),
-    ageTo: joi.number().min(joi.ref('ageFrom')).required().messages({
+    ageTo: joi.number().min(joi.ref('ageFrom')).max(99).required().messages({
         'number.base': 'ageTo should be a type of number',
         'number.min': 'ageTo should be greater than or equal to ageFrom',
+        'number.max': 'ageTo should be at most 99',
         'any.required': 'ageTo is a required field'
     }),
     heightFrom: joi.string().required().messages({
@@ -888,9 +890,15 @@ export const desiredPartnersSchema = joi.object({
         'string.base': 'occupation should be a type of text',
         'string.empty': 'occupation cannot be an empty field',
     }),
-    annualIncome: joi.string().optional().allow('').messages({
-        'string.base': 'annualIncome should be a type of text',
-        'string.empty': 'annualIncome cannot be an empty field',
+    annualIncomeMin: joi.number().min(0).required().messages({
+        'number.base': 'annualIncomeMin should be a type of number',
+        'number.empty': 'annualIncomeMin cannot be an empty field',
+        'any.required': 'annualIncomeMin is a required field'
+    }),
+    annualIncomeMax: joi.number().min(joi.ref('annualIncomeMin')).required().messages({
+        'number.base': 'annualIncomeMax should be a type of number',
+        'number.empty': 'annualIncomeMax cannot be an empty field',
+        'any.required': 'annualIncomeMax is a required field'
     }),
     diet: joi.string().valid('vegetarian', 'non-vegetarian', 'vegan', 'eggetarian', 'other').optional().allow('').messages({
         'string.base': 'diet should be a type of text',
@@ -908,4 +916,54 @@ export const desiredPartnersSchema = joi.object({
         'string.base': 'manglik should be a type of text',
         'any.only': 'manglik must be one of [Manglik, Non-Manglik, Dont know]',
     }),
+});
+
+
+export const partnerBasicDetailsSchema = joi.object({
+    ageFrom: joi.number().min(18).max(99).required().messages({
+        'number.base': 'ageFrom should be a type of number',
+        'number.min': 'ageFrom should be at least 18',
+        'number.max': 'ageFrom should be at most 99',
+        'any.required': 'ageFrom is a required field'
+    }),
+    ageTo: joi.number().min(joi.ref('ageFrom')).max(99).required().messages({
+        'number.base': 'ageTo should be a type of number',
+        'number.min': 'ageTo should be greater than or equal to ageFrom',
+        'number.max': 'ageTo should be at most 99',
+        'any.required': 'ageTo is a required field'
+    }),
+    heightFrom: joi.string().required().messages({
+        'string.base': 'heightFrom should be a type of text',
+        'string.empty': 'heightFrom cannot be an empty field',
+        'any.required': 'heightFrom is a required field'
+    }),
+    heightTo: joi.string().required().messages({
+        'string.base': 'heightTo should be a type of text',
+        'string.empty': 'heightTo cannot be an empty field',
+        'any.required': 'heightTo is a required field'
+    }),
+    maritalStatus: joi.array().items(joi.string().valid('never married', 'divorced', 'widowed', 'separated')).min(1).required().messages({
+        'array.base': 'maritalStatus should be an array of strings',
+    }),
+    noOfChildren: joi.number().min(0).when('maritalStatus', {
+        is: joi.array().items(joi.string().valid('divorced', 'widowed', 'separated')).min(1),
+        then: joi.number().min(0).required(),
+        otherwise: joi.number().min(0).optional()
+    }).messages({
+        'number.base': 'noOfChildren should be a type of number',
+        'number.min': 'noOfChildren cannot be negative',
+        'any.required': 'noOfChildren is a required field when maritalStatus includes divorced, widowed, or separated'
+    }),
+    country: joi.array().items(joi.string()).min(1).messages({
+        'array.base': 'country should be an array of strings',
+        'array.min': 'You must select at least one country'
+    }),
+    state: joi.array().items(joi.string()).min(1).messages({
+        'array.base': 'state should be an array of strings',
+        'array.min': 'You must select at least one state'
+    }),
+    city: joi.array().items(joi.string()).min(1).messages({
+        'array.base': 'city should be an array of strings',
+        'array.min': 'You must select at least one city'
+    })
 });

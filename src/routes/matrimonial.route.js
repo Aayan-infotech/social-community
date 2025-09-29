@@ -6,6 +6,7 @@ import {
   addIndentyProofDocumentSchema,
   addMatrimonialSchema,
   desiredPartnersSchema,
+  partnerBasicDetailsSchema,
   saveHobbiesSchema,
   sendInterestSchema,
   updateAboutSchema,
@@ -36,6 +37,7 @@ import {
   getProfileById,
   getStatesByCountry,
   getSubCommunities,
+  partnerBasicDetails,
   saveHobbies,
   sendInterest,
   updateAbout,
@@ -170,7 +172,9 @@ router.put(
   updateLifestyle
 );
 
+// desired partners
 router.post('/desirePartners/:profileId',verifyJWT,validateRequest(desiredPartnersSchema),desiredPartner);
+router.put('/partnerBasicDetails/:profileId',verifyJWT,validateRequest(partnerBasicDetailsSchema),partnerBasicDetails);
 
 export default router;
 

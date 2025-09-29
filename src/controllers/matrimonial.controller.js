@@ -1329,7 +1329,7 @@ export const updateLifestyle = asyncHandler(async (req, res) => {
     dressStyle,
     sports,
     cuisine,
-  }= req.body;
+  } = req.body;
   const profileId = req.params.profileId;
   if (
     !profileId ||
@@ -1379,7 +1379,9 @@ export const desiredPartner = asyncHandler(async (req, res) => {
     heightTo,
     maritalStatus,
     religion,
-    motherTongue
+    motherTongue,
+    annualIncomeMin,
+    annualIncomeMax,
   } = req.body;
   const userId = req.user.userId;
   const profileId = req.params.profileId;
@@ -1402,15 +1404,15 @@ export const desiredPartner = asyncHandler(async (req, res) => {
   }
 
   const existingPreference = await DesiredPartner.findOne({
-    userId,
+    createdBy: userId,
     profileId,
   });
   if (existingPreference) {
     throw new ApiError(400, "Preferences already set for this profile");
   }
 
-  const newPreference = new DesiredPartner({
-    createdBy:userId,
+  const newPreference = {
+    createdBy: userId,
     profileId,
     ageFrom,
     ageTo,
@@ -1419,11 +1421,72 @@ export const desiredPartner = asyncHandler(async (req, res) => {
     maritalStatus,
     religion,
     motherTongue,
-  });
-
-  await newPreference.save();
+    annualIncome: { min: annualIncomeMin, max: annualIncomeMax },
+    smoking: ["no"],
+    drinking: ["no"],
+    diet: ["vegetarian"],
+    community: profile.marryInOtherCaste ? [] : [profile.community],
+    country: [profile.country],
+    state: [profile.state],
+    city: [profile.city],
+  };
+  await DesiredPartner.create(newPreference);
 
   return res.json(
-    new ApiResponse(200, "Desired partner preferences updated successfully", newPreference)
+    new ApiResponse(
+      200,
+      "Desired partner preferences updated successfully",
+      newPreference
+    )
   );
+});
+
+
+export const partnerBasicDetails = asyncHandler(async (req, res) =>{
+  const { ageFrom, ageTo, heightFrom, heightTo , maritalStatus, country , state , city} = req.body;
+  const userId = req.user.userId;
+  const profileId = req.params.profileId;
+  if (
+    !profileId ||
+    profileId.trim() === "" ||
+    profileId === undefined ||
+    profileId === null
+  ) {
+    throw new ApiError(400, "profileId parameter is required");
+  }
+
+  const profile = await matrimonialProfilesModel.findOne({
+    _id: profileId,
+    createdBy: userId,
+  });
+  if (!profile) {
+    throw new ApiError(404, "Profile not found");
+  }
+
+  const existingPreference = await DesiredPartner.findOne({
+    createdBy: userId,
+    profileId,
+  });
+
+  console.log(existingPreference);
+  if (!existingPreference) {
+    throw new ApiError(400, "Preferences not000000000000000000000000000000000000000000000000000000 set for this profile");
+  }
+
+  const newPreference = {
+    ageFrom,
+    ageTo,
+    heightFrom,
+    heightTo,
+    maritalStatus,
+    country,
+    state,
+    city
+  };
+
+  console.log(newPreference);
+
+
+  throw new ApiError(403, "This function is under development");
+
 });

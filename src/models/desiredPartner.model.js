@@ -32,7 +32,7 @@ const desiredPartnerSchema = new mongoose.Schema(
         ],
       },
     ],
-    community: [{ type: String, enum: Community.name }],
+    community: [{ type: String }],
     subCommunity: [{ type: String }],
     maritalStatus: [
       {
@@ -46,7 +46,10 @@ const desiredPartnerSchema = new mongoose.Schema(
     cityLivingIn: [{ type: String }],
     education: [{ type: String }],
     occupation: [{ type: String }],
-    annualIncome: [{ type: String }],
+    annualIncome: {
+        min: { type: Number, default: 0 },
+        max: { type: Number, default: 1000000000 },
+    },
     diet: [
       {
         type: String,
