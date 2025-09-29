@@ -5,6 +5,7 @@ import {
   addFamilyDetailsSchema,
   addIndentyProofDocumentSchema,
   addMatrimonialSchema,
+  desiredPartnersSchema,
   saveHobbiesSchema,
   sendInterestSchema,
   updateAboutSchema,
@@ -12,6 +13,8 @@ import {
   updateCareerSchema,
   updateEducationSchema,
   updateFamilySchema,
+  updateHoroscopeSchema,
+  updateLifeStyleSchema,
   updateMatrimonialSchema,
 } from "../validators/matrimonialValidator.js";
 import {
@@ -19,6 +22,7 @@ import {
   addFamilyDetails,
   addIndentyProofDocument,
   addMatrimonialProfile,
+  desiredPartner,
   getAllCountries,
   getAllProfiles,
   getCitiesByState,
@@ -39,6 +43,8 @@ import {
   updateCareer,
   updateEducation,
   updateFamily,
+  updateHoroscope,
+  updateLifestyle,
   updateMatrimonialProfile,
 } from "../controllers/matrimonial.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
@@ -150,4 +156,21 @@ router.put(
   updateFamily
 );
 
+router.put(
+  "/updateHoroscope/:profileId",
+  verifyJWT,
+  validateRequest(updateHoroscopeSchema),
+  updateHoroscope
+);
+
+router.put(
+  "/updateLifestyle/:profileId",
+  verifyJWT,
+  validateRequest(updateLifeStyleSchema),
+  updateLifestyle
+);
+
+router.post('/desirePartners/:profileId',verifyJWT,validateRequest(desiredPartnersSchema),desiredPartner);
+
 export default router;
+

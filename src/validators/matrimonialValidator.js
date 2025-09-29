@@ -692,3 +692,217 @@ export const updateFamilySchema = joi.object({
         'string.empty': 'familyLocation cannot be an empty field',
     })
 });
+
+
+export const updateHoroscopeSchema = joi.object({
+    "birthTime": joi.string().pattern(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/).required().messages({
+        'string.base': 'birthTime should be a type of text',
+        'string.empty': 'birthTime cannot be an empty field',
+        'string.pattern.base': 'birthTime must be in HH:MM 24-hour format',
+        'any.required': 'birthTime is a required field'
+    }),
+    "birthPlace": joi.string().required().messages({
+        'string.base': 'birthPlace should be a type of text',
+        'string.empty': 'birthPlace cannot be an empty field',
+        'any.required': 'birthPlace is a required field'
+    }),
+    "manglik": joi.string().valid('Manglik', 'Non-Manglik', 'Dont know').required().messages({
+        'string.base': 'manglik should be a type of text',
+        'string.empty': 'manglik cannot be an empty field',
+        'any.only': 'manglik must be one of [Manglik, Non-Manglik, Dont know]',
+        'any.required': 'manglik is a required field'
+    }),
+    // "rashi": joi.string().required().messages({
+    //     'string.base': 'rashi should be a type of text',
+    //     'string.empty': 'rashi cannot be an empty field',
+    //     'any.required': 'rashi is a required field'
+    // }),
+    // "nakshatra": joi.string().required().messages({
+    //     'string.base': 'nakshatra should be a type of text',
+    //     'string.empty': 'nakshatra cannot be an empty field',
+    //     'any.required': 'nakshatra is a required field'
+    // })
+});
+
+export const updateLifeStyleSchema = joi.object({
+    /**
+     * {
+    "diet":"", //'vegetarian', 'non-vegetarian', 'vegan', 'eggetarian', 'other'
+    "smoke":"", //"yes", "no", "occasionally",
+    "drink":"", //"yes", "no", "occasionally",
+    "openToPets": "",//"yes", "no"
+    "OwnHouse": "",//"yes", "no",
+    "OwnCar": "",//"yes", "no",
+    "FoodCooked": "",
+    "hobbies": "",
+    "favoriteMusic":"",
+    "favoritebooks": "",
+    "dressStyle":"",
+    "sports": "",
+    "cuisine":"",
+    "movies": "",
+    "tvShows": "",
+    "vacationDestination": ""
+}
+    */
+    diet: joi.string().valid('vegetarian', 'non-vegetarian', 'vegan', 'eggetarian', 'other').required().messages({
+        'string.base': 'diet should be a type of text',
+        'any.only': 'diet must be one of [vegetarian, non-vegetarian, vegan, eggetarian, other]',
+        'any.required': 'diet is a required field'
+    }),
+    smoke: joi.string().valid('yes', 'no', 'occasionally').optional().allow('').messages({
+        'string.base': 'smoke should be a type of text',
+        'any.only': 'smoke must be one of [yes, no, occasionally]',
+    }),
+    drink: joi.string().valid('yes', 'no', 'occasionally').optional().allow('').messages({
+        'string.base': 'drink should be a type of text',
+        'any.only': 'drink must be one of [yes, no, occasionally]',
+    }),
+    openToPets: joi.string().valid('yes', 'no').optional().allow('').messages({
+        'string.base': 'openToPets should be a type of text',
+        'any.only': 'openToPets must be one of [yes, no]',
+    }),
+    OwnHouse: joi.string().valid('yes', 'no').optional().allow('').messages({
+        'string.base': 'OwnHouse should be a type of text',
+        'any.only': 'OwnHouse must be one of [yes, no]',
+    }),
+    OwnCar: joi.string().valid('yes', 'no').optional().allow('').messages({
+        'string.base': 'OwnCar should be a type of text',
+        'any.only': 'OwnCar must be one of [yes, no]',
+    }),
+    FoodCooked: joi.string().max(100).optional().allow('').messages({
+        'string.base': 'FoodCooked should be a type of text',
+        'string.empty': 'FoodCooked cannot be an empty field',
+        'string.max': 'FoodCooked should have a maximum length of 100',
+    }),
+    hobbies: joi.string().max(500).optional().allow('').messages({
+        'string.base': 'hobbies should be a type of text',
+        'string.empty': 'hobbies cannot be an empty field',
+        'string.max': 'hobbies should have a maximum length of 500',
+    }),
+    favoriteMusic: joi.string().max(100).optional().allow('').messages({
+        'string.base': 'favoriteMusic should be a type of text',
+        'string.empty': 'favoriteMusic cannot be an empty field',
+        'string.max': 'favoriteMusic should have a maximum length of 100',
+    }),
+    favoritebooks: joi.string().max(100).optional().allow('').messages({
+        'string.base': 'favoritebooks should be a type of text',
+        'string.empty': 'favoritebooks cannot be an empty field',
+        'string.max': 'favoritebooks should have a maximum length of 100',
+    }),
+    dressStyle: joi.string().max(100).optional().allow('').messages({
+        'string.base': 'dressStyle should be a type of text',
+        'string.empty': 'dressStyle cannot be an empty field',
+        'string.max': 'dressStyle should have a maximum length of 100',
+    }),
+    sports: joi.string().max(100).optional().allow('').messages({
+        'string.base': 'sports should be a type of text',
+        'string.empty': 'sports cannot be an empty field',
+        'string.max': 'sports should have a maximum length of 100',
+    }),
+    cuisine: joi.string().max(100).optional().allow('').messages({
+        'string.base': 'cuisine should be a type of text',
+        'string.empty': 'cuisine cannot be an empty field',
+        'string.max': 'cuisine should have a maximum length of 100',
+    }),
+    movies: joi.string().max(100).optional().allow('').messages({   
+        'string.base': 'movies should be a type of text',
+        'string.empty': 'movies cannot be an empty field',
+        'string.max': 'movies should have a maximum length of 100',
+    }),
+    tvShows: joi.string().max(100).optional().allow('').messages({
+        'string.base': 'tvShows should be a type of text',
+        'string.empty': 'tvShows cannot be an empty field',
+        'string.max': 'tvShows should have a maximum length of 100',
+    }),
+    vacationDestination: joi.string().max(100).optional().allow('').messages({
+        'string.base': 'vacationDestination should be a type of text',
+        'string.empty': 'vacationDestination cannot be an empty field',
+        'string.max': 'vacationDestination should have a maximum length of 100',
+    })
+});
+
+export const desiredPartnersSchema = joi.object({
+    ageFrom: joi.number().min(18).required().messages({
+        'number.base': 'ageFrom should be a type of number',
+        'number.min': 'ageFrom should be at least 18',
+        'any.required': 'ageFrom is a required field'
+    }),
+    ageTo: joi.number().min(joi.ref('ageFrom')).required().messages({
+        'number.base': 'ageTo should be a type of number',
+        'number.min': 'ageTo should be greater than or equal to ageFrom',
+        'any.required': 'ageTo is a required field'
+    }),
+    heightFrom: joi.string().required().messages({
+        'string.base': 'heightFrom should be a type of text',
+        'string.empty': 'heightFrom cannot be an empty field',
+        'any.required': 'heightFrom is a required field'
+    }),
+    heightTo: joi.string().required().messages({
+        'string.base': 'heightTo should be a type of text',
+        'string.empty': 'heightTo cannot be an empty field',
+        'any.required': 'heightTo is a required field'
+    }),
+    maritalStatus: joi.array().items(joi.string().valid('never married', 'divorced', 'widowed', 'separated')).min(1).required().messages({
+        'array.base': 'maritalStatus should be an array of strings',
+        'array.min': 'You must select at least one marital status',
+        'any.required': 'maritalStatus is a required field'
+    }),
+    // religion: joi.string().valid('hindu', 'muslim', 'christian', 'sikh', 'jain', 'buddhist', 'parsi', 'others').required().messages({
+    //     'string.base': 'religion should be a type of text',
+    //     'string.empty': 'religion cannot be an empty field',
+    //     'any.only': 'religion must be one of hindu, muslim, christian, sikh, jain, buddhist, parsi, others',
+    //     'any.required': 'religion is a required field'
+    // }),
+    religion: joi.array().items(joi.string().valid('hindu', 'muslim', 'christian', 'sikh', 'jain', 'buddhist', 'parsi', 'others')).min(1).required().messages({
+        'array.base': 'religion should be an array of strings',
+        'array.min': 'You must select at least one religion',
+        'any.only': 'religion must be one of hindu, muslim, christian, sikh, jain, buddhist, parsi, others',
+        'any.required': 'religion is a required field'
+    }),
+    community: joi.array().items(joi.string()).min(1).required().messages({
+        'array.base': 'community should be an array of strings',
+        'array.min': 'You must select at least one community',
+        'any.required': 'community is a required field'
+    }),
+    country: joi.string().optional().allow('').messages({
+        'string.base': 'country should be a type of text',
+        'string.empty': 'country cannot be an empty field',
+    }),
+    state: joi.string().optional().allow('').messages({
+        'string.base': 'state should be a type of text',
+        'string.empty': 'state cannot be an empty field',
+    }),
+    city: joi.string().optional().allow('').messages({
+        'string.base': 'city should be a type of text',
+        'string.empty': 'city cannot be an empty field',
+    }),
+    education: joi.string().optional().allow('').messages({
+        'string.base': 'education should be a type of text',
+        'string.empty': 'education cannot be an empty field',
+    }),
+    occupation: joi.string().optional().allow('').messages({
+        'string.base': 'occupation should be a type of text',
+        'string.empty': 'occupation cannot be an empty field',
+    }),
+    annualIncome: joi.string().optional().allow('').messages({
+        'string.base': 'annualIncome should be a type of text',
+        'string.empty': 'annualIncome cannot be an empty field',
+    }),
+    diet: joi.string().valid('vegetarian', 'non-vegetarian', 'vegan', 'eggetarian', 'other').optional().allow('').messages({
+        'string.base': 'diet should be a type of text',
+        'any.only': 'diet must be one of [vegetarian, non-vegetarian, vegan, eggetarian, other]',
+    }),
+    smoke: joi.string().valid('yes', 'no', 'occasionally').optional().allow('').messages({
+        'string.base': 'smoke should be a type of text',
+        'any.only': 'smoke must be one of [yes, no, occasionally]',
+    }),
+    drink: joi.string().valid('yes', 'no', 'occasionally').optional().allow('').messages({
+        'string.base': 'drink should be a type of text',
+        'any.only': 'drink must be one of [yes, no, occasionally]',
+    }),
+    manglik: joi.string().valid('Manglik', 'Non-Manglik', 'Dont know').optional().allow('').messages({
+        'string.base': 'manglik should be a type of text',
+        'any.only': 'manglik must be one of [Manglik, Non-Manglik, Dont know]',
+    }),
+});

@@ -13,6 +13,7 @@ import { Country, State, City } from "country-state-city";
 import Hobby from "../models/hobbies.model.js";
 import InterestInProfileModel from "../models/matrimonialProfileInterest.model.js";
 import mongoose from "mongoose";
+import VedicAstrology from "vedic-astrology";
 
 export const addMatrimonialProfile = asyncHandler(async (req, res) => {
   const {
@@ -271,13 +272,159 @@ export const getProfileById = asyncHandler(async (req, res) => {
   if (!profileId || profileId.trim() === "") {
     throw new ApiError(400, "profileId parameter is required");
   }
+  const aggregation = [
+    {
+      $match: { _id: new mongoose.Types.ObjectId(profileId) },
+    },
+    {
+      $project: {
+        createdBy: { $ifNull: ["$createdBy", "not filled"] },
+        profileFor: { $ifNull: ["$profileFor", "not filled"] },
+        relationToUser: { $ifNull: ["$relationToUser", "not filled"] },
+        gender: { $ifNull: ["$gender", "not filled"] },
+        name: { $ifNull: ["$name", "not filled"] },
+        age: { $ifNull: ["$age", "not filled"] },
+        dob: { $ifNull: ["$dob", "not filled"] },
+        mobileNo: { $ifNull: ["$mobileNo", "not filled"] },
+        email: { $ifNull: ["$email", "not filled"] },
+        religion: { $ifNull: ["$religion", "not filled"] },
+        community: { $ifNull: ["$community", "not filled"] },
+        subCommunity: { $ifNull: ["$subCommunity", "not filled"] },
+        gothra: { $ifNull: ["$gothra", "not filled"] },
+        marryInOtherCaste: { $ifNull: ["$marryInOtherCaste", "not filled"] },
+        maritalStatus: { $ifNull: ["$maritalStatus", "not filled"] },
+        noOfChildren: { $ifNull: ["$noOfChildren", "not filled"] },
+        motherTongue: { $ifNull: ["$motherTongue", "not filled"] },
+        height: { $ifNull: ["$height", "not filled"] },
+        weight: { $ifNull: ["$weight", "not filled"] },
+        livingIn: { $ifNull: ["$livingIn", "not filled"] },
+        state: { $ifNull: ["$state", "not filled"] },
+        city: { $ifNull: ["$city", "not filled"] },
+        annualIncome: { $ifNull: ["$annualIncome", "not filled"] },
+        profilePicture: { $ifNull: ["$profilePicture", "not filled"] },
 
-  const profile = await matrimonialProfilesModel
-    .findOne({ _id: profileId })
-    .lean();
-  if (!profile) {
-    throw new ApiError(404, "Profile not found");
-  }
+        // About
+        about: { $ifNull: ["$about", "not filled"] },
+        shortDescription: { $ifNull: ["$shortDescription", "not filled"] },
+        disability: { $ifNull: ["$disability", "not filled"] },
+        disabilityDetails: { $ifNull: ["$disabilityDetails", "not filled"] },
+
+        // Verification
+        isVerified: { $ifNull: ["$isVerified", "not filled"] },
+        identityProof: { $ifNull: ["$identityProof", "not filled"] },
+        documentNumber: { $ifNull: ["$documentNumber", "not filled"] },
+        documentName: { $ifNull: ["$documentName", "not filled"] },
+
+        educationAbout: { $ifNull: ["$educationAbout", "not filled"] },
+        highestQualification: {
+          $ifNull: ["$highestQualification", "not filled"],
+        },
+        college: { $ifNull: ["$college", "not filled"] },
+        ugdegree: { $ifNull: ["$ugdegree", "not filled"] },
+        schoolName: { $ifNull: ["$schoolName", "not filled"] },
+
+        // Career
+        careerAbout: { $ifNull: ["$careerAbout", "not filled"] },
+        employmentType: { $ifNull: ["$employmentType", "not filled"] },
+        workWith: { $ifNull: ["$workWith", "not filled"] },
+        workAs: { $ifNull: ["$workAs", "not filled"] },
+        workLocation: { $ifNull: ["$workLocation", "not filled"] },
+
+        // Family Details
+        familyDetails: {
+          about: { $ifNull: ["$familyDetails.about", "not filled"] },
+          familyType: { $ifNull: ["$familyDetails.familyType", "not filled"] },
+          fatherName: { $ifNull: ["$familyDetails.fatherName", "not filled"] },
+          motherName: { $ifNull: ["$familyDetails.motherName", "not filled"] },
+          noOfBrothers: {
+            $ifNull: ["$familyDetails.noOfBrothers", "not filled"],
+          },
+          noOfSisters: {
+            $ifNull: ["$familyDetails.noOfSisters", "not filled"],
+          },
+          marriedBrothers: {
+            $ifNull: ["$familyDetails.marriedBrothers", "not filled"],
+          },
+          marriedSisters: {
+            $ifNull: ["$familyDetails.marriedSisters", "not filled"],
+          },
+          financialStatus: {
+            $ifNull: ["$familyDetails.financialStatus", "not filled"],
+          },
+          livedWithFamily: {
+            $ifNull: ["$familyDetails.livedWithFamily", "not filled"],
+          },
+          fatherOccupation: {
+            $ifNull: ["$familyDetails.fatherOccupation", "not filled"],
+          },
+          motherOccupation: {
+            $ifNull: ["$familyDetails.motherOccupation", "not filled"],
+          },
+          familyIncome: {
+            $ifNull: ["$familyDetails.familyIncome", "not filled"],
+          },
+          familyValues: {
+            $ifNull: ["$familyDetails.familyValues", "not filled"],
+          },
+          LivingWithParents: {
+            $ifNull: ["$familyDetails.LivingWithParents", "not filled"],
+          },
+          familyLocation: {
+            $ifNull: ["$familyDetails.familyLocation", "not filled"],
+          },
+        },
+
+        // Horoscope Details
+        horoscopeDetails: {
+          birthTime: { $ifNull: ["$horoscopeDetails.birthTime", "not filled"] },
+          birthPlace: {
+            $ifNull: ["$horoscopeDetails.birthPlace", "not filled"],
+          },
+          rashi: { $ifNull: ["$horoscopeDetails.rashi", "not filled"] },
+          nakshatra: { $ifNull: ["$horoscopeDetails.nakshatra", "not filled"] },
+          manglik: { $ifNull: ["$horoscopeDetails.manglik", "not filled"] },
+        },
+
+        // Lifestyle
+        lifestyle: {
+          diet: { $ifNull: ["$lifestyle.diet", "not filled"] },
+          smoke: { $ifNull: ["$lifestyle.smoke", "not filled"] },
+          drink: { $ifNull: ["$lifestyle.drink", "not filled"] },
+          openToPets: { $ifNull: ["$lifestyle.openToPets", "not filled"] },
+          OwnHouse: { $ifNull: ["$lifestyle.OwnHouse", "not filled"] },
+          OwnCar: { $ifNull: ["$lifestyle.OwnCar", "not filled"] },
+          FoodCooked: { $ifNull: ["$lifestyle.FoodCooked", "not filled"] },
+          hobbies: { $ifNull: ["$lifestyle.hobbies", "not filled"] },
+          favoriteMusic: {
+            $ifNull: ["$lifestyle.favoriteMusic", "not filled"],
+          },
+          favoritebooks: {
+            $ifNull: ["$lifestyle.favoritebooks", "not filled"],
+          },
+          dressStyle: { $ifNull: ["$lifestyle.dressStyle", "not filled"] },
+          sports: { $ifNull: ["$lifestyle.sports", "not filled"] },
+          cuisine: { $ifNull: ["$lifestyle.cuisine", "not filled"] },
+          movies: { $ifNull: ["$lifestyle.movies", "not filled"] },
+          tvShows: { $ifNull: ["$lifestyle.tvShows", "not filled"] },
+          vacationDestination: {
+            $ifNull: ["$lifestyle.vacationDestination", "not filled"],
+          },
+        },
+      },
+    },
+  ];
+  const profile = await matrimonialProfilesModel.aggregate(aggregation);
+
+  // const profile = await matrimonialProfilesModel
+  //   .findOne({ _id: profileId })
+  //   .lean();
+  // if (!profile) {
+  //   throw new ApiError(404, "Profile not found");
+  // }
+  // const filledProfile = fillWithDefaults(
+  //   profile,
+  //   matrimonialProfilesModel.schema
+  // );
   return res.json(
     new ApiResponse(200, "Profile fetched successfully", profile)
   );
@@ -1122,4 +1269,107 @@ export const updateFamily = asyncHandler(async (req, res) => {
   );
   //
   throw new ApiError(403, "This function is under development");
+});
+
+export const updateHoroscope = asyncHandler(async (req, res) => {
+  const { birthTime, birthPlace, manglik } = req.body;
+  const profileId = req.params.profileId;
+  if (
+    !profileId ||
+    profileId.trim() === "" ||
+    profileId === undefined ||
+    profileId === null
+  ) {
+    throw new ApiError(400, "profileId parameter is required");
+  }
+
+  const profile = await matrimonialProfilesModel.findOne({
+    _id: profileId,
+    createdBy: req.user.userId,
+  });
+
+  if (!profile) {
+    throw new ApiError(404, "Profile not found");
+  }
+  console.log(birthTime);
+  console.log(birthPlace);
+  console.log(manglik);
+  // const birthChart = vedicAstrology
+  const birthChart = VedicAstrology.positioner.getBirthChart(
+    "2002-09-30",
+    "05:00:00",
+    26.8467,
+    80.9462,
+    5.5
+  );
+  console.log(birthChart);
+  return res.json(
+    new ApiResponse(200, "Horoscope section updated successfully", birthChart)
+  );
+  // console.log(birthChart.getLagna());
+  // console.log(birthChart.getRashi());
+  // console.log(birthChart.getNakshatra());
+
+  throw new ApiError(403, "This function is under development");
+});
+
+export const updateLifestyle = asyncHandler(async (req, res) => {
+  throw new ApiError(403, "This function is under development");
+});
+
+export const desiredPartner = asyncHandler(async (req, res) => {
+  const {
+    ageRange,
+    heightRange,
+    maritalStatus,
+    religion,
+    community,
+    motherTongue,
+    country,
+    state,
+    city,
+    education,
+    occupation,
+    annualIncome,
+  } = req.body;
+  const userId = req.user.userId;
+  const profileId = req.params.profileId;
+  if (
+    !profileId ||
+    profileId.trim() === "" ||
+    profileId === undefined ||
+    profileId === null
+  ) {
+    throw new ApiError(400, "profileId parameter is required");
+  }
+
+  console.log(
+    ageRange,
+    heightRange,
+    maritalStatus,
+    religion,
+    community,
+    motherTongue,
+    country,
+    state,
+    city,
+    education,
+    occupation,
+    annualIncome
+  );
+  const profile = await matrimonialProfilesModel.findOne({
+    _id: profileId,
+    createdBy: userId,
+  });
+
+  if (!profile) {
+    throw new ApiError(404, "Profile not found");
+  }
+
+  // Validate and process the request data
+  // ...
+
+  return res.json(
+    new ApiResponse(200, "Desired partner preferences updated successfully")
+  );
 });
