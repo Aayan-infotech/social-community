@@ -7,6 +7,8 @@ import {
   addMatrimonialSchema,
   desiredPartnersSchema,
   partnerBasicDetailsSchema,
+  partnerEducationAndOccupationSchema,
+  partnersFamilyAndEthnicitySchema,
   saveHobbiesSchema,
   sendInterestSchema,
   updateAboutSchema,
@@ -34,10 +36,13 @@ import {
   getInterestedProfiles,
   getMatrimonialProfileSuggesstions,
   getPositions,
+  getpreferredPartner,
   getProfileById,
   getStatesByCountry,
   getSubCommunities,
   partnerBasicDetails,
+  partnerEducationAndOccupation,
+  partnersFamilyAndEthnicity,
   saveHobbies,
   sendInterest,
   updateAbout,
@@ -173,8 +178,30 @@ router.put(
 );
 
 // desired partners
-router.post('/desirePartners/:profileId',verifyJWT,validateRequest(desiredPartnersSchema),desiredPartner);
-router.put('/partnerBasicDetails/:profileId',verifyJWT,validateRequest(partnerBasicDetailsSchema),partnerBasicDetails);
+router.post(
+  "/desirePartners/:profileId",
+  verifyJWT,
+  validateRequest(desiredPartnersSchema),
+  desiredPartner
+);
+router.get("/getpreferredPartner/:profileId", verifyJWT, getpreferredPartner);
+router.put(
+  "/partnerBasicDetails/:profileId",
+  verifyJWT,
+  validateRequest(partnerBasicDetailsSchema),
+  partnerBasicDetails
+);
+router.put(
+  "/partnerEducationAndOccupation/:profileId",
+  verifyJWT,
+  validateRequest(partnerEducationAndOccupationSchema),
+  partnerEducationAndOccupation
+);
+router.put(
+  "/partnersFamilyAndEthnicity/:profileId",
+  verifyJWT,
+  validateRequest(partnersFamilyAndEthnicitySchema),
+  partnersFamilyAndEthnicity
+);
 
 export default router;
-

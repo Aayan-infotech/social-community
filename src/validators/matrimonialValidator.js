@@ -967,3 +967,48 @@ export const partnerBasicDetailsSchema = joi.object({
         'array.min': 'You must select at least one city'
     })
 });
+
+
+export const partnerEducationAndOccupationSchema = joi.object({
+    education: joi.array().items(joi.string()).messages({
+        'array.base': 'education should be an array of strings',
+        'array.min': 'You must select at least one education'
+    }),
+    occupation: joi.array().items(joi.string()).messages({
+        'array.base': 'occupation should be an array of strings',
+        'array.min': 'You must select at least one occupation'
+    }),
+    annualIncomeMin: joi.number().min(0).required().messages({
+        'number.base': 'annualIncomeMin should be a type of number',
+        'number.empty': 'annualIncomeMin cannot be an empty field',
+        'any.required': 'annualIncomeMin is a required field'
+    }),
+    annualIncomeMax: joi.number().min(joi.ref('annualIncomeMin')).required().messages({
+        'number.base': 'annualIncomeMax should be a type of number',
+        'number.empty': 'annualIncomeMax cannot be an empty field',
+        'any.required': 'annualIncomeMax is a required field'
+    })
+});
+
+export const  partnersFamilyAndEthnicitySchema = joi.object({
+    religion: joi.array().items(joi.string().valid('hindu', 'muslim', 'christian', 'sikh', 'jain', 'buddhist', 'parsi', 'others','Doesn\'t matter')).min(1).required().messages({
+        'array.base': 'religion should be an array of strings',
+        'array.min': 'You must select at least one religion',
+        'any.required': 'religion is a required field'
+    }),
+    community: joi.array().items(joi.string().valid('Doesn\'t matter')).min(1).required().messages({
+        'array.base': 'community should be an array of strings',
+        'array.min': 'You must select at least one community',
+        'any.required': 'community is a required field'
+    }),
+    motherTongue: joi.array().items(joi.string().valid('Doesn\'t matter')).min(1).required().messages({
+        'array.base': 'motherTongue should be an array of strings',
+        'array.min': 'You must select at least one motherTongue',
+        'any.required': 'motherTongue is a required field'
+    }),
+    manglik:joi.array().items(joi.string().valid('Manglik', 'Non-Manglik', 'Dont know','Doesn\'t matter')).min(1).required().messages({
+        'array.base': 'manglik should be an array of strings',
+        'array.min': 'You must select at least one manglik option',
+        'any.required': 'manglik is a required field'
+    }),
+});

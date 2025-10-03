@@ -1470,7 +1470,7 @@ export const partnerBasicDetails = asyncHandler(async (req, res) =>{
 
   console.log(existingPreference);
   if (!existingPreference) {
-    throw new ApiError(400, "Preferences not000000000000000000000000000000000000000000000000000000 set for this profile");
+    throw new ApiError(400, "Preferences not set for this profile");
   }
 
   const newPreference = {
@@ -1479,14 +1479,164 @@ export const partnerBasicDetails = asyncHandler(async (req, res) =>{
     heightFrom,
     heightTo,
     maritalStatus,
-    country,
-    state,
-    city
+    countryLivingIn: country,
+    stateLivingIn: state,
+    cityLivingIn: city
   };
 
-  console.log(newPreference);
+  const updatedPreference = await DesiredPartner.findOneAndUpdate(
+    { createdBy: userId, profileId },
+    { $set: newPreference },
+    { new: true }
+  );
+
+  return res.json(
+    new ApiResponse(
+      200,
+      "Partner basic details updated successfully", 
+      updatedPreference
+    )
+  );
+
+});
+
+export const partnerEducationAndOccupation = asyncHandler(async (req, res) =>{
+  const { education, occupation, annualIncomeMin, annualIncomeMax } = req.body;
+  const userId = req.user.userId;
+  const profileId = req.params.profileId;
+  if (
+    !profileId ||
+    profileId.trim() === "" ||
+    profileId === undefined ||
+    profileId === null
+  ) {
+    throw new ApiError(400, "profileId parameter is required");
+  }
+
+  const profile = await matrimonialProfilesModel.findOne({
+    _id: profileId,
+    createdBy: userId,
+  });
+  if (!profile) {
+    throw new ApiError(404, "Profile not found");
+  }
+
+  const existingPreference = await DesiredPartner.findOne({
+    createdBy: userId,
+    profileId,
+  });
+
+  console.log(existingPreference);
+  if (!existingPreference) {
+    throw new ApiError(400, "Preferences not set for this profile");
+  }
+
+  const newPreference = {
+    education,
+    occupation,
+    annualIncome: { min: annualIncomeMin, max: annualIncomeMax },
+  };
+  const updatedPreference = await DesiredPartner.findOneAndUpdate(
+    { createdBy: userId, profileId },
+    { $set: newPreference },
+    { new: true }
+  );
+  return res.json(
+    new ApiResponse(
+      200,
+      "Partner education and occupation updated successfully",
+      updatedPreference
+    )
+  );
+});
 
 
-  throw new ApiError(403, "This function is under development");
+export const partnersFamilyAndEthnicity = asyncHandler(async (req, res) =>{
+  const { religion, community, motherTongue , manglik } = req.body;
+  const userId = req.user.userId;
+  const profileId = req.params.profileId;
+  if (
+    !profileId ||
+    profileId.trim() === "" ||
+    profileId === undefined ||
+    profileId === null
+  ) {
+    throw new ApiError(400, "profileId parameter is required");
+  }
 
+  const profile = await matrimonialProfilesModel.findOne({
+    _id: profileId,
+    createdBy: userId,
+  });
+  if (!profile) {
+    throw new ApiError(404, "Profile not found");
+  }
+
+  const existingPreference = await DesiredPartner.findOne({
+    createdBy: userId,
+    profileId,
+  });
+
+  console.log(existingPreference);
+  if (!existingPreference) {
+    throw new ApiError(400, "Preferences not set for this profile");
+  }
+
+  const newPreference = {
+    religion,
+    community,
+    motherTongue,
+    manglik
+  };
+
+  const updatedPreference = await DesiredPartner.findOneAndUpdate(
+    { createdBy: userId, profileId },
+    { $set: newPreference },
+    { new: true }
+  );
+
+  return res.json(
+    new ApiResponse(
+      200,
+      "Partner family and ethnicity updated successfully",
+      updatedPreference
+    )
+  );
+});
+
+
+
+export const getpreferredPartner = asyncHandler(async (req, res) => {
+  const userId = req.user.userId;
+  const profileId = req.params.profileId;
+  if (
+    !profileId ||
+    profileId.trim() === "" ||
+    profileId === undefined ||
+    profileId === null
+  ) {
+    throw new ApiError(400, "profileId parameter is required");
+  }
+
+  const profile = await matrimonialProfilesModel.findOne({
+    _id: profileId,
+    createdBy: userId,
+  });
+  if (!profile) {
+    throw new ApiError(404, "Profile not found");
+  }
+  const existingPreference = await DesiredPartner.findOne({
+    createdBy: userId,
+    profileId,
+  });
+  if (!existingPreference) {
+    throw new ApiError(400, "Preferences not set for this profile");
+  }
+  return res.json(
+    new ApiResponse(
+      200,
+      "Preferred partner retrieved successfully",
+      existingPreference
+    )
+  );
 });
